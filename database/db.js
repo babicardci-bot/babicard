@@ -248,13 +248,20 @@ function migrateDatabase(db) {
 }
 
 function seedDefaultData(db) {
-  const adminExists = db.prepare('SELECT id FROM users WHERE email = ?').get('admin@giftcardci.com');
+  // Migrer l'ancien compte admin si nécessaire
+  const oldAdmin = db.prepare('SELECT id FROM users WHERE email = ?').get('admin@giftcardci.com');
+  if (oldAdmin) {
+    db.prepare('UPDATE users SET email = ?, name = ? WHERE email = ?').run('babicardci@gmail.com', 'Administrateur', 'admin@giftcardci.com');
+    console.log('Admin: email migré → babicardci@gmail.com');
+  }
+
+  const adminExists = db.prepare('SELECT id, role FROM users WHERE email = ?').get('babicardci@gmail.com');
   if (!adminExists) {
     const hash = bcrypt.hashSync('Admin@2024!', 10);
-    db.prepare(`INSERT OR IGNORE INTO users (name, email, phone, password_hash, role) VALUES (?, ?, ?, ?, ?)`).run('Administrateur', 'admin@giftcardci.com', '+2250700000000', hash, 'admin');
-    console.log('Admin créé: admin@giftcardci.com / Admin@2024!');
+    db.prepare(`INSERT OR IGNORE INTO users (name, email, phone, password_hash, role) VALUES (?, ?, ?, ?, ?)`).run('Administrateur', 'babicardci@gmail.com', '+2250708598080', hash, 'admin');
+    console.log('Admin créé: babicardci@gmail.com / Admin@2024!');
   } else if (adminExists.role !== 'admin') {
-    db.prepare('UPDATE users SET role = ? WHERE email = ?').run('admin', 'admin@giftcardci.com');
+    db.prepare('UPDATE users SET role = ? WHERE email = ?').run('admin', 'babicardci@gmail.com');
     console.log('Admin: rôle corrigé → admin');
   }
 

@@ -71,24 +71,6 @@
         </button>
       </form>
 
-      <div class="auth-divider">
-        <span>ou</span>
-      </div>
-
-      <div class="demo-credentials">
-        <p class="demo-title">🔑 Compte démo admin:</p>
-        <div class="demo-info">
-          <div>
-            <span>Email:</span>
-            <code>admin@giftcardci.com</code>
-            <button onclick="fillDemo('admin')" class="btn-demo-fill">Utiliser</button>
-          </div>
-          <div>
-            <span>Mot de passe:</span>
-            <code>Admin@2024!</code>
-          </div>
-        </div>
-      </div>
 
       <p class="auth-switch">
         Pas encore de compte ?
@@ -101,13 +83,6 @@
 
   <script src="/js/auth.js"></script>
   <script>
-    function fillDemo(type) {
-      if (type === 'admin') {
-        document.getElementById('email').value = 'admin@giftcardci.com';
-        document.getElementById('password').value = 'Admin@2024!';
-      }
-    }
-
     function togglePasswordVisibility(inputId) {
       const input = document.getElementById(inputId);
       input.type = input.type === 'password' ? 'text' : 'password';
