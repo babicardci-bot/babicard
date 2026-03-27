@@ -6,10 +6,11 @@ function getTransporter() {
   if (!transporter) {
     if (process.env.EMAIL_USER && process.env.EMAIL_PASS &&
         process.env.EMAIL_USER !== 'your@gmail.com') {
+      const port = parseInt(process.env.EMAIL_PORT || '465');
       transporter = nodemailer.createTransport({
         host: process.env.EMAIL_HOST || 'mail1.netim.hosting',
-        port: parseInt(process.env.EMAIL_PORT || '465'),
-        secure: true, // SSL/TLS
+        port: port,
+        secure: port === 465,
         auth: {
           user: process.env.EMAIL_USER,
           pass: process.env.EMAIL_PASS
