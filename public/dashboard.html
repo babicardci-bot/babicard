@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mon Tableau de Bord — Babicard.ci</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="dashboard-page">
+
+  <!-- NAVBAR -->
+  <nav class="navbar" id="navbar">
+    <div class="nav-container">
+      <a href="/" class="nav-logo">
+        <span class="logo-icon">🎮</span>
+        <span class="logo-text">Babicard<span class="logo-accent">.ci</span></span>
+      </a>
+      <div class="nav-actions">
+        <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Mode clair / sombre">
+          <div class="theme-toggle-knob" id="themeKnob">🌙</div>
+        </button>
+        <a href="/" class="btn-outline-nav">← Boutique</a>
+        <span class="nav-user-name" id="navUserName">Chargement...</span>
+        <button onclick="logout()" class="btn-logout-nav">Déconnexion</button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="dashboard-container">
+    <!-- SIDEBAR -->
+    <aside class="dashboard-sidebar">
+      <div class="sidebar-user">
+        <div class="user-avatar-large" id="userAvatar">?</div>
+        <div class="user-info">
+          <strong id="sidebarUserName">Chargement...</strong>
+          <span id="sidebarUserEmail">...</span>
+        </div>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="#" class="sidebar-link active" data-tab="orders" onclick="showTab('orders', this)">
+          <span>📦</span> Mes Commandes
+        </a>
+        <a href="#" class="sidebar-link" data-tab="profile" onclick="showTab('profile', this)">
+          <span>👤</span> Mon Profil
+        </a>
+        <a href="/" class="sidebar-link">
+          <span>🛒</span> Boutique
+        </a>
+        <a href="#" class="sidebar-link sidebar-logout" onclick="logout()">
+          <span>🚪</span> Déconnexion
+        </a>
+      </nav>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="dashboard-main">
+
+      <!-- Payment status notification -->
+      <div id="paymentNotif" class="payment-notif hidden"></div>
+
+      <!-- ORDERS TAB -->
+      <div class="tab-content active" id="tab-orders">
+        <div class="dashboard-header">
+          <h1>📦 Mes Commandes</h1>
+          <a href="/" class="btn-primary-small">+ Nouvelle commande</a>
+        </div>
+
+        <div id="ordersContainer">
+          <div class="loading-center">
+            <div class="loading-spinner"></div>
+            <p>Chargement de vos commandes...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- PROFILE TAB -->
+      <div class="tab-content hidden" id="tab-profile">
+        <div class="dashboard-header">
+          <h1>👤 Mon Profil</h1>
+        </div>
+
+        <div class="profile-card">
+          <div class="profile-section">
+            <h3>Informations personnelles</h3>
+            <form id="profileForm" onsubmit="return false">
+              <div class="form-group">
+                <label>Nom complet</label>
+                <div class="input-wrapper">
+                  <input type="text" id="profileName" placeholder="Votre nom">
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Email</label>
+                <div class="input-wrapper">
+                  <input type="email" id="profileEmail" placeholder="Votre email" disabled>
+                </div>
+                <small class="input-hint">L'email ne peut pas être modifié.</small>
+              </div>
+              <div class="form-group">
+                <label>Téléphone</label>
+                <div class="input-wrapper">
+                  <input type="tel" id="profilePhone" placeholder="+225 07 XX XX XX XX">
+                </div>
+              </div>
+            </form>
+          </div>
+
+          <div class="profile-section">
+            <h3>Changer le mot de passe</h3>
+            <form id="changePasswordForm" onsubmit="return false">
+              <div class="form-group">
+                <label>Mot de passe actuel</label>
+                <div class="input-wrapper">
+                  <input type="password" id="currentPassword" placeholder="Mot de passe actuel">
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Nouveau mot de passe</label>
+                <div class="input-wrapper">
+                  <input type="password" id="newPassword" placeholder="Minimum 6 caractères">
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Confirmer le nouveau mot de passe</label>
+                <div class="input-wrapper">
+                  <input type="password" id="confirmPassword" placeholder="Répéter le nouveau mot de passe">
+                </div>
+              </div>
+              <button type="button" class="btn-primary" onclick="changePassword()" style="margin-top:8px;">Modifier le mot de passe</button>
+            </form>
+          </div>
+
+          <div class="profile-section">
+            <h3>Statistiques</h3>
+            <div class="profile-stats">
+              <div class="profile-stat">
+                <span class="stat-val" id="totalOrdersStat">-</span>
+                <span class="stat-lbl">Commandes</span>
+              </div>
+              <div class="profile-stat">
+                <span class="stat-val" id="totalSpentStat">-</span>
+                <span class="stat-lbl">Dépenses</span>
+              </div>
+              <div class="profile-stat">
+                <span class="stat-val" id="memberSinceStat">-</span>
+                <span class="stat-lbl">Membre depuis</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- ORDER DETAIL MODAL -->
+  <div class="modal-overlay" id="orderModalOverlay" onclick="closeOrderModal()"></div>
+  <div class="order-modal" id="orderModal">
+    <div class="order-modal-header">
+      <h3 id="orderModalTitle">Détails de la commande</h3>
+      <button onclick="closeOrderModal()" class="modal-close">✕</button>
+    </div>
+    <div class="order-modal-body" id="orderModalBody"></div>
+  </div>
+
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script src="/js/auth.js"></script>
+  <script>
+    let currentUser = null;
+    let allOrders = [];
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        window.location.href = '/login?redirect=/dashboard';
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/auth/me', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error('Non autorisé');
+        const data = await res.json();
+        currentUser = data.user;
+        updateUI();
+        loadOrders();
+        checkPaymentNotification();
+      } catch (err) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+      }
+    });
+
+    function updateUI() {
+      document.getElementById('navUserName').textContent = currentUser.name;
+      document.getElementById('sidebarUserName').textContent = currentUser.name;
+      document.getElementById('sidebarUserEmail').textContent = currentUser.email;
+      document.getElementById('userAvatar').textContent = currentUser.name.charAt(0).toUpperCase();
+      document.getElementById('profileName').value = currentUser.name;
+      document.getElementById('profileEmail').value = currentUser.email;
+      document.getElementById('profilePhone').value = currentUser.phone || '';
+      document.getElementById('memberSinceStat').textContent = new Date(currentUser.created_at).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' });
+    }
+
+    function checkPaymentNotification() {
+      const params = new URLSearchParams(window.location.search);
+      const orderId = params.get('order');
+      const status = params.get('status');
+      const notif = document.getElementById('paymentNotif');
+
+      if (orderId && status) {
+        if (status === 'success') {
+          notif.innerHTML = `✅ <strong>Paiement confirmé!</strong> Commande #${orderId} — Vos codes ont été envoyés par email et SMS.`;
+          notif.className = 'payment-notif payment-success';
+        } else {
+          notif.innerHTML = `❌ <strong>Paiement échoué.</strong> Votre commande #${orderId} n'a pas été finalisée. Veuillez réessayer.`;
+          notif.className = 'payment-notif payment-failed';
+        }
+        notif.classList.remove('hidden');
+        // Clean URL
+        window.history.replaceState({}, '', '/dashboard');
+      }
+    }
+
+    function showTab(tabName, el) {
+      document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
+      document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
+      document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+      if (el) el.classList.add('active');
+      return false;
+    }
+
+    async function loadOrders() {
+      const token = localStorage.getItem('token');
+      const container = document.getElementById('ordersContainer');
+
+      try {
+        const res = await fetch('/api/orders/my', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        allOrders = data.orders || [];
+
+        // Update profile stats
+        document.getElementById('totalOrdersStat').textContent = allOrders.length;
+        const totalSpent = allOrders.filter(o => o.payment_status === 'paid').reduce((s, o) => s + o.total_amount, 0);
+        document.getElementById('totalSpentStat').textContent = formatPrice(totalSpent);
+
+        if (allOrders.length === 0) {
+          container.innerHTML = `
+            <div class="empty-orders">
+              <div style="font-size:60px;margin-bottom:16px;">📭</div>
+              <h3>Aucune commande</h3>
+              <p>Vous n'avez pas encore passé de commande.</p>
+              <a href="/" class="btn-primary-small" style="margin-top:16px;display:inline-block;">Découvrir nos cartes cadeaux</a>
+            </div>
+          `;
+          return;
+        }
+
+        container.innerHTML = `<div class="orders-list">${allOrders.map(order => renderOrderCard(order)).join('')}</div>`;
+      } catch (err) {
+        container.innerHTML = `<div class="error-state">❌ Erreur lors du chargement des commandes. <button onclick="loadOrders()">Réessayer</button></div>`;
+      }
+    }
+
+    function renderOrderCard(order) {
+      const date = new Date(order.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+      const payStatus = {
+        paid: '<span class="status-badge status-paid">✅ Payée</span>',
+        pending: '<span class="status-badge status-pending">⏳ En attente</span>',
+        failed: '<span class="status-badge status-failed">❌ Échouée</span>'
+      };
+      const delivStatus = {
+        delivered: '<span class="status-badge status-delivered">📬 Livrée</span>',
+        pending: '<span class="status-badge status-pending">⏳ En attente</span>',
+        failed: '<span class="status-badge status-failed">⚠️ Erreur</span>'
+      };
+      const payMethod = order.payment_method === 'wave' ? '🌊 Wave CI' : '🟠 Orange Money';
+
+      return `
+        <div class="order-card" onclick="viewOrderDetail(${order.id})">
+          <div class="order-card-header">
+            <div>
+              <span class="order-number">Commande #${order.id}</span>
+              <span class="order-date">${date}</span>
+            </div>
+            <div class="order-statuses">
+              ${payStatus[order.payment_status] || ''}
+              ${delivStatus[order.delivery_status] || ''}
+            </div>
+          </div>
+          <div class="order-card-body">
+            <div class="order-meta">
+              <span>${payMethod}</span>
+              <span>${order.item_count || 0} article(s)</span>
+            </div>
+            <div class="order-amount">${formatPrice(order.total_amount)}</div>
+          </div>
+          ${order.payment_status === 'paid' && order.items && order.items.some(i => i.card_code) ? `
+            <div class="order-codes-preview">
+              ${order.items.filter(i => i.card_code).slice(0, 2).map(i => `
+                <div class="code-preview-item">
+                  <span>${i.product_name}</span>
+                  <code class="code-value">${i.card_code}</code>
+                </div>
+              `).join('')}
+            </div>
+          ` : ''}
+          <div class="order-card-footer">
+            <span class="view-details">Voir les détails →</span>
+          </div>
+        </div>
+      `;
+    }
+
+    async function viewOrderDetail(orderId) {
+      const token = localStorage.getItem('token');
+      const order = allOrders.find(o => o.id === orderId);
+
+      document.getElementById('orderModalTitle').textContent = `Commande #${orderId}`;
+      document.getElementById('orderModal').classList.add('active');
+      document.getElementById('orderModalOverlay').classList.add('active');
+
+      let items = order ? order.items : [];
+
+      if (!items || items.length === 0) {
+        try {
+          const res = await fetch(`/api/orders/${orderId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          const data = await res.json();
+          items = data.order.items || [];
+        } catch (e) { items = []; }
+      }
+
+      const isPaid = order && order.payment_status === 'paid';
+
+      document.getElementById('orderModalBody').innerHTML = `
+        <div class="order-detail-grid">
+          <div class="detail-section">
+            <h4>Informations</h4>
+            <div class="detail-row"><span>Méthode:</span><strong>${order?.payment_method === 'wave' ? '🌊 Wave CI' : '🟠 Orange Money'}</strong></div>
+            <div class="detail-row"><span>Statut paiement:</span><strong>${({'paid':'✅ Payée','pending':'⏳ En attente','failed':'❌ Échouée','cancelled':'🚫 Annulée'})[order?.payment_status] || order?.payment_status}</strong></div>
+            <div class="detail-row"><span>Réf. paiement:</span><code>${order?.payment_ref || 'N/A'}</code></div>
+            <div class="detail-row"><span>Total:</span><strong class="amount-large">${formatPrice(order?.total_amount || 0)}</strong></div>
+          </div>
+
+          ${!isPaid && order?.payment_status === 'pending' ? `
+          <div class="detail-section">
+            <h4>Finaliser le paiement</h4>
+            <p style="color:#a78bfa;font-size:14px;">Votre paiement est en attente. Voulez-vous simuler un paiement réussi?</p>
+            <button onclick="simulatePayment('${order.payment_ref}')" class="btn-primary-small" style="margin-top:8px">
+              🧪 Simuler paiement (Test)
+            </button>
+          </div>
+          ` : ''}
+
+          <div class="detail-section">
+            <h4>Articles ${isPaid ? '& Codes' : ''}</h4>
+            ${items.map(item => `
+              <div class="item-detail-card ${isPaid && item.card_code ? 'item-delivered' : ''}">
+                <div class="item-detail-header">
+                  <strong>${item.product_name}</strong>
+                  <span>${formatPrice(item.unit_price)}</span>
+                </div>
+                <div style="font-size:13px;color:#888;margin:4px 0">${item.platform || ''} ${item.denomination ? '• ' + item.denomination : ''}</div>
+                ${isPaid && item.card_code ? `
+                  <div class="code-box">
+                    <div class="code-label">🎁 Code de la carte</div>
+                    <div class="code-display" onclick="copyCode('${item.card_code}', this)">${item.card_code} <span class="copy-hint">Cliquer pour copier</span></div>
+                    ${item.card_pin ? `<div class="pin-display">PIN: <strong>${item.card_pin}</strong></div>` : ''}
+                    ${item.card_serial ? `<div style="font-size:12px;color:#888;margin-top:4px">Série: ${item.card_serial}</div>` : ''}
+                  </div>
+                ` : (isPaid ? `<div class="no-code-msg">⚠️ Code en cours d'assignation...</div>` : '')}
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    function closeOrderModal() {
+      document.getElementById('orderModal').classList.remove('active');
+      document.getElementById('orderModalOverlay').classList.remove('active');
+    }
+
+    async function simulatePayment(paymentRef) {
+      const token = localStorage.getItem('token');
+      try {
+        const res = await fetch('/api/payment/simulate', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ payment_ref: paymentRef, success: true })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showToast('✅ Paiement simulé! Rechargement...', 'success');
+          setTimeout(() => { closeOrderModal(); loadOrders(); }, 1500);
+        } else {
+          showToast(data.error, 'error');
+        }
+      } catch (e) {
+        showToast('Erreur simulation', 'error');
+      }
+    }
+
+    function copyCode(code, el) {
+      navigator.clipboard.writeText(code).then(() => {
+        el.style.background = '#16a34a';
+        el.querySelector('.copy-hint').textContent = '✓ Copié!';
+        setTimeout(() => {
+          el.style.background = '';
+          el.querySelector('.copy-hint').textContent = 'Cliquer pour copier';
+        }, 2000);
+      });
+    }
+
+    function formatPrice(amount) {
+      return new Intl.NumberFormat('fr-FR').format(amount) + ' FCFA';
+    }
+
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toastContainer') || document.body;
+      const toast = document.createElement('div');
+      toast.className = `toast toast-${type}`;
+      toast.textContent = message;
+      container.appendChild(toast);
+      setTimeout(() => toast.classList.add('show'), 10);
+      setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }, 3000);
+    }
+
+    async function changePassword() {
+      const current = document.getElementById('currentPassword').value;
+      const newPwd = document.getElementById('newPassword').value;
+      const confirm = document.getElementById('confirmPassword').value;
+      if (!current || !newPwd || !confirm) return showToast('Veuillez remplir tous les champs.', 'error');
+      if (newPwd !== confirm) return showToast('Les mots de passe ne correspondent pas.', 'error');
+      if (newPwd.length < 6) return showToast('Le nouveau mot de passe doit contenir au moins 6 caractères.', 'error');
+
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ current_password: current, new_password: newPwd })
+      });
+      const data = await res.json();
+      if (!res.ok) return showToast(data.error || 'Erreur', 'error');
+      showToast('Mot de passe modifié avec succès!', 'success');
+      document.getElementById('currentPassword').value = '';
+      document.getElementById('newPassword').value = '';
+      document.getElementById('confirmPassword').value = '';
+    }
+
+    function logout() {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/';
+    }
+  </script>
+</body>
+</html>

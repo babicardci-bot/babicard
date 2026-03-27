@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Paiement — Babicard.ci</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    body {
+      background: var(--bg-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .demo-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      padding: 40px;
+      max-width: 480px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    }
+    .demo-header {
+      margin-bottom: 32px;
+    }
+    .demo-logo {
+      font-size: 48px;
+      margin-bottom: 8px;
+    }
+    .demo-title {
+      font-size: 1.3rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .demo-subtitle {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+    .payment-info-box {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 24px;
+      text-align: left;
+    }
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      font-size: 0.9rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .info-row:last-child { border-bottom: none; }
+    .info-row span:first-child { color: var(--text-muted); }
+    .info-row strong { color: var(--text-primary); }
+    .amount-display {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--color-primary-light);
+      margin: 16px 0;
+    }
+    .phone-section {
+      margin-bottom: 20px;
+    }
+    .phone-input-demo {
+      width: 100%;
+      padding: 14px;
+      background: var(--bg-input);
+      border: 2px solid var(--border-color);
+      border-radius: 10px;
+      color: var(--text-primary);
+      font-size: 1rem;
+      text-align: center;
+      outline: none;
+      transition: all 0.3s;
+      margin-top: 8px;
+    }
+    .phone-input-demo:focus { border-color: var(--color-primary); }
+    .btn-pay {
+      width: 100%;
+      padding: 16px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.3s;
+      margin-bottom: 12px;
+    }
+    .btn-wave { background: linear-gradient(135deg, #00b9ff, #007abf); color: white; }
+    .btn-orange { background: linear-gradient(135deg, #FF6600, #cc5500); color: white; }
+    .btn-pay:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.3); }
+    .btn-cancel {
+      width: 100%;
+      padding: 12px;
+      background: none;
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .btn-cancel:hover { color: var(--text-primary); border-color: var(--text-secondary); }
+    .demo-notice {
+      background: rgba(245, 158, 11, 0.1);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 0.8rem;
+      color: #fcd34d;
+      margin-bottom: 20px;
+      text-align: left;
+    }
+    .processing-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      z-index: 999;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+    }
+    .processing-overlay.active { display: flex; }
+    .process-spinner {
+      width: 60px; height: 60px;
+      border: 4px solid rgba(108,99,255,0.2);
+      border-top-color: var(--color-primary);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .process-text { color: white; font-size: 1.1rem; font-weight: 600; }
+    .process-sub { color: var(--text-muted); font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+
+  <div class="processing-overlay" id="processingOverlay">
+    <div class="process-spinner"></div>
+    <div class="process-text" id="processText">Traitement du paiement...</div>
+    <div class="process-sub" id="processSub">Veuillez patienter...</div>
+  </div>
+
+  <div class="demo-card">
+    <div class="demo-header">
+      <div class="demo-logo" id="paymentLogo" style="display:inline-flex;align-items:center;gap:6px;background:#1BC5E6;border-radius:10px;padding:8px 14px;color:#fff;font-weight:800;font-size:1.4rem;">🐧 wave</div>
+      <div class="demo-title" id="paymentTitle">Paiement Wave CI</div>
+      <div class="demo-subtitle">Mode démonstration — Aucun paiement réel</div>
+    </div>
+
+    <div class="demo-notice">
+      ⚠️ <strong>Mode Démo:</strong> Cette page simule le paiement. Dans un environnement de production, vous seriez redirigé vers l'application Wave CI ou Orange Money.
+    </div>
+
+    <div class="payment-info-box">
+      <div class="info-row">
+        <span>Commande</span>
+        <strong id="orderIdDisplay">#-</strong>
+      </div>
+      <div class="info-row">
+        <span>Référence</span>
+        <strong id="refDisplay" style="font-family:monospace;font-size:0.82rem">-</strong>
+      </div>
+      <div class="info-row">
+        <span>Montant</span>
+        <strong id="amountDisplay" style="color:var(--color-primary-light)">-</strong>
+      </div>
+      <div class="info-row">
+        <span>Méthode</span>
+        <strong id="methodDisplay">-</strong>
+      </div>
+    </div>
+
+    <div class="amount-display" id="amountBig">-</div>
+
+    <div class="phone-section" id="phoneSection" style="display:none">
+      <label style="font-size:0.85rem;color:var(--text-secondary)">Numéro Orange Money confirmé:</label>
+      <input type="tel" class="phone-input-demo" id="phoneDisplay" placeholder="+225 07 XX XX XX">
+    </div>
+
+    <button class="btn-pay btn-wave" id="payBtn" onclick="simulatePayment()">
+      ✅ Confirmer le paiement
+    </button>
+    <button class="btn-cancel" onclick="cancelPayment()">
+      ✕ Annuler le paiement
+    </button>
+  </div>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const paymentRef = params.get('ref');
+    const orderId = params.get('order');
+    const method = params.get('method') || 'wave';
+    const amount = parseInt(params.get('amount') || 0);
+    const phone = params.get('phone');
+
+    // Update UI
+    document.getElementById('orderIdDisplay').textContent = `#${orderId}`;
+    document.getElementById('refDisplay').textContent = paymentRef;
+    document.getElementById('amountDisplay').textContent = new Intl.NumberFormat('fr-FR').format(amount) + ' FCFA';
+    document.getElementById('amountBig').textContent = new Intl.NumberFormat('fr-FR').format(amount) + ' FCFA';
+
+    if (method === 'wave') {
+      document.getElementById('paymentLogo').innerHTML = '🐧 wave';
+      document.getElementById('paymentLogo').style.cssText = 'display:inline-flex;align-items:center;gap:6px;background:#1BC5E6;border-radius:10px;padding:8px 14px;color:#fff;font-weight:800;font-size:1.4rem;';
+      document.getElementById('paymentTitle').textContent = 'Paiement Wave CI';
+      document.getElementById('methodDisplay').innerHTML = '<span style="display:inline-flex;align-items:center;gap:4px;background:#1BC5E6;border-radius:5px;padding:2px 8px;color:#fff;font-weight:700;font-size:0.82rem;">🐧 wave</span>';
+      document.querySelector('.btn-pay').className = 'btn-pay btn-wave';
+    } else {
+      document.getElementById('paymentLogo').textContent = '🟠';
+      document.getElementById('paymentTitle').textContent = 'Paiement Orange Money';
+      document.getElementById('methodDisplay').textContent = '🟠 Orange Money';
+      document.querySelector('.btn-pay').className = 'btn-pay btn-orange';
+
+      if (phone) {
+        document.getElementById('phoneSection').style.display = 'block';
+        document.getElementById('phoneDisplay').value = decodeURIComponent(phone);
+      }
+    }
+
+    async function simulatePayment() {
+      const overlay = document.getElementById('processingOverlay');
+      overlay.classList.add('active');
+      document.getElementById('processText').textContent = 'Connexion au serveur de paiement...';
+      document.getElementById('processSub').textContent = 'Sécurisation de la transaction...';
+
+      await delay(1000);
+      document.getElementById('processText').textContent = 'Vérification du paiement...';
+      document.getElementById('processSub').textContent = 'Confirmation en cours...';
+
+      await delay(1500);
+      document.getElementById('processText').textContent = '✅ Paiement accepté!';
+      document.getElementById('processSub').textContent = 'Préparation de vos codes...';
+
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          window.location.href = `/dashboard?order=${orderId}&status=success`;
+          return;
+        }
+
+        const res = await fetch('/api/payment/simulate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ payment_ref: paymentRef, success: true })
+        });
+
+        await delay(800);
+        window.location.href = `/dashboard?order=${orderId}&status=success`;
+      } catch (err) {
+        console.error(err);
+        window.location.href = `/dashboard?order=${orderId}&status=success`;
+      }
+    }
+
+    function cancelPayment() {
+      window.location.href = `/dashboard?order=${orderId}&status=failed`;
+    }
+
+    function delay(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+  </script>
+</body>
+</html>

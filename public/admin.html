@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Administration — Babicard.ci</title>
+  <link rel="stylesheet" href="/css/admin.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- SIDEBAR -->
+  <aside class="admin-sidebar" id="adminSidebar">
+    <div class="sidebar-logo">
+      <span>🎮</span>
+      <span>Babicard<strong>.ci</strong></span>
+    </div>
+    <div class="sidebar-subtitle">Panel Admin</div>
+
+    <nav class="sidebar-menu">
+      <a href="#" class="menu-item active" data-section="dashboard" onclick="showSection('dashboard', this)">
+        <span class="menu-icon">📊</span>
+        <span>Tableau de bord</span>
+      </a>
+      <a href="#" class="menu-item" data-section="products" onclick="showSection('products', this)">
+        <span class="menu-icon">🎁</span>
+        <span>Produits</span>
+      </a>
+      <a href="#" class="menu-item" data-section="cards" onclick="showSection('cards', this)">
+        <span class="menu-icon">🃏</span>
+        <span>Cartes / Codes</span>
+      </a>
+      <a href="#" class="menu-item" data-section="orders" onclick="showSection('orders', this)">
+        <span class="menu-icon">📦</span>
+        <span>Commandes</span>
+      </a>
+      <a href="#" class="menu-item" data-section="users" onclick="showSection('users', this)">
+        <span class="menu-icon">👥</span>
+        <span>Utilisateurs</span>
+      </a>
+      <a href="#" class="menu-item" data-section="sellers" onclick="showSection('sellers', this)">
+        <span class="menu-icon">🏪</span>
+        <span>Vendeurs</span>
+      </a>
+      <a href="#" class="menu-item" data-section="withdrawals" onclick="showSection('withdrawals', this)">
+        <span class="menu-icon">💸</span>
+        <span>Retraits</span>
+      </a>
+      <a href="#" class="menu-item" data-section="appearance" onclick="showSection('appearance', this)">
+        <span class="menu-icon">🎨</span>
+        <span>Apparence</span>
+      </a>
+      <a href="#" class="menu-item" data-section="account" onclick="showSection('account', this)">
+        <span class="menu-icon">🔒</span>
+        <span>Mon Compte</span>
+      </a>
+      <div class="menu-divider"></div>
+      <a href="/" class="menu-item">
+        <span class="menu-icon">🌐</span>
+        <span>Voir le site</span>
+      </a>
+      <a href="#" class="menu-item menu-logout" onclick="logout()">
+        <span class="menu-icon">🚪</span>
+        <span>Déconnexion</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-user">
+      <div class="sidebar-user-avatar" id="adminAvatar">A</div>
+      <div>
+        <div id="adminName">Admin</div>
+        <div id="adminEmail" style="font-size:11px;color:#888">...</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="admin-main">
+
+    <!-- TOP BAR -->
+    <header class="admin-topbar">
+      <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
+      <h2 class="topbar-title" id="topbarTitle">Tableau de bord</h2>
+      <div class="topbar-actions">
+        <span id="topbarDate"></span>
+        <button class="btn-refresh" onclick="refreshCurrentSection()">🔄 Actualiser</button>
+      </div>
+    </header>
+
+    <!-- TOAST -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- ============= DASHBOARD SECTION ============= -->
+    <section class="admin-section active" id="section-dashboard">
+      <div class="stats-grid">
+        <div class="stat-card stat-blue">
+          <div class="stat-icon">👥</div>
+          <div class="stat-info">
+            <div class="stat-val" id="stat-users">-</div>
+            <div class="stat-lbl">Clients</div>
+          </div>
+        </div>
+        <div class="stat-card stat-green">
+          <div class="stat-icon">💰</div>
+          <div class="stat-info">
+            <div class="stat-val" id="stat-revenue">-</div>
+            <div class="stat-lbl">Revenus</div>
+          </div>
+        </div>
+        <div class="stat-card stat-purple">
+          <div class="stat-icon">📦</div>
+          <div class="stat-info">
+            <div class="stat-val" id="stat-orders">-</div>
+            <div class="stat-lbl">Commandes</div>
+          </div>
+        </div>
+        <div class="stat-card stat-orange">
+          <div class="stat-icon">🃏</div>
+          <div class="stat-info">
+            <div class="stat-val" id="stat-cards">-</div>
+            <div class="stat-lbl">Cartes dispo</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- BÉNÉFICES ADMIN -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-bottom:24px;">
+        <div class="stat-card" style="background:linear-gradient(135deg,rgba(34,197,94,0.15),rgba(16,185,129,0.1));border:1px solid rgba(34,197,94,0.3);">
+          <div class="stat-icon">🏦</div>
+          <div class="stat-info">
+            <div class="stat-val" id="stat-benefits" style="color:#22c55e;font-size:1.1rem;">-</div>
+            <div class="stat-lbl">Mes bénéfices totaux</div>
+          </div>
+        </div>
+        <div class="stat-card" style="background:linear-gradient(135deg,rgba(34,197,94,0.1),rgba(16,185,129,0.06));border:1px solid rgba(34,197,94,0.2);">
+          <div class="stat-icon">📅</div>
+          <div class="stat-info">
+            <div class="stat-val" id="stat-benefits-month" style="color:#22c55e;font-size:1.1rem;">-</div>
+            <div class="stat-lbl">Bénéfices ce mois</div>
+          </div>
+        </div>
+        <div class="stat-card" style="background:linear-gradient(135deg,rgba(108,99,255,0.12),rgba(108,99,255,0.06));border:1px solid rgba(108,99,255,0.3);">
+          <div class="stat-icon">🤝</div>
+          <div class="stat-info">
+            <div class="stat-val" id="stat-commissions" style="color:#a78bfa;font-size:1.1rem;">-</div>
+            <div class="stat-lbl">Commissions vendeurs</div>
+          </div>
+        </div>
+        <div class="stat-card" style="background:linear-gradient(135deg,rgba(249,115,22,0.12),rgba(249,115,22,0.06));border:1px solid rgba(249,115,22,0.3);">
+          <div class="stat-icon">🎯</div>
+          <div class="stat-info">
+            <div class="stat-val" id="stat-direct" style="color:#f97316;font-size:1.1rem;">-</div>
+            <div class="stat-lbl">Ventes directes</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ALERTES -->
+      <div id="alertsContainer" style="margin-bottom:24px;display:none;">
+        <h3 style="margin:0 0 12px;font-size:1rem;color:var(--text-secondary);text-transform:uppercase;letter-spacing:1px;">⚡ Actions requises</h3>
+        <div id="alertsList" style="display:flex;flex-wrap:wrap;gap:12px;"></div>
+      </div>
+
+      <div class="dashboard-grids">
+        <div class="dashboard-widget">
+          <div class="widget-header">
+            <h3>📋 Commandes récentes</h3>
+            <button onclick="showSection('orders')" class="btn-sm">Voir tout</button>
+          </div>
+          <div id="recentOrders">
+            <div class="loading-row"><div class="loading-spinner-sm"></div></div>
+          </div>
+        </div>
+
+        <div class="dashboard-widget">
+          <div class="widget-header">
+            <h3>🏆 Top produits</h3>
+          </div>
+          <div id="topProducts">
+            <div class="loading-row"><div class="loading-spinner-sm"></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============= PRODUCTS SECTION ============= -->
+    <section class="admin-section" id="section-products">
+      <div class="section-toolbar">
+        <h2>🎁 Gestion des Produits</h2>
+        <button class="btn-primary" onclick="showProductForm()">+ Ajouter un produit</button>
+      </div>
+
+      <div id="productsTable">
+        <div class="loading-center"><div class="loading-spinner"></div></div>
+      </div>
+    </section>
+
+    <!-- ============= CARDS SECTION ============= -->
+    <section class="admin-section" id="section-cards">
+      <div class="section-toolbar">
+        <h2>🃏 Gestion des Codes/Cartes</h2>
+        <button class="btn-primary" onclick="showBulkCardForm()">+ Ajouter des codes</button>
+      </div>
+
+      <div class="filter-bar">
+        <select id="cardProductFilter" onchange="loadCards()" class="admin-select">
+          <option value="">Tous les produits</option>
+        </select>
+        <select id="cardStatusFilter" onchange="loadCards()" class="admin-select">
+          <option value="">Tous les statuts</option>
+          <option value="available">Disponible</option>
+          <option value="sold">Vendu</option>
+        </select>
+        <div class="search-input-wrap">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="cardSearchInput" class="admin-search-input" placeholder="Rechercher par code ou produit…" oninput="filterCardsTable()">
+        </div>
+      </div>
+
+      <div id="cardsTable">
+        <div class="loading-center"><div class="loading-spinner"></div></div>
+      </div>
+    </section>
+
+    <!-- ============= ORDERS SECTION ============= -->
+    <section class="admin-section" id="section-orders">
+      <div class="section-toolbar">
+        <h2>📦 Gestion des Commandes</h2>
+        <div class="filter-inline">
+          <select id="orderPaymentFilter" onchange="loadAdminOrders()" class="admin-select">
+            <option value="">Tous paiements</option>
+            <option value="paid">Payées</option>
+            <option value="pending">En attente</option>
+            <option value="failed">Échouées</option>
+          </select>
+          <select id="orderDeliveryFilter" onchange="loadAdminOrders()" class="admin-select">
+            <option value="">Toutes livraisons</option>
+            <option value="delivered">Livrées</option>
+            <option value="pending">En attente</option>
+            <option value="failed">Échouées</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="ordersTable">
+        <div class="loading-center"><div class="loading-spinner"></div></div>
+      </div>
+    </section>
+
+    <!-- ============= USERS SECTION ============= -->
+    <section class="admin-section" id="section-users">
+      <div class="section-toolbar">
+        <h2>👥 Gestion des Utilisateurs</h2>
+        <div>
+          <input type="text" id="userSearch" placeholder="Rechercher..." class="admin-input" oninput="loadUsers()" style="max-width:250px">
+        </div>
+      </div>
+
+      <div id="usersTable">
+        <div class="loading-center"><div class="loading-spinner"></div></div>
+      </div>
+    </section>
+
+    <!-- ============= SELLERS SECTION ============= -->
+    <section class="admin-section" id="section-sellers">
+      <div class="section-toolbar">
+        <h2>🏪 Gestion des Vendeurs</h2>
+        <div class="filter-inline">
+          <select id="sellerStatusFilter" onchange="loadAdminSellers()" class="admin-select">
+            <option value="">Tous les statuts</option>
+            <option value="pending">En attente</option>
+            <option value="approved">Approuvés</option>
+            <option value="rejected">Rejetés</option>
+            <option value="suspended">Suspendus</option>
+          </select>
+        </div>
+      </div>
+      <div id="sellersTable">
+        <div class="loading-center"><div class="loading-spinner"></div></div>
+      </div>
+    </section>
+
+    <!-- ============= WITHDRAWALS SECTION ============= -->
+    <section class="admin-section" id="section-withdrawals">
+      <div class="section-toolbar">
+        <h2>💸 Demandes de Retrait</h2>
+        <div class="filter-inline">
+          <select id="withdrawalStatusFilter" onchange="loadAdminWithdrawals()" class="admin-select">
+            <option value="">Tous les statuts</option>
+            <option value="pending">En attente</option>
+            <option value="approved">Approuvés</option>
+            <option value="paid">Payés</option>
+            <option value="rejected">Rejetés</option>
+          </select>
+        </div>
+      </div>
+      <div id="withdrawalsTable">
+        <div class="loading-center"><div class="loading-spinner"></div></div>
+      </div>
+    </section>
+
+    <!-- ===== SECTION APPARENCE ===== -->
+    <section class="admin-section" id="section-appearance">
+      <div class="section-toolbar">
+        <h2>🎨 Apparence du site</h2>
+        <button class="btn-primary" onclick="saveAllAppearance()">💾 Tout sauvegarder</button>
+      </div>
+
+      <!-- LOGO -->
+      <div class="appearance-block">
+        <h3 class="appearance-title">🖼️ Logo du site</h3>
+        <div class="logo-editor">
+          <div class="logo-preview-box">
+            <div id="logoPreviewLive" class="nav-logo" style="font-size:1.4rem;font-weight:700;display:flex;align-items:center;gap:10px;">
+              <span id="lpIcon">🎮</span>
+              <span><span id="lpText">Babicard</span> <span id="lpAccent" style="color:#6C63FF">.ci</span></span>
+            </div>
+            <p style="font-size:0.75rem;color:#888;margin-top:8px">Aperçu en temps réel</p>
+          </div>
+          <div class="logo-options">
+            <!-- Type tabs -->
+            <div class="logo-type-tabs">
+              <button class="logo-tab active" id="tabEmoji" onclick="switchLogoTab('emoji')">Emoji + Texte</button>
+              <button class="logo-tab" id="tabImage" onclick="switchLogoTab('image')">Image uploadée</button>
+            </div>
+
+            <!-- Emoji form -->
+            <div id="logoEmojiForm">
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Emoji / Icône</label>
+                  <input type="text" id="logoEmoji" class="form-control" value="🎮" maxlength="4" oninput="updateLogoPreview()">
+                </div>
+                <div class="form-group">
+                  <label>Nom du site</label>
+                  <input type="text" id="logoText" class="form-control" value="Babicard" oninput="updateLogoPreview()">
+                </div>
+                <div class="form-group">
+                  <label>Texte accent</label>
+                  <input type="text" id="logoAccent" class="form-control" value="CI" oninput="updateLogoPreview()">
+                </div>
+                <div class="form-group">
+                  <label>Couleur de l'accent</label>
+                  <div style="display:flex;align-items:center;gap:10px;">
+                    <input type="color" id="logoAccentColor" value="#6C63FF" oninput="updateLogoPreview()" style="width:48px;height:38px;padding:2px;border-radius:8px;border:1px solid var(--admin-border);background:var(--admin-card);cursor:pointer;">
+                    <input type="text" id="logoAccentColorHex" class="form-control" value="#6C63FF" placeholder="#6C63FF" oninput="syncColorFromHex()" style="flex:1;font-family:monospace;">
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Image form -->
+            <div id="logoImageForm" style="display:none">
+              <div class="form-group">
+                <label>Uploader une image (PNG, SVG, JPG — max 2MB)</label>
+                <div class="upload-area" id="logoUploadArea">
+                  <input type="file" id="logoFileInput" accept="image/*" style="display:none" onchange="uploadLogoFile(this)">
+                  <div id="logoCurrentImage" style="margin-bottom:10px;display:none">
+                    <img id="logoImgPreview" src="" alt="Logo" style="max-height:60px;border-radius:8px;">
+                  </div>
+                  <button type="button" class="btn-secondary" onclick="document.getElementById('logoFileInput').click()">
+                    📁 Choisir un fichier
+                  </button>
+                  <span id="logoUploadStatus" style="font-size:0.8rem;color:#888;margin-left:10px;"></span>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Ou URL directe</label>
+                <input type="url" id="logoImageUrl" class="form-control" placeholder="https://..." oninput="updateLogoPreviewImage()">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SLIDERS -->
+      <div class="appearance-block">
+        <h3 class="appearance-title">🎠 Sliders de la page d'accueil</h3>
+        <p style="color:#888;font-size:0.85rem;margin-bottom:16px;">Modifiez le contenu de chaque slide. Les changements sont visibles immédiatement après sauvegarde.</p>
+        <div id="slidersEditor">
+          <div class="loading-center"><div class="loading-spinner"></div></div>
+        </div>
+        <div style="margin-top:16px;display:flex;gap:12px;">
+          <button class="btn btn-outline" onclick="addNewSlide()">＋ Ajouter un slide</button>
+          <button class="btn btn-primary" onclick="saveSliders()">💾 Sauvegarder les sliders</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== SECTION MON COMPTE ===== -->
+    <section class="admin-section" id="section-account">
+      <div class="section-toolbar">
+        <h2>🔒 Mon Compte</h2>
+      </div>
+      <div class="admin-form-card" style="max-width:480px;">
+        <h3 style="margin:0 0 16px;">Changer le mot de passe</h3>
+        <div id="adminPwdAlerts"></div>
+        <div class="form-group">
+          <label>Mot de passe actuel</label>
+          <input type="password" id="adminCurrentPwd" class="form-control" placeholder="Mot de passe actuel">
+        </div>
+        <div class="form-group">
+          <label>Nouveau mot de passe</label>
+          <input type="password" id="adminNewPwd" class="form-control" placeholder="Minimum 6 caractères">
+        </div>
+        <div class="form-group">
+          <label>Confirmer le nouveau mot de passe</label>
+          <input type="password" id="adminConfirmPwd" class="form-control" placeholder="Répéter le nouveau mot de passe">
+        </div>
+        <button class="btn-primary" onclick="adminChangePassword()" style="width:100%;margin-top:8px;">
+          🔒 Modifier le mot de passe
+        </button>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- Seller Status Modal -->
+  <div class="modal-overlay" id="sellerModalOverlay" onclick="closeSellerModal()"></div>
+  <div class="admin-modal" id="sellerModal">
+    <div class="modal-header">
+      <h3 id="sellerModalTitle">Mettre à jour le vendeur</h3>
+      <button onclick="closeSellerModal()" class="modal-close-btn">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="sellerModalUserId">
+
+      <!-- Email de contact -->
+      <div class="form-group" style="margin-bottom:16px;">
+        <label style="font-weight:700;font-size:0.85rem;color:var(--text-secondary);display:block;margin-bottom:6px;">✉️ Email de contact</label>
+        <span id="sellerModalEmail" style="font-size:0.95rem;color:var(--text-primary);"></span>
+      </div>
+
+      <!-- Documents fournis par le vendeur -->
+      <div class="form-group" style="margin-bottom:20px;">
+        <label style="font-weight:700;font-size:0.85rem;color:var(--text-secondary);display:block;margin-bottom:10px;">📎 Documents soumis</label>
+        <div id="sellerModalDocs" style="display:flex;flex-direction:column;gap:10px;"></div>
+      </div>
+      <hr style="border:none;border-top:1px solid var(--admin-border);margin:0 0 18px;">
+
+      <div class="form-group">
+        <label>Statut *</label>
+        <select id="sellerModalStatus" class="form-control">
+          <option value="approved">✅ Approuvé</option>
+          <option value="pending">⏳ En attente</option>
+          <option value="rejected">❌ Rejeté</option>
+          <option value="suspended">🚫 Suspendu</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Taux de commission (%)</label>
+        <input type="number" id="sellerModalCommission" class="form-control" min="0" max="50" step="0.5" value="10">
+      </div>
+      <div class="form-group">
+        <label>Note admin (optionnel)</label>
+        <textarea id="sellerModalNote" rows="3" class="form-control" placeholder="Raison du rejet, remarques..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button onclick="closeSellerModal()" class="btn-secondary">Annuler</button>
+      <button onclick="saveSellerStatus()" class="btn-primary">Enregistrer</button>
+    </div>
+  </div>
+
+  <!-- Withdrawal Process Modal -->
+  <div class="modal-overlay" id="withdrawalModalOverlay" onclick="closeWithdrawalModal()"></div>
+  <div class="admin-modal" id="withdrawalModal">
+    <div class="modal-header">
+      <h3>Traiter la demande de retrait</h3>
+      <button onclick="closeWithdrawalModal()" class="modal-close-btn">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="withdrawalModalId">
+      <div id="withdrawalModalInfo" style="margin-bottom:16px;padding:12px;background:rgba(108,99,255,0.08);border-radius:8px;font-size:0.88rem;"></div>
+      <div class="form-group">
+        <label>Décision *</label>
+        <select id="withdrawalModalStatus" class="form-control">
+          <option value="approved">✅ Approuver</option>
+          <option value="paid">💰 Marquer comme payé</option>
+          <option value="rejected">❌ Rejeter</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Note admin (optionnel)</label>
+        <textarea id="withdrawalModalNote" rows="3" class="form-control" placeholder="Référence de paiement, raison du rejet..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button onclick="closeWithdrawalModal()" class="btn-secondary">Annuler</button>
+      <button onclick="saveWithdrawalStatus()" class="btn-primary">Enregistrer</button>
+    </div>
+  </div>
+
+  <!-- ============= MODALS ============= -->
+
+  <!-- Product Modal -->
+  <div class="modal-overlay" id="productModalOverlay" onclick="closeProductModal()"></div>
+  <div class="admin-modal" id="productModal">
+    <div class="modal-header">
+      <h3 id="productModalTitle">Ajouter un produit</h3>
+      <button onclick="closeProductModal()" class="modal-close-btn">✕</button>
+    </div>
+    <form id="productForm" onsubmit="saveProduct(event)">
+      <div class="modal-body">
+        <!-- Image upload -->
+        <div class="form-group">
+          <label>Image du produit</label>
+          <div class="product-img-upload-zone" id="productImgZone" onclick="document.getElementById('productImgInput').click()">
+            <img id="productImgPreview" src="" alt="" style="display:none;width:100%;height:100%;object-fit:cover;border-radius:10px;">
+            <div id="productImgPlaceholder">
+              <span style="font-size:2rem">🖼️</span>
+              <div style="margin-top:6px;font-size:0.82rem;color:var(--text-muted)">Cliquer ou glisser une image</div>
+              <div style="font-size:0.72rem;color:var(--text-muted);margin-top:2px">JPG, PNG, WebP · max 5 Mo</div>
+            </div>
+            <input type="file" id="productImgInput" accept="image/*" style="display:none" onchange="onProductImgSelect(this)">
+          </div>
+          <div id="productImgStatus" style="font-size:0.78rem;margin-top:6px;color:var(--text-muted)"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Nom du produit *</label>
+            <input type="text" id="pName" required placeholder="ex: iTunes Gift Card 10$">
+          </div>
+          <div class="form-group">
+            <label>Plateforme *</label>
+            <input type="text" id="pPlatform" required placeholder="ex: iTunes / App Store">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Catégorie *</label>
+            <select id="pCategory" required>
+              <option value="apple">Apple (iTunes)</option>
+              <option value="playstation">PlayStation</option>
+              <option value="xbox">Xbox</option>
+              <option value="google">Google Play</option>
+              <option value="steam">Steam</option>
+              <option value="netflix">Netflix</option>
+              <option value="amazon">Amazon</option>
+              <option value="other">Autre</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Dénomination *</label>
+            <input type="text" id="pDenomination" required placeholder="ex: 10$, 25$, 50$">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Prix (FCFA) *</label>
+            <input type="number" id="pPrice" required min="100" placeholder="6500">
+          </div>
+          <div class="form-group">
+            <label>Actif</label>
+            <select id="pActive">
+              <option value="1">Oui</option>
+              <option value="0">Non</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Description</label>
+          <textarea id="pDescription" rows="3" placeholder="Description du produit..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" onclick="closeProductModal()" class="btn-secondary">Annuler</button>
+        <button type="submit" class="btn-primary" id="productSaveBtn">Enregistrer</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Bulk Cards Modal -->
+  <div class="modal-overlay" id="cardsModalOverlay" onclick="closeCardsModal()"></div>
+  <div class="admin-modal" id="cardsModal">
+    <div class="modal-header">
+      <h3>🃏 Ajouter des codes de cartes</h3>
+      <button onclick="closeCardsModal()" class="modal-close-btn">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Produit *</label>
+        <select id="bulkProductId" required class="form-control">
+          <option value="">Sélectionner un produit</option>
+        </select>
+      </div>
+
+      <!-- Onglets -->
+      <div class="import-tabs">
+        <button class="import-tab active" id="tabManuel" onclick="switchImportTab('manuel')">✏️ Saisie manuelle</button>
+        <button class="import-tab" id="tabCsv" onclick="switchImportTab('csv')">📂 Importer CSV</button>
+      </div>
+
+      <!-- Panneau manuel -->
+      <div id="panelManuel">
+        <div class="form-group">
+          <label>Codes (un par ligne) *</label>
+          <p style="font-size:12px;color:#888;margin-bottom:8px">Format: CODE ou CODE|PIN ou CODE|PIN|SERIAL</p>
+          <textarea id="bulkCodes" rows="8" placeholder="XXXX-XXXX-XXXX-XXXX&#10;YYYY-YYYY-YYYY-YYYY|1234&#10;ZZZZ-ZZZZ-ZZZZ-ZZZZ|5678|SN001" class="form-control code-textarea"></textarea>
+          <small id="codeCount" style="color:#a78bfa">0 codes détectés</small>
+        </div>
+        <div class="info-box">
+          <strong>ℹ️ Format accepté :</strong>
+          <ul style="margin:8px 0;padding-left:20px;font-size:13px">
+            <li><code>CODE</code> — Code seul</li>
+            <li><code>CODE|PIN</code> — Code + PIN</li>
+            <li><code>CODE|PIN|SERIAL</code> — Code + PIN + N° de série</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Panneau CSV -->
+      <div id="panelCsv" style="display:none">
+        <div class="csv-drop-zone" id="csvDropZone" onclick="document.getElementById('csvFileInput').click()">
+          <div class="csv-drop-icon">📂</div>
+          <div class="csv-drop-text">
+            <strong>Cliquez ou glissez votre fichier CSV ici</strong>
+            <span>Fichier .csv uniquement — max 5 Mo</span>
+          </div>
+          <div class="csv-file-name" id="csvFileName" style="display:none"></div>
+        </div>
+        <input type="file" id="csvFileInput" accept=".csv,text/csv" style="display:none" onchange="onCsvSelect(this)">
+
+        <div class="info-box" style="margin-top:12px">
+          <strong>ℹ️ Format CSV attendu :</strong>
+          <p style="font-size:12px;margin:6px 0 4px">Une ligne = un code. Colonnes : <strong>nom, prix, code</strong>. Séparateur virgule ou point-virgule.</p>
+          <code style="font-size:11px;display:block;background:rgba(0,0,0,0.3);padding:6px;border-radius:4px;line-height:1.8">
+            nom,prix,code<br>
+            iTunes $10,6500,XXXX-XXXX-XXXX-XXXX<br>
+            PSN $25,15000,YYYY-YYYY-YYYY-YYYY<br>
+            Xbox $50,30000,ZZZZ-ZZZZ-ZZZZ-ZZZZ
+          </code>
+          <p style="font-size:11px;color:#888;margin-top:6px">La ligne d'en-tête est optionnelle et ignorée automatiquement.</p>
+        </div>
+
+        <div id="csvPreview" style="display:none;margin-top:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <strong id="csvPreviewCount" style="color:#a78bfa"></strong>
+            <button onclick="clearCsvFile()" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:12px">✕ Supprimer</button>
+          </div>
+          <div id="csvPreviewTable" style="max-height:180px;overflow-y:auto;font-size:12px;background:rgba(0,0,0,0.2);border-radius:6px;padding:8px"></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button onclick="closeCardsModal()" class="btn-secondary">Annuler</button>
+      <button onclick="addBulkCards()" class="btn-primary" id="bulkSaveBtn">Ajouter les codes</button>
+    </div>
+  </div>
+
+  <!-- Order Detail Modal -->
+  <div class="modal-overlay" id="orderDetailOverlay" onclick="closeOrderDetail()"></div>
+  <div class="admin-modal admin-modal-lg" id="orderDetailModal">
+    <div class="modal-header">
+      <h3 id="orderDetailTitle">Détails de la commande</h3>
+      <button onclick="closeOrderDetail()" class="modal-close-btn">✕</button>
+    </div>
+    <div class="modal-body" id="orderDetailBody"></div>
+    <div class="modal-footer">
+      <button onclick="closeOrderDetail()" class="btn-secondary">Fermer</button>
+      <button onclick="redeliverOrder(currentOrderId)" class="btn-warning" id="redeliverBtn">📬 Relancer la livraison</button>
+    </div>
+  </div>
+
+  <script src="/js/admin.js"></script>
+</body>
+</html>

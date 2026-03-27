@@ -1,0 +1,86 @@
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const path = require('path');
+
+const app = express();
+
+// Middleware
+app.use(cors({
+  origin: process.env.SITE_URL || 'http://localhost:3000',
+  credentials: true
+}));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Serve static files
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Ensure upload directories exist
+const uploadDirs = ['public/uploads', 'public/uploads/seller-docs'];
+uploadDirs.forEach(dir => {
+  const fullPath = path.join(__dirname, dir);
+  if (!require('fs').existsSync(fullPath)) require('fs').mkdirSync(fullPath, { recursive: true });
+});
+
+// API Routes
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/products', require('./routes/products'));
+app.use('/api/orders', require('./routes/orders'));
+app.use('/api/payment', require('./routes/payment'));
+app.use('/api/admin', require('./routes/admin'));
+app.use('/api/sellers', require('./routes/sellers'));
+app.use('/api/settings', require('./routes/settings'));
+
+// Health check
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'OK', message: 'Babicard.ci API is running', timestamp: new Date().toISOString() });
+});
+
+// SPA fallback
+app.get('/login', (req, res) => res.sendFile(path.join(__dirname, 'public', 'login.html')));
+app.get('/register', (req, res) => res.sendFile(path.join(__dirname, 'public', 'register.html')));
+app.get('/dashboard', (req, res) => res.sendFile(path.join(__dirname, 'public', 'dashboard.html')));
+app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
+app.get('/seller', (req, res) => res.sendFile(path.join(__dirname, 'public', 'seller-dashboard.html')));
+app.get('/seller-register', (req, res) => res.sendFile(path.join(__dirname, 'public', 'seller-register.html')));
+app.get('/forgot-password', (req, res) => res.sendFile(path.join(__dirname, 'public', 'forgot-password.html')));
+app.get('/reset-password', (req, res) => res.sendFile(path.join(__dirname, 'public', 'reset-password.html')));
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+
+// 404 for unknown API routes
+app.use('/api/*', (req, res) => {
+  res.status(404).json({ error: 'Route API non trouvée' });
+});
+
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error('Erreur serveur:', err.stack);
+  const status = err.status || err.statusCode || 500;
+  res.status(status).json({
+    error: err.message || 'Erreur interne du serveur',
+    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+  });
+});
+
+const PORT = process.env.PORT || 3000;
+
+// Initialize DB then start server
+const { initializeDatabase } = require('./database/db');
+initializeDatabase()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`\n========================================`);
+      console.log(`  Babicard.ci — Serveur démarré`);
+      console.log(`  URL:   http://localhost:${PORT}`);
+      console.log(`  Admin: http://localhost:${PORT}/admin`);
+      console.log(`  API:   http://localhost:${PORT}/api/health`);
+      console.log(`========================================\n`);
+    });
+  })
+  .catch(err => {
+    console.error('Erreur initialisation base de données:', err);
+    process.exit(1);
+  });
+
+module.exports = app;

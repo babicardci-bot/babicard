@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Devenir Vendeur — Babicard.ci</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    .seller-register-page { min-height: 100vh; background: var(--bg-primary); padding: 100px 20px 40px; }
+    .seller-form-container { max-width: 600px; margin: 0 auto; }
+    .seller-hero { text-align: center; margin-bottom: 40px; }
+    .seller-hero h1 { font-size: 2rem; font-weight: 700; margin-bottom: 12px; }
+    .seller-hero p { color: var(--text-secondary); font-size: 1rem; line-height: 1.6; }
+    .seller-benefits { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 40px; }
+    .benefit-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 20px; text-align: center; }
+    .benefit-icon { font-size: 2rem; margin-bottom: 10px; }
+    .benefit-title { font-size: 0.85rem; font-weight: 700; color: var(--color-primary-light); margin-bottom: 6px; }
+    .benefit-desc { font-size: 0.78rem; color: var(--text-muted); line-height: 1.5; }
+    .seller-form-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 32px; }
+    .seller-form-card h2 { font-size: 1.3rem; font-weight: 700; margin-bottom: 24px; }
+    .form-group { margin-bottom: 20px; }
+    .form-label { display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px; }
+    .form-label span { color: var(--color-accent); }
+    .form-input, .form-textarea { width: 100%; padding: 12px 16px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 0.95rem; font-family: inherit; transition: var(--transition); outline: none; }
+    .form-input:focus, .form-textarea:focus { border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(108,99,255,0.12); }
+    .form-textarea { resize: vertical; min-height: 100px; }
+    .form-hint { font-size: 0.78rem; color: var(--text-muted); margin-top: 6px; }
+    .form-divider { border: none; border-top: 1px solid var(--border-color); margin: 24px 0; }
+    .doc-upload-area { display: flex; flex-direction: column; gap: 10px; padding: 16px; background: rgba(108,99,255,0.05); border: 2px dashed var(--border-color); border-radius: var(--radius-md); cursor: pointer; transition: var(--transition); }
+    .doc-upload-area:hover { border-color: var(--color-primary); background: rgba(108,99,255,0.1); }
+    .doc-upload-area.has-file { border-color: #22c55e; background: rgba(34,197,94,0.06); border-style: solid; }
+    .doc-upload-inner { display: flex; align-items: center; gap: 12px; }
+    .doc-upload-icon { font-size: 2rem; flex-shrink: 0; }
+    .doc-upload-text { font-size: 0.85rem; color: var(--text-secondary); }
+    .doc-upload-text strong { display: block; color: var(--text-primary); font-size: 0.9rem; margin-bottom: 2px; }
+    .doc-file-name { font-size: 0.8rem; color: #22c55e; font-weight: 600; margin-top: 4px; display: none; }
+    .doc-required-badge { display: inline-block; background: rgba(239,68,68,0.15); color: #f87171; font-size: 0.7rem; font-weight: 700; padding: 2px 7px; border-radius: 4px; margin-left: 6px; vertical-align: middle; }
+    .doc-optional-badge { display: inline-block; background: rgba(108,99,255,0.15); color: var(--color-primary-light); font-size: 0.7rem; font-weight: 700; padding: 2px 7px; border-radius: 4px; margin-left: 6px; vertical-align: middle; }
+    .btn-submit-seller { width: 100%; padding: 14px; background: linear-gradient(135deg, var(--color-primary), #8b5cf6); border: none; border-radius: var(--radius-md); color: white; font-size: 1rem; font-weight: 700; cursor: pointer; transition: var(--transition); }
+    .btn-submit-seller:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(108,99,255,0.4); }
+    .btn-submit-seller:disabled { opacity: 0.6; cursor: not-allowed; }
+    .alert { padding: 14px 18px; border-radius: var(--radius-md); margin-bottom: 20px; font-size: 0.9rem; display: none; }
+    .alert-success { background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.3); color: #86efac; }
+    .alert-error { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); color: #fca5a5; }
+    .status-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 32px; text-align: center; display: none; }
+    .status-card .status-icon { font-size: 3rem; margin-bottom: 16px; }
+    .status-card h2 { font-size: 1.3rem; margin-bottom: 10px; }
+    .status-card p { color: var(--text-secondary); margin-bottom: 20px; }
+    @media (max-width: 600px) { .seller-benefits { grid-template-columns: 1fr; } .seller-form-card { padding: 20px 16px; } }
+  </style>
+</head>
+<body class="seller-register-page">
+  <!-- NAVBAR -->
+  <nav class="navbar" id="navbar">
+    <div class="nav-container">
+      <a href="/" class="nav-logo">
+        <span class="logo-icon">🎮</span>
+        <span class="logo-text">Babicard<span class="logo-accent">.ci</span></span>
+      </a>
+      <div class="nav-actions">
+        <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Mode clair / sombre">
+          <div class="theme-toggle-knob" id="themeKnob">🌙</div>
+        </button>
+        <a href="/" class="btn-outline-nav">← Boutique</a>
+        <a href="/dashboard" class="btn-outline-nav" id="dashboardLink" style="display:none">Mon compte</a>
+        <button onclick="logout()" class="btn-logout-nav" id="logoutBtn" style="display:none">Déconnexion</button>
+        <a href="/login" class="btn-outline-nav" id="loginLink">Connexion</a>
+        <a href="/register" class="btn-primary-nav" id="registerLink">S'inscrire</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="seller-form-container">
+    <div class="seller-hero">
+      <h1>🏪 Devenez <span class="text-gradient">Vendeur</span></h1>
+      <p>Rejoignez notre marketplace et vendez vos cartes cadeaux à des milliers de clients en Côte d'Ivoire.<br>Inscription gratuite, paiements rapides via Wave CI &amp; Orange Money.</p>
+    </div>
+
+    <div class="seller-benefits">
+      <div class="benefit-card">
+        <div class="benefit-icon">💰</div>
+        <div class="benefit-title">Gagnez plus</div>
+        <div class="benefit-desc">Commission compétitive. Recevez vos gains sur Wave CI ou Orange Money.</div>
+      </div>
+      <div class="benefit-card">
+        <div class="benefit-icon">🛡️</div>
+        <div class="benefit-title">Plateforme sécurisée</div>
+        <div class="benefit-desc">Vos cartes sont protégées. Paiement garanti avant livraison des codes.</div>
+      </div>
+      <div class="benefit-card">
+        <div class="benefit-icon">📊</div>
+        <div class="benefit-title">Dashboard complet</div>
+        <div class="benefit-desc">Gérez vos produits, suivez vos ventes et gains en temps réel.</div>
+      </div>
+    </div>
+
+    <!-- Status card (shown if already applied) -->
+    <div class="status-card" id="statusCard">
+      <div class="status-icon" id="statusIcon">⏳</div>
+      <h2 id="statusTitle">Demande en cours</h2>
+      <p id="statusDesc">Votre demande vendeur est en cours de traitement.</p>
+      <a href="/seller" class="btn-primary-nav" id="statusAction" style="display:none; margin: 0 auto;">Accéder à mon dashboard vendeur</a>
+    </div>
+
+    <!-- Application form -->
+    <div class="seller-form-card" id="applicationForm">
+      <h2>📝 Formulaire de candidature</h2>
+
+      <div class="alert alert-success" id="alertSuccess"></div>
+      <div class="alert alert-error" id="alertError"></div>
+
+      <div id="loginRequired" style="text-align:center; padding:20px; display:none;">
+        <p style="color: var(--text-secondary); margin-bottom: 16px;">Vous devez être connecté pour postuler comme vendeur.</p>
+        <a href="/login" class="btn-primary-nav">Se connecter</a>
+      </div>
+
+      <form id="sellerForm" onsubmit="submitApplication(event)">
+        <div class="form-group">
+          <label class="form-label">Nom de votre boutique <span>*</span></label>
+          <input type="text" id="shopName" class="form-input" placeholder="Ex: DigiCards CI, GameZone Abidjan..." required minlength="3" maxlength="50">
+          <div class="form-hint">Visible par les acheteurs sur chaque produit. Minimum 3 caractères.</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Description de votre boutique</label>
+          <textarea id="shopDesc" class="form-textarea" placeholder="Décrivez votre boutique, vos spécialités, votre expérience..."></textarea>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Email de contact de la boutique <span>*</span></label>
+          <input type="email" id="contactEmail" class="form-input" placeholder="boutique@exemple.com" required>
+          <div class="form-hint">Email visible par l'administrateur. Peut différer de votre email de compte.</div>
+        </div>
+
+        <hr class="form-divider">
+        <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 20px;">💳 Coordonnées de paiement pour recevoir vos gains :</p>
+
+        <div class="form-group">
+          <label class="form-label">Numéro Wave CI</label>
+          <input type="tel" id="waveNumber" class="form-input" placeholder="+225 07 XX XX XX XX">
+          <div class="form-hint">Numéro sur lequel vous recevrez vos paiements Wave.</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Numéro Orange Money CI</label>
+          <input type="tel" id="orangeNumber" class="form-input" placeholder="+225 07 XX XX XX XX">
+          <div class="form-hint">Numéro Orange Money pour recevoir vos paiements.</div>
+        </div>
+
+        <hr class="form-divider">
+        <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 20px;">🪪 Documents d'identité — requis pour valider votre compte vendeur :</p>
+
+        <div class="form-group">
+          <label class="form-label">
+            Pièce d'identité <span>*</span>
+            <span class="doc-required-badge">OBLIGATOIRE</span>
+          </label>
+          <div class="doc-upload-area" id="idDocArea" onclick="document.getElementById('idDocInput').click()">
+            <div class="doc-upload-inner">
+              <div class="doc-upload-icon">🪪</div>
+              <div class="doc-upload-text">
+                <strong>CNI ou Passeport (recto/verso)</strong>
+                Cliquez pour choisir un fichier — JPG, PNG, PDF (max 5 Mo)
+              </div>
+            </div>
+            <div class="doc-file-name" id="idDocName">✓ Fichier sélectionné</div>
+          </div>
+          <input type="file" id="idDocInput" accept="image/jpeg,image/png,image/webp,application/pdf" style="display:none" onchange="onDocSelect('id_doc', this)">
+          <div class="form-hint">Photo claire et lisible. Recto et verso si CNI.</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">
+            Registre de commerce <span>*</span>
+            <span class="doc-required-badge">OBLIGATOIRE</span>
+          </label>
+          <div class="doc-upload-area" id="addressDocArea" onclick="document.getElementById('addressDocInput').click()">
+            <div class="doc-upload-inner">
+              <div class="doc-upload-icon">🏢</div>
+              <div class="doc-upload-text">
+                <strong>Registre de commerce (RCCM)</strong>
+                Cliquez pour choisir un fichier — JPG, PNG, PDF (max 5 Mo)
+              </div>
+            </div>
+            <div class="doc-file-name" id="addressDocName">✓ Fichier sélectionné</div>
+          </div>
+          <input type="file" id="addressDocInput" accept="image/jpeg,image/png,image/webp,application/pdf" style="display:none" onchange="onDocSelect('address_doc', this)">
+          <div class="form-hint">Document officiel d'enregistrement de votre activité commerciale.</div>
+        </div>
+
+        <div style="background: rgba(108,99,255,0.08); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 24px; font-size: 0.85rem; color: var(--text-secondary);">
+          ℹ️ Votre candidature sera examinée par l'administrateur dans les 24h. Vous serez notifié par email une fois approuvé.
+        </div>
+
+        <button type="submit" class="btn-submit-seller" id="submitBtn">
+          🚀 Soumettre ma candidature
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script src="/js/auth.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      initTheme();
+      const user = getUser();
+      if (!user) {
+        document.getElementById('sellerForm').style.display = 'none';
+        document.getElementById('loginRequired').style.display = 'block';
+        document.getElementById('loginLink').style.display = '';
+        document.getElementById('registerLink').style.display = '';
+      } else {
+        document.getElementById('loginLink').style.display = 'none';
+        document.getElementById('registerLink').style.display = 'none';
+        document.getElementById('dashboardLink').style.display = '';
+        document.getElementById('logoutBtn').style.display = '';
+        checkExistingApplication();
+      }
+    });
+
+    async function checkExistingApplication() {
+      try {
+        const res = await fetch('/api/sellers/me', { headers: { 'Authorization': 'Bearer ' + getToken() } });
+        if (res.ok) {
+          const data = await res.json();
+          showStatus(data.profile);
+        }
+      } catch(e) {}
+    }
+
+    function showStatus(profile) {
+      document.getElementById('applicationForm').style.display = 'none';
+      const card = document.getElementById('statusCard');
+      card.style.display = 'block';
+      const icons = { pending: '⏳', approved: '✅', rejected: '❌', suspended: '🚫' };
+      const titles = { pending: 'Demande en attente', approved: 'Compte approuvé !', rejected: 'Demande rejetée', suspended: 'Compte suspendu' };
+      const descs = {
+        pending: `Votre boutique "<strong>${profile.shop_name}</strong>" est en attente de validation. L'administrateur vous contactera sous 24h.`,
+        approved: `Félicitations ! Votre boutique "<strong>${profile.shop_name}</strong>" est approuvée. Accédez à votre dashboard vendeur.`,
+        rejected: `Votre demande pour "<strong>${profile.shop_name}</strong>" a été rejetée. ${profile.admin_note ? 'Raison : ' + profile.admin_note : ''}`,
+        suspended: `Votre compte vendeur "<strong>${profile.shop_name}</strong>" a été suspendu. Contactez l'administrateur.`
+      };
+      document.getElementById('statusIcon').textContent = icons[profile.status];
+      document.getElementById('statusTitle').textContent = titles[profile.status];
+      document.getElementById('statusDesc').innerHTML = descs[profile.status] || '';
+      if (profile.status === 'approved') {
+        document.getElementById('statusAction').style.display = 'inline-block';
+      }
+    }
+
+    // Stores uploaded file URLs after individual upload
+    const uploadedDocs = { id_doc: null, address_doc: null };
+
+    async function onDocSelect(key, input) {
+      const file = input.files[0];
+      if (!file) return;
+
+      const domKey = key === 'id_doc' ? 'idDoc' : 'addressDoc';
+      const area = document.getElementById(domKey + 'Area');
+      const nameEl = document.getElementById(domKey + 'Name');
+      const errEl = document.getElementById('alertError');
+
+      // Show uploading state
+      area.classList.remove('has-file');
+      nameEl.textContent = '⏳ Upload en cours...';
+      nameEl.style.display = 'block';
+      nameEl.style.color = '#facc15';
+
+      try {
+        const fd = new FormData();
+        fd.append('file', file);
+        const res = await fetch('/api/sellers/upload-doc', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + getToken() },
+          body: fd
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Erreur upload');
+
+        uploadedDocs[key] = data.url;
+        area.classList.add('has-file');
+        area.style.borderColor = '';
+        nameEl.textContent = '✅ ' + file.name;
+        nameEl.style.color = '#22c55e';
+        errEl.style.display = 'none';
+      } catch(err) {
+        uploadedDocs[key] = null;
+        area.classList.remove('has-file');
+        nameEl.textContent = '❌ Échec : ' + err.message;
+        nameEl.style.color = '#ef4444';
+      }
+    }
+
+    async function submitApplication(e) {
+      e.preventDefault();
+      const btn = document.getElementById('submitBtn');
+      const errEl = document.getElementById('alertError');
+      const okEl = document.getElementById('alertSuccess');
+      errEl.style.display = 'none';
+      okEl.style.display = 'none';
+
+      const shopName = document.getElementById('shopName').value.trim();
+      if (!shopName || shopName.length < 3) {
+        errEl.textContent = 'Le nom de la boutique doit contenir au moins 3 caractères.';
+        errEl.style.display = 'block';
+        document.getElementById('shopName').focus();
+        return;
+      }
+
+      const contactEmailVal = document.getElementById('contactEmail').value.trim();
+      if (!contactEmailVal || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmailVal)) {
+        errEl.textContent = 'Veuillez saisir une adresse email de contact valide.';
+        errEl.style.display = 'block';
+        document.getElementById('contactEmail').focus();
+        return;
+      }
+
+      if (!uploadedDocs.id_doc) {
+        errEl.textContent = '📎 La pièce d\'identité est obligatoire.';
+        errEl.style.display = 'block';
+        document.getElementById('idDocArea').style.borderColor = '#ef4444';
+        document.getElementById('idDocArea').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+      if (!uploadedDocs.address_doc) {
+        errEl.textContent = '📎 Le registre de commerce est obligatoire.';
+        errEl.style.display = 'block';
+        document.getElementById('addressDocArea').style.borderColor = '#ef4444';
+        document.getElementById('addressDocArea').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = '📤 Envoi en cours...';
+
+      try {
+        const res = await fetch('/api/sellers/apply', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() },
+          body: JSON.stringify({
+            shop_name: shopName,
+            description: document.getElementById('shopDesc').value,
+            contact_email: contactEmailVal,
+            wave_number: document.getElementById('waveNumber').value,
+            orange_number: document.getElementById('orangeNumber').value,
+            id_doc_url: uploadedDocs.id_doc,
+            address_doc_url: uploadedDocs.address_doc
+          })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          okEl.textContent = data.message;
+          okEl.style.display = 'block';
+          document.getElementById('sellerForm').style.display = 'none';
+          setTimeout(() => checkExistingApplication(), 1000);
+        } else {
+          errEl.textContent = data.error;
+          errEl.style.display = 'block';
+          btn.disabled = false;
+          btn.textContent = '🚀 Soumettre ma candidature';
+        }
+      } catch(err) {
+        errEl.textContent = 'Erreur de connexion. Réessayez.';
+        errEl.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = '🚀 Soumettre ma candidature';
+      }
+    }
+  </script>
+</body>
+</html>

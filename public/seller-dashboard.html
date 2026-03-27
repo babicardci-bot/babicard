@@ -1,0 +1,1304 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard Vendeur — Babicard.ci</title>
+  <link rel="stylesheet" href="/css/admin.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    .seller-pending-screen {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      min-height: 100vh; background: var(--bg-primary, #0a0a0f); color: #f0f0ff;
+      font-family: 'Inter', sans-serif; padding: 40px 20px; text-align: center;
+    }
+    .seller-pending-screen h1 { font-size: 2rem; margin-bottom: 16px; }
+    .seller-pending-screen p { color: #a0a0c0; margin-bottom: 24px; max-width: 480px; line-height: 1.7; }
+    .seller-pending-screen .status-big { font-size: 4rem; margin-bottom: 20px; }
+    .btn-back { display: inline-block; padding: 12px 28px; background: #6C63FF; color: white; border-radius: 10px; font-weight: 600; text-decoration: none; }
+
+    /* Seller-specific overrides */
+    .earnings-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 28px; }
+    .earn-card { background: var(--card-bg, #13131f); border: 1px solid rgba(108,99,255,0.2); border-radius: 12px; padding: 20px; }
+    .earn-card .earn-label { font-size: 0.75rem; color: #a0a0c0; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+    .earn-card .earn-value { font-size: 1.4rem; font-weight: 700; color: #a78bfa; }
+    .earn-card.green .earn-value { color: #22c55e; }
+    .earn-card.orange .earn-value { color: #f97316; }
+    .earn-card.blue .earn-value { color: #00d4ff; }
+
+    .product-toggle { display: flex; align-items: center; gap: 8px; }
+    .toggle-switch { position: relative; display: inline-block; width: 42px; height: 22px; }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: #333; border-radius: 22px; transition: 0.3s; }
+    .toggle-slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: 0.3s; }
+    .toggle-switch input:checked + .toggle-slider { background: #6C63FF; }
+    .toggle-switch input:checked + .toggle-slider:before { transform: translateX(20px); }
+
+    .card-textarea { width: 100%; min-height: 200px; background: #1a1a2e; border: 1px solid rgba(108,99,255,0.25); border-radius: 8px; color: #f0f0ff; font-family: 'Courier New', monospace; font-size: 0.85rem; padding: 12px; resize: vertical; }
+    .card-textarea:focus { outline: none; border-color: #6C63FF; }
+
+    .withdraw-form { max-width: 480px; }
+    .withdraw-balance-display { background: linear-gradient(135deg, rgba(108,99,255,0.15), rgba(34,197,94,0.1)); border: 1px solid rgba(108,99,255,0.3); border-radius: 12px; padding: 20px; margin-bottom: 24px; text-align: center; }
+    .withdraw-balance-display .big-amount { font-size: 2rem; font-weight: 700; color: #22c55e; }
+    .withdraw-balance-display .big-label { font-size: 0.8rem; color: #a0a0c0; margin-top: 4px; }
+
+    .seller-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 0.72rem; font-weight: 600; }
+    .badge-pending { background: rgba(234,179,8,0.15); color: #eab308; }
+    .badge-available { background: rgba(34,197,94,0.15); color: #22c55e; }
+    .badge-withdrawn { background: rgba(160,160,192,0.15); color: #a0a0c0; }
+    .badge-paid { background: rgba(34,197,94,0.15); color: #22c55e; }
+    .badge-rejected { background: rgba(239,68,68,0.15); color: #ef4444; }
+    .badge-approved { background: rgba(34,197,94,0.15); color: #22c55e; }
+
+    .tab-bar { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+    .tab-btn { padding: 8px 18px; background: rgba(108,99,255,0.1); border: 1px solid rgba(108,99,255,0.2); border-radius: 20px; color: #a0a0c0; font-size: 0.85rem; cursor: pointer; transition: all 0.2s; }
+    .tab-btn.active { background: #6C63FF; border-color: #6C63FF; color: white; font-weight: 600; }
+
+    .data-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    .data-table th { text-align: left; padding: 10px 14px; color: #a0a0c0; font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid rgba(108,99,255,0.15); }
+    .data-table td { padding: 12px 14px; border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: middle; }
+    .data-table tr:hover td { background: rgba(108,99,255,0.05); }
+    .data-table-wrap { overflow-x: auto; }
+
+    .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 600px) { .form-row-2 { grid-template-columns: 1fr; } }
+
+    .seller-shop-header { background: linear-gradient(135deg, rgba(108,99,255,0.12), rgba(0,212,255,0.06)); border: 1px solid rgba(108,99,255,0.2); border-radius: 16px; padding: 24px; margin-bottom: 28px; display: flex; align-items: center; gap: 20px; }
+    .shop-logo { width: 56px; height: 56px; background: linear-gradient(135deg, #6C63FF, #8b5cf6); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; flex-shrink: 0; }
+    .shop-info h2 { font-size: 1.2rem; font-weight: 700; margin-bottom: 4px; }
+    .shop-info p { color: #a0a0c0; font-size: 0.85rem; }
+    .shop-status { margin-left: auto; }
+
+    .empty-state { text-align: center; padding: 48px 20px; color: #606080; }
+    .empty-state-icon { font-size: 3rem; margin-bottom: 12px; }
+    .empty-state p { font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+
+  <!-- Pending/Error screen (shown before sidebar loads) -->
+  <div id="pendingScreen" class="seller-pending-screen" style="display:none;">
+    <div class="status-big" id="pendingIcon">⏳</div>
+    <h1 id="pendingTitle">Vérification du compte...</h1>
+    <p id="pendingDesc">Chargement en cours...</p>
+    <a href="/" class="btn-back" style="margin-top: 10px;">← Retour à la boutique</a>
+    <a href="/seller-register" class="btn-back" style="margin-top: 10px; background: transparent; border: 1px solid #6C63FF;" id="pendingApplyBtn">Voir ma candidature</a>
+  </div>
+
+  <!-- SIDEBAR -->
+  <aside class="admin-sidebar" id="adminSidebar" style="display:none;">
+    <div class="sidebar-logo">
+      <span>🏪</span>
+      <span>Babicard<strong>.ci</strong></span>
+    </div>
+    <div class="sidebar-subtitle">Dashboard Vendeur</div>
+
+    <nav class="sidebar-menu">
+      <a href="#" class="menu-item active" data-section="overview" onclick="showSection('overview', this)">
+        <span class="menu-icon">📊</span>
+        <span>Vue d'ensemble</span>
+      </a>
+      <a href="#" class="menu-item" data-section="products" onclick="showSection('products', this)">
+        <span class="menu-icon">🎁</span>
+        <span>Mes Produits</span>
+      </a>
+      <a href="#" class="menu-item" data-section="addcards" onclick="showSection('addcards', this)">
+        <span class="menu-icon">🃏</span>
+        <span>Ajouter des Codes</span>
+      </a>
+      <a href="#" class="menu-item" data-section="sales" onclick="showSection('sales', this)">
+        <span class="menu-icon">📦</span>
+        <span>Mes Ventes</span>
+      </a>
+      <a href="#" class="menu-item" data-section="earnings" onclick="showSection('earnings', this)">
+        <span class="menu-icon">💰</span>
+        <span>Mes Gains</span>
+      </a>
+      <a href="#" class="menu-item" data-section="withdraw" onclick="showSection('withdraw', this)">
+        <span class="menu-icon">💸</span>
+        <span>Retrait</span>
+      </a>
+      <a href="#" class="menu-item" data-section="settings" onclick="showSection('settings', this)">
+        <span class="menu-icon">⚙️</span>
+        <span>Paramètres</span>
+      </a>
+      <div class="menu-divider"></div>
+      <a href="/" class="menu-item">
+        <span class="menu-icon">🌐</span>
+        <span>Voir la boutique</span>
+      </a>
+      <a href="#" class="menu-item menu-logout" onclick="logout()">
+        <span class="menu-icon">🚪</span>
+        <span>Déconnexion</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-user">
+      <div class="sidebar-user-avatar" id="sellerAvatar">V</div>
+      <div>
+        <div id="sellerName">Vendeur</div>
+        <div id="sellerEmail" style="font-size:11px;color:#888">...</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="admin-main" id="adminMain" style="display:none;">
+
+    <!-- TOP BAR -->
+    <header class="admin-topbar">
+      <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
+      <h2 class="topbar-title" id="topbarTitle">Vue d'ensemble</h2>
+      <div class="topbar-actions">
+        <span id="topbarDate"></span>
+        <button class="btn-refresh" onclick="refreshSection()">🔄 Actualiser</button>
+      </div>
+    </header>
+
+    <!-- TOAST -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- ============= OVERVIEW ============= -->
+    <section class="admin-section active" id="section-overview">
+      <div id="shopHeaderArea"></div>
+      <div class="stats-grid" id="overviewStats">
+        <div class="stat-card stat-purple">
+          <div class="stat-icon">💰</div>
+          <div class="stat-info">
+            <div class="stat-val" id="stat-earnings">-</div>
+            <div class="stat-lbl">Gains totaux</div>
+          </div>
+        </div>
+        <div class="stat-card stat-green">
+          <div class="stat-icon">✅</div>
+          <div class="stat-info">
+            <div class="stat-val" id="stat-balance">-</div>
+            <div class="stat-lbl">Solde disponible</div>
+          </div>
+        </div>
+        <div class="stat-card stat-blue">
+          <div class="stat-icon">📦</div>
+          <div class="stat-info">
+            <div class="stat-val" id="stat-sales">-</div>
+            <div class="stat-lbl">Ventes</div>
+          </div>
+        </div>
+        <div class="stat-card stat-orange">
+          <div class="stat-icon">🎁</div>
+          <div class="stat-info">
+            <div class="stat-val" id="stat-products">-</div>
+            <div class="stat-lbl">Produits actifs</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="dashboard-widget" style="margin-top:24px;">
+        <div class="widget-header">
+          <h3>📋 Activité récente</h3>
+        </div>
+        <div id="recentEarningsList">
+          <div class="loading-center"><div class="loading-spinner"></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============= PRODUCTS ============= -->
+    <section class="admin-section" id="section-products">
+      <div class="section-toolbar">
+        <h2>🎁 Mes Produits</h2>
+        <button class="btn-primary" onclick="showAddProductModal()">+ Nouveau produit</button>
+      </div>
+      <div id="sellerProductsTable">
+        <div class="loading-center"><div class="loading-spinner"></div></div>
+      </div>
+    </section>
+
+    <!-- ============= ADD CARDS ============= -->
+    <section class="admin-section" id="section-addcards">
+      <div class="section-toolbar">
+        <h2>🃏 Ajouter des Codes de Cartes</h2>
+      </div>
+
+      <div class="admin-form-card" style="max-width:640px;">
+        <div class="form-group">
+          <label>Sélectionner le produit *</label>
+          <select id="bulkProductSelect" class="form-control" onchange="updateBulkProductInfo()">
+            <option value="">-- Choisir un produit --</option>
+          </select>
+          <div id="bulkProductInfo" style="margin-top:8px;font-size:0.82rem;color:#a0a0c0;"></div>
+        </div>
+
+        <!-- Onglets -->
+        <div class="import-tabs" style="margin-bottom:16px;">
+          <button class="import-tab active" id="sTabManuel" onclick="switchSellerImportTab('manuel')">✏️ Saisie manuelle</button>
+          <button class="import-tab" id="sTabCsv" onclick="switchSellerImportTab('csv')">📂 Importer CSV</button>
+        </div>
+
+        <!-- Panneau manuel -->
+        <div id="sPanelManuel">
+          <div class="form-group">
+            <label>Codes à ajouter (un par ligne) *</label>
+            <p style="font-size:12px;color:#888;margin-bottom:8px;">Format: <code>CODE</code> ou <code>CODE|PIN</code> ou <code>CODE|PIN|SERIAL</code></p>
+            <textarea id="bulkCodesInput" class="card-textarea" placeholder="XXXX-XXXX-XXXX-XXXX&#10;YYYY-YYYY-YYYY-YYYY|1234&#10;ZZZZ-ZZZZ-ZZZZ|5678|SN001" oninput="countBulkCodes()"></textarea>
+            <small id="bulkCodeCount" style="color:#a78bfa;">0 codes détectés</small>
+          </div>
+          <div class="info-box" style="margin-bottom:16px;">
+            <strong>ℹ️ Format accepté :</strong>
+            <ul style="margin:8px 0;padding-left:20px;font-size:13px">
+              <li><code>CODE</code> — Code seul</li>
+              <li><code>CODE|PIN</code> — Code + PIN</li>
+              <li><code>CODE|PIN|SERIAL</code> — Code + PIN + N° de série</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Panneau CSV -->
+        <div id="sPanelCsv" style="display:none">
+          <div class="csv-drop-zone" id="sCsvDropZone" onclick="document.getElementById('sCsvFileInput').click()">
+            <div class="csv-drop-icon">📂</div>
+            <div class="csv-drop-text">
+              <strong>Cliquez ou glissez votre fichier CSV ici</strong>
+              <span>Fichier .csv uniquement — max 5 Mo</span>
+            </div>
+            <div class="csv-file-name" id="sCsvFileName" style="display:none"></div>
+          </div>
+          <input type="file" id="sCsvFileInput" accept=".csv,text/csv" style="display:none" onchange="onSellerCsvSelect(this)">
+          <div class="info-box" style="margin-top:12px;margin-bottom:12px">
+            <strong>ℹ️ Format CSV attendu :</strong>
+            <p style="font-size:12px;margin:4px 0">Colonnes : <strong>nom, prix, code</strong></p>
+            <code style="font-size:11px;display:block;background:rgba(0,0,0,0.3);padding:6px;border-radius:4px;margin-top:6px;line-height:1.8">
+              nom,prix,code<br>iTunes $10,6500,XXXX-XXXX-XXXX<br>PSN $25,15000,YYYY-YYYY-YYYY
+            </code>
+          </div>
+          <div id="sCsvPreview" style="display:none;margin-bottom:12px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+              <strong id="sCsvPreviewCount" style="color:#a78bfa;font-size:0.85rem;"></strong>
+              <button onclick="clearSellerCsvFile()" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:12px">✕ Supprimer</button>
+            </div>
+            <div id="sCsvPreviewTable" style="max-height:150px;overflow-y:auto;font-size:12px;background:rgba(0,0,0,0.2);border-radius:6px;padding:8px"></div>
+          </div>
+        </div>
+
+        <button class="btn-primary" onclick="addSellerBulkCards()" id="bulkAddBtn" style="width:100%;">
+          ➕ Ajouter les codes
+        </button>
+        <div id="bulkAddResult" style="margin-top:16px;"></div>
+      </div>
+    </section>
+
+    <!-- ============= SALES ============= -->
+    <section class="admin-section" id="section-sales">
+      <div class="section-toolbar">
+        <h2>📦 Mes Ventes</h2>
+      </div>
+      <div id="sellerSalesTable">
+        <div class="loading-center"><div class="loading-spinner"></div></div>
+      </div>
+    </section>
+
+    <!-- ============= EARNINGS ============= -->
+    <section class="admin-section" id="section-earnings">
+      <div class="section-toolbar">
+        <h2>💰 Mes Gains</h2>
+      </div>
+      <div id="earningsSummaryArea"></div>
+      <div class="dashboard-widget" style="margin-top:20px;">
+        <div class="widget-header"><h3>Transactions récentes</h3></div>
+        <div id="earningsListArea">
+          <div class="loading-center"><div class="loading-spinner"></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============= WITHDRAW ============= -->
+    <section class="admin-section" id="section-withdraw">
+      <div class="section-toolbar">
+        <h2>💸 Demande de Retrait</h2>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start;flex-wrap:wrap;">
+        <div>
+          <div class="withdraw-balance-display" id="withdrawBalanceDisplay">
+            <div class="big-amount" id="availableBalanceDisplay">0 FCFA</div>
+            <div class="big-label">Solde disponible pour retrait</div>
+          </div>
+
+          <div class="admin-form-card withdraw-form">
+            <h3 style="margin-bottom:20px;">Nouvelle demande</h3>
+            <div id="withdrawFormAlerts"></div>
+
+            <div class="form-group">
+              <label>Montant (FCFA) *</label>
+              <input type="number" id="withdrawAmount" class="form-control" placeholder="Minimum 1 000 FCFA" min="1000" step="100">
+            </div>
+
+            <div class="form-group">
+              <label>Méthode de paiement *</label>
+              <select id="withdrawMethod" class="form-control">
+                <option value="">-- Choisir --</option>
+                <option value="wave">🌊 Wave CI</option>
+                <option value="orange_money">🟠 Orange Money</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Numéro de réception *</label>
+              <input type="tel" id="withdrawNumber" class="form-control" placeholder="+225 07 XX XX XX XX">
+            </div>
+
+            <button class="btn-primary" onclick="submitWithdrawal()" style="width:100%;">
+              💸 Soumettre la demande
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <div class="dashboard-widget">
+            <div class="widget-header"><h3>Historique des retraits</h3></div>
+            <div id="withdrawalHistoryArea">
+              <div class="loading-center"><div class="loading-spinner"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============= SETTINGS ============= -->
+    <section class="admin-section" id="section-settings">
+      <div class="section-toolbar">
+        <h2>⚙️ Paramètres de ma boutique</h2>
+      </div>
+
+      <div class="admin-form-card" style="max-width:560px;">
+        <div id="settingsAlerts"></div>
+
+        <div class="form-group">
+          <label>Nom de la boutique</label>
+          <input type="text" id="settingsShopName" class="form-control" disabled style="opacity:0.6;cursor:not-allowed;">
+          <small style="color:#888;">Le nom de boutique ne peut pas être modifié après approbation.</small>
+        </div>
+
+        <div class="form-group">
+          <label>Description</label>
+          <textarea id="settingsDescription" class="form-control" rows="4" placeholder="Décrivez votre boutique..."></textarea>
+        </div>
+
+        <hr style="border-color:rgba(108,99,255,0.15);margin:20px 0;">
+        <p style="color:#a0a0c0;font-size:0.85rem;margin-bottom:16px;">💳 Informations de paiement :</p>
+
+        <div class="form-row-2">
+          <div class="form-group">
+            <label>Numéro Wave CI</label>
+            <input type="tel" id="settingsWave" class="form-control" placeholder="+225 07 XX XX XX XX">
+          </div>
+          <div class="form-group">
+            <label>Numéro Orange Money</label>
+            <input type="tel" id="settingsOrange" class="form-control" placeholder="+225 07 XX XX XX XX">
+          </div>
+        </div>
+
+        <button class="btn-primary" onclick="saveSettings()" style="width:100%;">
+          💾 Enregistrer les modifications
+        </button>
+      </div>
+
+      <div class="admin-form-card" style="max-width:560px;margin-top:24px;">
+        <h3 style="margin:0 0 16px;">🔒 Changer le mot de passe</h3>
+        <div id="pwdAlerts"></div>
+        <div class="form-group">
+          <label>Mot de passe actuel</label>
+          <input type="password" id="sellerCurrentPwd" class="form-control" placeholder="Mot de passe actuel">
+        </div>
+        <div class="form-group">
+          <label>Nouveau mot de passe</label>
+          <input type="password" id="sellerNewPwd" class="form-control" placeholder="Minimum 6 caractères">
+        </div>
+        <div class="form-group">
+          <label>Confirmer le nouveau mot de passe</label>
+          <input type="password" id="sellerConfirmPwd" class="form-control" placeholder="Répéter le nouveau mot de passe">
+        </div>
+        <button class="btn-primary" onclick="sellerChangePassword()" style="width:100%;">
+          🔒 Modifier le mot de passe
+        </button>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- Product Modal -->
+  <div class="modal-overlay" id="productModalOverlay" onclick="closeProductModal()"></div>
+  <div class="admin-modal" id="productModal">
+    <div class="modal-header">
+      <h3 id="productModalTitle">Nouveau produit</h3>
+      <button onclick="closeProductModal()" class="modal-close-btn">✕</button>
+    </div>
+    <form id="sellerProductForm" onsubmit="saveSellerProduct(event)">
+      <div class="modal-body">
+        <input type="hidden" id="editProductId">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Nom du produit *</label>
+            <input type="text" id="spName" required placeholder="ex: iTunes Gift Card 10$">
+          </div>
+          <div class="form-group">
+            <label>Plateforme *</label>
+            <input type="text" id="spPlatform" required placeholder="ex: iTunes / App Store">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Catégorie *</label>
+            <select id="spCategory" class="form-control" required>
+              <option value="apple">Apple (iTunes)</option>
+              <option value="playstation">PlayStation</option>
+              <option value="xbox">Xbox</option>
+              <option value="google">Google Play</option>
+              <option value="steam">Steam</option>
+              <option value="netflix">Netflix</option>
+              <option value="amazon">Amazon</option>
+              <option value="other">Autre</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Dénomination *</label>
+            <input type="text" id="spDenomination" required placeholder="ex: 10$, 25$">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Prix (FCFA) *</label>
+            <input type="number" id="spPrice" required min="500" placeholder="6500">
+          </div>
+          <div class="form-group">
+            <label>Actif</label>
+            <select id="spActive" class="form-control">
+              <option value="1">Oui</option>
+              <option value="0">Non</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Description</label>
+          <textarea id="spDescription" rows="3" placeholder="Description du produit..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" onclick="closeProductModal()" class="btn-secondary">Annuler</button>
+        <button type="submit" class="btn-primary" id="spSaveBtn">Enregistrer</button>
+      </div>
+    </form>
+  </div>
+
+  <script src="/js/auth.js"></script>
+  <script>
+    // =============================================
+    // SELLER DASHBOARD JAVASCRIPT
+    // =============================================
+
+    let sellerProfile = null;
+    let sellerStats = null;
+    let sellerProducts = [];
+    let currentSection = 'overview';
+    let availableBalance = 0;
+
+    function fmtPrice(n) {
+      return new Intl.NumberFormat('fr-FR').format(n || 0) + ' FCFA';
+    }
+    function fmtDate(d) {
+      if (!d) return '-';
+      return new Date(d).toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+    }
+    function fmtDateShort(d) {
+      if (!d) return '-';
+      return new Date(d).toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+    }
+
+    // ---- TOAST ----
+    function showToast(msg, type = 'success') {
+      const c = document.getElementById('toastContainer');
+      const t = document.createElement('div');
+      t.className = `toast toast-${type}`;
+      t.textContent = msg;
+      c.appendChild(t);
+      setTimeout(() => t.classList.add('show'), 10);
+      setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 300); }, 3500);
+    }
+
+    // ---- AUTH CHECK ----
+    async function initDashboard() {
+      const user = getUser();
+      const token = getToken();
+
+      if (!user || !token) {
+        window.location.href = '/login?redirect=/seller';
+        return;
+      }
+
+      // Show pending screen while checking
+      document.getElementById('pendingScreen').style.display = 'flex';
+      document.getElementById('pendingTitle').textContent = 'Vérification du compte...';
+      document.getElementById('pendingDesc').textContent = 'Chargement de votre profil vendeur...';
+
+      try {
+        const res = await fetch('/api/sellers/me', {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+
+        if (!res.ok) {
+          // No seller profile
+          document.getElementById('pendingIcon').textContent = '🏪';
+          document.getElementById('pendingTitle').textContent = 'Pas encore vendeur';
+          document.getElementById('pendingDesc').textContent = 'Vous n\'avez pas encore de compte vendeur. Soumettez votre candidature pour rejoindre la marketplace.';
+          document.getElementById('pendingApplyBtn').textContent = '📝 Devenir vendeur';
+          document.getElementById('pendingApplyBtn').href = '/seller-register';
+          return;
+        }
+
+        const data = await res.json();
+        sellerProfile = data.profile;
+        sellerStats = data.stats;
+
+        if (sellerProfile.status === 'pending') {
+          document.getElementById('pendingIcon').textContent = '⏳';
+          document.getElementById('pendingTitle').textContent = 'Candidature en attente';
+          document.getElementById('pendingDesc').textContent = `Votre boutique "${sellerProfile.shop_name}" est en cours de validation. L'administrateur vous contactera sous 24h.`;
+          document.getElementById('pendingApplyBtn').textContent = '← Retour';
+          document.getElementById('pendingApplyBtn').href = '/';
+          return;
+        }
+
+        if (sellerProfile.status === 'rejected') {
+          document.getElementById('pendingIcon').textContent = '❌';
+          document.getElementById('pendingTitle').textContent = 'Candidature rejetée';
+          document.getElementById('pendingDesc').textContent = `Votre candidature pour "${sellerProfile.shop_name}" a été rejetée.${sellerProfile.admin_note ? ' Raison: ' + sellerProfile.admin_note : ''} Contactez l'administrateur pour plus d'informations.`;
+          document.getElementById('pendingApplyBtn').textContent = '← Retour à la boutique';
+          document.getElementById('pendingApplyBtn').href = '/';
+          return;
+        }
+
+        if (sellerProfile.status === 'suspended') {
+          document.getElementById('pendingIcon').textContent = '🚫';
+          document.getElementById('pendingTitle').textContent = 'Compte suspendu';
+          document.getElementById('pendingDesc').textContent = `Votre compte vendeur "${sellerProfile.shop_name}" a été suspendu. Contactez l'administrateur.`;
+          document.getElementById('pendingApplyBtn').textContent = '← Retour à la boutique';
+          document.getElementById('pendingApplyBtn').href = '/';
+          return;
+        }
+
+        // Approved seller — show dashboard
+        document.getElementById('pendingScreen').style.display = 'none';
+        document.getElementById('adminSidebar').style.display = '';
+        document.getElementById('adminMain').style.display = '';
+
+        // Set user info
+        document.getElementById('sellerName').textContent = user.name;
+        document.getElementById('sellerEmail').textContent = user.email;
+        document.getElementById('sellerAvatar').textContent = user.name.charAt(0).toUpperCase();
+
+        // Date
+        document.getElementById('topbarDate').textContent = new Date().toLocaleDateString('fr-FR', { weekday:'short', day:'2-digit', month:'short', year:'numeric' });
+
+        loadSection('overview');
+      } catch(e) {
+        document.getElementById('pendingIcon').textContent = '⚠️';
+        document.getElementById('pendingTitle').textContent = 'Erreur de connexion';
+        document.getElementById('pendingDesc').textContent = 'Impossible de charger votre profil. Vérifiez votre connexion.';
+      }
+    }
+
+    // ---- SECTIONS ----
+    function showSection(name, el) {
+      if (el) {
+        document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
+        el.classList.add('active');
+      }
+      document.querySelectorAll('.admin-section').forEach(s => s.classList.remove('active'));
+      const sec = document.getElementById('section-' + name);
+      if (sec) sec.classList.add('active');
+
+      const titles = { overview: 'Vue d\'ensemble', products: 'Mes Produits', addcards: 'Ajouter des Codes', sales: 'Mes Ventes', earnings: 'Mes Gains', withdraw: 'Retrait', settings: 'Paramètres' };
+      document.getElementById('topbarTitle').textContent = titles[name] || name;
+      currentSection = name;
+      loadSection(name);
+    }
+
+    function loadSection(name) {
+      if (name === 'overview') loadOverview();
+      else if (name === 'products') loadProducts();
+      else if (name === 'addcards') loadAddCards();
+      else if (name === 'sales') loadSales();
+      else if (name === 'earnings') loadEarnings();
+      else if (name === 'withdraw') loadWithdraw();
+      else if (name === 'settings') loadSettings();
+    }
+
+    function refreshSection() { loadSection(currentSection); }
+
+    function toggleSidebar() {
+      document.getElementById('adminSidebar').classList.toggle('collapsed');
+    }
+
+    // ---- OVERVIEW ----
+    async function loadOverview() {
+      try {
+        const res = await fetch('/api/sellers/me', { headers: { 'Authorization': 'Bearer ' + getToken() } });
+        const data = await res.json();
+        sellerProfile = data.profile;
+        sellerStats = data.stats;
+
+        document.getElementById('stat-earnings').textContent = fmtPrice(sellerStats.total_earnings);
+        document.getElementById('stat-balance').textContent = fmtPrice(sellerStats.available_balance);
+        document.getElementById('stat-sales').textContent = sellerStats.total_sales || 0;
+        document.getElementById('stat-products').textContent = sellerStats.total_products || 0;
+
+        availableBalance = sellerStats.available_balance || 0;
+
+        // Shop header
+        document.getElementById('shopHeaderArea').innerHTML = `
+          <div class="seller-shop-header">
+            <div class="shop-logo">🏪</div>
+            <div class="shop-info">
+              <h2>${sellerProfile.shop_name}</h2>
+              <p>${sellerProfile.description || 'Aucune description'}</p>
+            </div>
+            <div class="shop-status">
+              <span class="seller-badge badge-approved">✓ Approuvé</span>
+              <div style="font-size:0.75rem;color:#a0a0c0;margin-top:6px;">Commission: ${sellerProfile.commission_rate}%</div>
+            </div>
+          </div>
+        `;
+
+        // Recent earnings
+        const eRes = await fetch('/api/sellers/earnings', { headers: { 'Authorization': 'Bearer ' + getToken() } });
+        const eData = await eRes.json();
+        const recent = (eData.recent || []).slice(0, 5);
+
+        if (recent.length === 0) {
+          document.getElementById('recentEarningsList').innerHTML = `<div class="empty-state"><div class="empty-state-icon">📦</div><p>Aucune vente pour l'instant. Ajoutez des produits et des codes !</p></div>`;
+        } else {
+          document.getElementById('recentEarningsList').innerHTML = `
+            <div class="data-table-wrap">
+              <table class="data-table">
+                <thead><tr><th>Produit</th><th>Vente</th><th>Commission</th><th>Net</th><th>Statut</th><th>Date</th></tr></thead>
+                <tbody>
+                  ${recent.map(e => `
+                    <tr>
+                      <td>${e.product_name}</td>
+                      <td>${fmtPrice(e.sale_amount)}</td>
+                      <td style="color:#ef4444;">-${fmtPrice(e.commission_amount)}</td>
+                      <td style="color:#22c55e;font-weight:600;">${fmtPrice(e.net_amount)}</td>
+                      <td><span class="seller-badge badge-${e.status}">${e.status === 'available' ? 'Disponible' : e.status === 'withdrawn' ? 'Retiré' : 'En attente'}</span></td>
+                      <td>${fmtDateShort(e.created_at)}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          `;
+        }
+      } catch(e) {
+        console.error(e);
+      }
+    }
+
+    // ---- PRODUCTS ----
+    async function loadProducts() {
+      document.getElementById('sellerProductsTable').innerHTML = '<div class="loading-center"><div class="loading-spinner"></div></div>';
+      try {
+        const res = await fetch('/api/sellers/products', { headers: { 'Authorization': 'Bearer ' + getToken() } });
+        const data = await res.json();
+        sellerProducts = data.products || [];
+
+        if (sellerProducts.length === 0) {
+          document.getElementById('sellerProductsTable').innerHTML = `
+            <div class="empty-state">
+              <div class="empty-state-icon">🎁</div>
+              <p>Vous n'avez pas encore de produits. Créez votre premier produit !</p>
+              <button class="btn-primary" style="margin-top:16px;" onclick="showAddProductModal()">+ Créer un produit</button>
+            </div>`;
+          return;
+        }
+
+        document.getElementById('sellerProductsTable').innerHTML = `
+          <div class="data-table-wrap">
+            <table class="data-table">
+              <thead><tr><th>Produit</th><th>Plateforme</th><th>Prix</th><th>Dénomination</th><th>Stock dispo</th><th>Vendus</th><th>Actif</th><th>Actions</th></tr></thead>
+              <tbody>
+                ${sellerProducts.map(p => `
+                  <tr>
+                    <td><strong>${p.name}</strong></td>
+                    <td>${p.platform}</td>
+                    <td>${fmtPrice(p.price)}</td>
+                    <td>${p.denomination}</td>
+                    <td><span style="color:${p.available_cards > 0 ? '#22c55e' : '#ef4444'};font-weight:600;">${p.available_cards}</span></td>
+                    <td>${p.sold_cards}</td>
+                    <td>
+                      <label class="toggle-switch">
+                        <input type="checkbox" ${p.is_active ? 'checked' : ''} onchange="toggleProduct(${p.id}, this.checked)">
+                        <span class="toggle-slider"></span>
+                      </label>
+                    </td>
+                    <td>
+                      <button class="btn-sm btn-warning" onclick="editProduct(${p.id})">✏️</button>
+                      <button class="btn-sm btn-primary" onclick="goToAddCards(${p.id})" title="Ajouter des codes">🃏</button>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+      } catch(e) {
+        document.getElementById('sellerProductsTable').innerHTML = '<p class="text-muted">Erreur chargement produits.</p>';
+      }
+    }
+
+    function showAddProductModal() {
+      document.getElementById('editProductId').value = '';
+      document.getElementById('productModalTitle').textContent = 'Nouveau produit';
+      document.getElementById('sellerProductForm').reset();
+      document.getElementById('productModalOverlay').style.display = 'block';
+      document.getElementById('productModal').classList.add('active');
+    }
+
+    function closeProductModal() {
+      document.getElementById('productModalOverlay').style.display = 'none';
+      document.getElementById('productModal').classList.remove('active');
+    }
+
+    function editProduct(id) {
+      const p = sellerProducts.find(x => x.id === id);
+      if (!p) return;
+      document.getElementById('editProductId').value = id;
+      document.getElementById('productModalTitle').textContent = 'Modifier le produit';
+      document.getElementById('spName').value = p.name;
+      document.getElementById('spPlatform').value = p.platform;
+      document.getElementById('spCategory').value = p.category;
+      document.getElementById('spDenomination').value = p.denomination;
+      document.getElementById('spPrice').value = p.price;
+      document.getElementById('spActive').value = p.is_active ? '1' : '0';
+      document.getElementById('spDescription').value = p.description || '';
+      document.getElementById('productModalOverlay').style.display = 'block';
+      document.getElementById('productModal').classList.add('active');
+    }
+
+    async function saveSellerProduct(e) {
+      e.preventDefault();
+      const btn = document.getElementById('spSaveBtn');
+      btn.disabled = true;
+      btn.textContent = 'Enregistrement...';
+
+      const editId = document.getElementById('editProductId').value;
+      const body = {
+        name: document.getElementById('spName').value,
+        platform: document.getElementById('spPlatform').value,
+        category: document.getElementById('spCategory').value,
+        denomination: document.getElementById('spDenomination').value,
+        price: parseInt(document.getElementById('spPrice').value),
+        is_active: document.getElementById('spActive').value === '1' ? 1 : 0,
+        description: document.getElementById('spDescription').value
+      };
+
+      const url = editId ? `/api/sellers/products/${editId}` : '/api/sellers/products';
+      const method = editId ? 'PUT' : 'POST';
+
+      try {
+        const res = await fetch(url, {
+          method, headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() },
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showToast(data.message || 'Produit enregistré.', 'success');
+          closeProductModal();
+          loadProducts();
+        } else {
+          showToast(data.error || 'Erreur.', 'error');
+        }
+      } catch(err) {
+        showToast('Erreur réseau.', 'error');
+      }
+      btn.disabled = false;
+      btn.textContent = 'Enregistrer';
+    }
+
+    async function toggleProduct(id, active) {
+      try {
+        const res = await fetch(`/api/sellers/products/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() },
+          body: JSON.stringify({ is_active: active ? 1 : 0 })
+        });
+        const data = await res.json();
+        showToast(res.ok ? 'Statut mis à jour.' : (data.error || 'Erreur.'), res.ok ? 'success' : 'error');
+      } catch(e) { showToast('Erreur réseau.', 'error'); }
+    }
+
+    // ---- CSV IMPORT (seller) ----
+    let sellerCsvParsedCards = [];
+
+    function switchSellerImportTab(tab) {
+      document.getElementById('sTabManuel').classList.toggle('active', tab === 'manuel');
+      document.getElementById('sTabCsv').classList.toggle('active', tab === 'csv');
+      document.getElementById('sPanelManuel').style.display = tab === 'manuel' ? '' : 'none';
+      document.getElementById('sPanelCsv').style.display = tab === 'csv' ? '' : 'none';
+      if (tab === 'csv') initSellerCsvDragDrop();
+    }
+
+    function onSellerCsvSelect(input) {
+      const file = input.files[0];
+      if (!file) return;
+      if (file.size > 5 * 1024 * 1024) { showToast('Fichier trop lourd (max 5 Mo)', 'error'); return; }
+      const reader = new FileReader();
+      reader.onload = (e) => parseSellerCsvContent(e.target.result, file.name);
+      reader.readAsText(file, 'UTF-8');
+    }
+
+    function cleanVal(v) {
+      v = (v || '').trim();
+      if (v.startsWith('="') && v.endsWith('"')) return v.slice(2, -1).trim();
+      if (v.startsWith("='") && v.endsWith("'")) return v.slice(2, -1).trim();
+      if (v.length >= 2 && v[0] === '"' && v[v.length-1] === '"') return v.slice(1, -1).trim();
+      if (v.length >= 2 && v[0] === "'" && v[v.length-1] === "'") return v.slice(1, -1).trim();
+      return v;
+    }
+
+    function splitCsvLine(line, sep) {
+      const result = [];
+      let cur = '', inQuote = false, quoteChar = '';
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (!inQuote && (ch === '"' || ch === "'")) { inQuote = true; quoteChar = ch; cur += ch; }
+        else if (inQuote && ch === quoteChar) { inQuote = false; cur += ch; }
+        else if (!inQuote && ch === sep) { result.push(cleanVal(cur)); cur = ''; }
+        else { cur += ch; }
+      }
+      result.push(cleanVal(cur));
+      return result;
+    }
+
+    function parseSellerCsvContent(text, filename) {
+      let lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+      if (!lines.length) { showToast('Fichier CSV vide', 'error'); return; }
+      if (lines[0].toLowerCase().startsWith('sep=')) lines = lines.slice(1);
+      const sep = lines[0].includes(';') ? ';' : ',';
+      const headers = splitCsvLine(lines[0], sep).map(h => h.toLowerCase());
+      const codeIdx = headers.findIndex(h => h === 'code');
+      sellerCsvParsedCards = [];
+      let errors = 0;
+      if (codeIdx !== -1) {
+        lines.slice(1).forEach(line => {
+          const parts = splitCsvLine(line, sep);
+          if (parts.length <= codeIdx) { errors++; return; }
+          const code = parts[codeIdx];
+          if (!code) { errors++; return; }
+          sellerCsvParsedCards.push({ card_name: '', card_price: '', code });
+        });
+      } else {
+        const startIdx = headers.some(h => ['nom','prix','name','price'].includes(h)) ? 1 : 0;
+        lines.slice(startIdx).forEach(line => {
+          const parts = splitCsvLine(line, sep);
+          const card_name = parts[0] || '', card_price = parts[1] || '', code = parts[2] || '';
+          if (!code) { errors++; return; }
+          sellerCsvParsedCards.push({ card_name, card_price, code });
+        });
+      }
+      const zone = document.getElementById('sCsvDropZone');
+      const nameEl = document.getElementById('sCsvFileName');
+      zone.classList.add('has-file');
+      nameEl.textContent = `✅ ${filename}`;
+      nameEl.style.display = 'block';
+      document.getElementById('sCsvPreviewCount').textContent = `${sellerCsvParsedCards.length} code(s) prêts à importer${errors ? ` — ⚠️ ${errors} ignorée(s)` : ''}`;
+      const rows = sellerCsvParsedCards.slice(0, 8).map(c =>
+        `<div style="display:grid;grid-template-columns:2fr 1fr 2fr;gap:6px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.05)">
+          <span>${c.card_name || '—'}</span>
+          <span style="color:#22c55e">${c.card_price ? c.card_price + ' FCFA' : '—'}</span>
+          <span style="font-family:monospace;color:#a78bfa">${c.code}</span>
+        </div>`).join('');
+      document.getElementById('sCsvPreviewTable').innerHTML =
+        `<div style="display:grid;grid-template-columns:2fr 1fr 2fr;gap:6px;padding:3px 0;margin-bottom:4px;font-weight:700;color:#888"><span>Nom</span><span>Prix</span><span>Code</span></div>` + rows +
+        (sellerCsvParsedCards.length > 8 ? `<div style="text-align:center;color:#888;padding:4px;font-size:11px">… et ${sellerCsvParsedCards.length - 8} autre(s)</div>` : '');
+      document.getElementById('sCsvPreview').style.display = '';
+    }
+
+    function clearSellerCsvFile() {
+      sellerCsvParsedCards = [];
+      document.getElementById('sCsvFileInput').value = '';
+      document.getElementById('sCsvDropZone').classList.remove('has-file');
+      document.getElementById('sCsvFileName').style.display = 'none';
+      document.getElementById('sCsvPreview').style.display = 'none';
+    }
+
+    function initSellerCsvDragDrop() {
+      const zone = document.getElementById('sCsvDropZone');
+      if (!zone || zone._ddBound) return;
+      zone._ddBound = true;
+      zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+      zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+      zone.addEventListener('drop', e => {
+        e.preventDefault(); zone.classList.remove('drag-over');
+        const file = e.dataTransfer.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => parseSellerCsvContent(ev.target.result, file.name);
+        reader.readAsText(file, 'UTF-8');
+      });
+    }
+
+    // ---- ADD CARDS ----
+    async function loadAddCards() {
+      try {
+        const res = await fetch('/api/sellers/products', { headers: { 'Authorization': 'Bearer ' + getToken() } });
+        const data = await res.json();
+        sellerProducts = data.products || [];
+        const sel = document.getElementById('bulkProductSelect');
+        sel.innerHTML = '<option value="">-- Choisir un produit --</option>' +
+          sellerProducts.map(p => `<option value="${p.id}">${p.name} (${p.denomination}) — ${p.available_cards} dispo</option>`).join('');
+      } catch(e) {}
+    }
+
+    function goToAddCards(productId) {
+      showSection('addcards', document.querySelector('[data-section="addcards"]'));
+      setTimeout(() => {
+        const sel = document.getElementById('bulkProductSelect');
+        if (sel) { sel.value = productId; updateBulkProductInfo(); }
+      }, 300);
+    }
+
+    function updateBulkProductInfo() {
+      const id = parseInt(document.getElementById('bulkProductSelect').value);
+      const p = sellerProducts.find(x => x.id === id);
+      if (p) {
+        document.getElementById('bulkProductInfo').innerHTML = `Stock actuel: <strong style="color:#22c55e;">${p.available_cards} cartes disponibles</strong> | ${p.sold_cards} vendues`;
+      } else {
+        document.getElementById('bulkProductInfo').innerHTML = '';
+      }
+    }
+
+    function countBulkCodes() {
+      const lines = document.getElementById('bulkCodesInput').value.split('\n').filter(l => l.trim());
+      document.getElementById('bulkCodeCount').textContent = lines.length + ' codes détectés';
+    }
+
+    async function addSellerBulkCards() {
+      const productId = document.getElementById('bulkProductSelect').value;
+      const resultEl = document.getElementById('bulkAddResult');
+      if (!productId) { showToast('Sélectionnez un produit.', 'error'); return; }
+
+      const isCsv = document.getElementById('sTabCsv').classList.contains('active');
+      let cards;
+      if (isCsv) {
+        if (!sellerCsvParsedCards.length) { showToast('Importez un fichier CSV d\'abord.', 'error'); return; }
+        cards = sellerCsvParsedCards;
+      } else {
+        const raw = document.getElementById('bulkCodesInput').value;
+        if (!raw.trim()) { showToast('Entrez au moins un code.', 'error'); return; }
+        const lines = raw.split('\n').filter(l => l.trim());
+        cards = lines.map(line => {
+          const parts = line.trim().split('|');
+          return { code: parts[0] || '', pin: parts[1] || null, serial: parts[2] || null };
+        });
+      }
+
+      const btn = document.getElementById('bulkAddBtn');
+      btn.disabled = true;
+      btn.textContent = 'Ajout en cours...';
+      resultEl.innerHTML = '';
+
+      try {
+        const res = await fetch('/api/sellers/cards/bulk', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() },
+          body: JSON.stringify({ product_id: parseInt(productId), cards })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          resultEl.innerHTML = `<div class="info-box" style="color:#22c55e;">${data.message} Stock total: ${data.total_stock}</div>`;
+          document.getElementById('bulkCodesInput').value = '';
+          document.getElementById('bulkCodeCount').textContent = '0 codes détectés';
+          showToast(data.message, 'success');
+          loadAddCards();
+        } else {
+          resultEl.innerHTML = `<div class="info-box" style="color:#ef4444;">${data.error}</div>`;
+          showToast(data.error, 'error');
+        }
+      } catch(e) {
+        showToast('Erreur réseau.', 'error');
+      }
+      btn.disabled = false;
+      btn.textContent = '➕ Ajouter les codes';
+    }
+
+    // ---- SALES ----
+    async function loadSales() {
+      document.getElementById('sellerSalesTable').innerHTML = '<div class="loading-center"><div class="loading-spinner"></div></div>';
+      try {
+        const res = await fetch('/api/sellers/sales', { headers: { 'Authorization': 'Bearer ' + getToken() } });
+        const data = await res.json();
+        const sales = data.sales || [];
+
+        if (sales.length === 0) {
+          document.getElementById('sellerSalesTable').innerHTML = `<div class="empty-state"><div class="empty-state-icon">📦</div><p>Aucune vente pour l'instant.</p></div>`;
+          return;
+        }
+
+        document.getElementById('sellerSalesTable').innerHTML = `
+          <div class="data-table-wrap">
+            <table class="data-table">
+              <thead><tr><th>#</th><th>Produit</th><th>Acheteur</th><th>Prix unitaire</th><th>Net (vous)</th><th>Paiement</th><th>Gains</th><th>Date</th></tr></thead>
+              <tbody>
+                ${sales.map(s => `
+                  <tr>
+                    <td>#${s.order_id}</td>
+                    <td><strong>${s.product_name}</strong><br><small style="color:#a0a0c0;">${s.denomination}</small></td>
+                    <td>${s.buyer_name}</td>
+                    <td>${fmtPrice(s.unit_price)}</td>
+                    <td style="color:#22c55e;font-weight:600;">${fmtPrice(s.net_amount)}</td>
+                    <td>${s.payment_method === 'wave' ? '🌊 Wave' : '🟠 Orange'}</td>
+                    <td><span class="seller-badge badge-${s.earning_status || 'pending'}">${s.earning_status === 'available' ? 'Disponible' : s.earning_status === 'withdrawn' ? 'Retiré' : 'En attente'}</span></td>
+                    <td>${fmtDateShort(s.order_date)}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+      } catch(e) {
+        document.getElementById('sellerSalesTable').innerHTML = '<p class="text-muted">Erreur chargement ventes.</p>';
+      }
+    }
+
+    // ---- EARNINGS ----
+    async function loadEarnings() {
+      document.getElementById('earningsListArea').innerHTML = '<div class="loading-center"><div class="loading-spinner"></div></div>';
+      try {
+        const res = await fetch('/api/sellers/earnings', { headers: { 'Authorization': 'Bearer ' + getToken() } });
+        const data = await res.json();
+        const s = data.summary;
+        availableBalance = s.available_balance || 0;
+
+        document.getElementById('earningsSummaryArea').innerHTML = `
+          <div class="earnings-summary">
+            <div class="earn-card green">
+              <div class="earn-label">Solde disponible</div>
+              <div class="earn-value">${fmtPrice(s.available_balance)}</div>
+            </div>
+            <div class="earn-card">
+              <div class="earn-label">Total gagné</div>
+              <div class="earn-value">${fmtPrice(s.total_earned)}</div>
+            </div>
+            <div class="earn-card orange">
+              <div class="earn-label">En attente</div>
+              <div class="earn-value">${fmtPrice(s.pending_balance)}</div>
+            </div>
+            <div class="earn-card blue">
+              <div class="earn-label">Total retiré</div>
+              <div class="earn-value">${fmtPrice(s.total_withdrawn)}</div>
+            </div>
+          </div>
+        `;
+
+        const recent = data.recent || [];
+        if (recent.length === 0) {
+          document.getElementById('earningsListArea').innerHTML = `<div class="empty-state"><div class="empty-state-icon">💰</div><p>Aucun gain enregistré.</p></div>`;
+          return;
+        }
+
+        document.getElementById('earningsListArea').innerHTML = `
+          <div class="data-table-wrap">
+            <table class="data-table">
+              <thead><tr><th>Produit</th><th>Vente</th><th>Commission</th><th>Net reçu</th><th>Statut</th><th>Date</th></tr></thead>
+              <tbody>
+                ${recent.map(e => `
+                  <tr>
+                    <td>${e.product_name}</td>
+                    <td>${fmtPrice(e.sale_amount)}</td>
+                    <td style="color:#ef4444;">-${fmtPrice(e.commission_amount)}</td>
+                    <td style="color:#22c55e;font-weight:600;">+${fmtPrice(e.net_amount)}</td>
+                    <td><span class="seller-badge badge-${e.status}">${e.status === 'available' ? 'Disponible' : e.status === 'withdrawn' ? 'Retiré' : 'En attente'}</span></td>
+                    <td>${fmtDateShort(e.created_at)}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+      } catch(e) {
+        document.getElementById('earningsListArea').innerHTML = '<p class="text-muted">Erreur chargement gains.</p>';
+      }
+    }
+
+    // ---- WITHDRAW ----
+    async function loadWithdraw() {
+      try {
+        // Get earnings for balance
+        const eRes = await fetch('/api/sellers/earnings', { headers: { 'Authorization': 'Bearer ' + getToken() } });
+        const eData = await eRes.json();
+        availableBalance = eData.summary.available_balance || 0;
+        document.getElementById('availableBalanceDisplay').textContent = fmtPrice(availableBalance);
+
+        // Get withdrawal history
+        const wRes = await fetch('/api/sellers/withdrawals', { headers: { 'Authorization': 'Bearer ' + getToken() } });
+        const wData = await wRes.json();
+        const withdrawals = wData.withdrawals || [];
+
+        if (withdrawals.length === 0) {
+          document.getElementById('withdrawalHistoryArea').innerHTML = `<div class="empty-state"><div class="empty-state-icon">💸</div><p>Aucune demande de retrait.</p></div>`;
+        } else {
+          document.getElementById('withdrawalHistoryArea').innerHTML = `
+            <div class="data-table-wrap">
+              <table class="data-table">
+                <thead><tr><th>Montant</th><th>Méthode</th><th>Numéro</th><th>Statut</th><th>Date</th></tr></thead>
+                <tbody>
+                  ${withdrawals.map(w => `
+                    <tr>
+                      <td style="font-weight:600;">${fmtPrice(w.amount)}</td>
+                      <td>${w.payment_method === 'wave' ? '🌊 Wave' : '🟠 Orange Money'}</td>
+                      <td>${w.payment_number}</td>
+                      <td><span class="seller-badge badge-${w.status}">${
+                        w.status === 'pending' ? '⏳ En attente' :
+                        w.status === 'approved' ? '✅ Approuvé' :
+                        w.status === 'paid' ? '💰 Payé' : '❌ Rejeté'
+                      }</span>${w.admin_note ? `<br><small style="color:#a0a0c0;">${w.admin_note}</small>` : ''}</td>
+                      <td>${fmtDateShort(w.created_at)}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          `;
+        }
+
+        // Pre-fill payment info from profile
+        if (sellerProfile) {
+          if (sellerProfile.wave_number) document.getElementById('withdrawNumber').placeholder = sellerProfile.wave_number;
+        }
+      } catch(e) {
+        console.error(e);
+      }
+    }
+
+    async function submitWithdrawal() {
+      const amount = parseInt(document.getElementById('withdrawAmount').value);
+      const method = document.getElementById('withdrawMethod').value;
+      const number = document.getElementById('withdrawNumber').value;
+      const alertEl = document.getElementById('withdrawFormAlerts');
+
+      alertEl.innerHTML = '';
+
+      if (!amount || amount < 1000) {
+        alertEl.innerHTML = '<div class="alert-box error">Montant minimum: 1 000 FCFA</div>'; return;
+      }
+      if (!method) { alertEl.innerHTML = '<div class="alert-box error">Choisissez une méthode.</div>'; return; }
+      if (!number || number.trim().length < 8) { alertEl.innerHTML = '<div class="alert-box error">Numéro invalide.</div>'; return; }
+      if (amount > availableBalance) {
+        alertEl.innerHTML = `<div class="alert-box error">Solde insuffisant. Disponible: ${fmtPrice(availableBalance)}</div>`; return;
+      }
+
+      try {
+        const res = await fetch('/api/sellers/withdraw', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() },
+          body: JSON.stringify({ amount, payment_method: method, payment_number: number.trim() })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          alertEl.innerHTML = `<div class="alert-box success">${data.message}</div>`;
+          document.getElementById('withdrawAmount').value = '';
+          document.getElementById('withdrawMethod').value = '';
+          document.getElementById('withdrawNumber').value = '';
+          showToast(data.message, 'success');
+          loadWithdraw();
+        } else {
+          alertEl.innerHTML = `<div class="alert-box error">${data.error}</div>`;
+        }
+      } catch(e) {
+        alertEl.innerHTML = '<div class="alert-box error">Erreur réseau.</div>';
+      }
+    }
+
+    // ---- SETTINGS ----
+    async function loadSettings() {
+      document.getElementById('settingsAlerts').innerHTML = '';
+      if (!sellerProfile) {
+        try {
+          const res = await fetch('/api/sellers/me', { headers: { 'Authorization': 'Bearer ' + getToken() } });
+          const data = await res.json();
+          sellerProfile = data.profile;
+        } catch(e) { return; }
+      }
+      document.getElementById('settingsShopName').value = sellerProfile.shop_name || '';
+      document.getElementById('settingsDescription').value = sellerProfile.description || '';
+      document.getElementById('settingsWave').value = sellerProfile.wave_number || '';
+      document.getElementById('settingsOrange').value = sellerProfile.orange_number || '';
+    }
+
+    async function saveSettings() {
+      const alertEl = document.getElementById('settingsAlerts');
+      alertEl.innerHTML = '';
+      try {
+        const res = await fetch('/api/sellers/me', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() },
+          body: JSON.stringify({
+            description: document.getElementById('settingsDescription').value,
+            wave_number: document.getElementById('settingsWave').value,
+            orange_number: document.getElementById('settingsOrange').value
+          })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          alertEl.innerHTML = `<div class="alert-box success">${data.message}</div>`;
+          showToast('Profil mis à jour.', 'success');
+          // Refresh profile
+          const r2 = await fetch('/api/sellers/me', { headers: { 'Authorization': 'Bearer ' + getToken() } });
+          const d2 = await r2.json();
+          sellerProfile = d2.profile;
+        } else {
+          alertEl.innerHTML = `<div class="alert-box error">${data.error}</div>`;
+        }
+      } catch(e) {
+        alertEl.innerHTML = '<div class="alert-box error">Erreur réseau.</div>';
+      }
+    }
+
+    async function sellerChangePassword() {
+      const alertEl = document.getElementById('pwdAlerts');
+      alertEl.innerHTML = '';
+      const current = document.getElementById('sellerCurrentPwd').value;
+      const newPwd = document.getElementById('sellerNewPwd').value;
+      const confirm = document.getElementById('sellerConfirmPwd').value;
+      if (!current || !newPwd || !confirm) {
+        alertEl.innerHTML = '<div class="alert-box error">Veuillez remplir tous les champs.</div>'; return;
+      }
+      if (newPwd !== confirm) {
+        alertEl.innerHTML = '<div class="alert-box error">Les mots de passe ne correspondent pas.</div>'; return;
+      }
+      if (newPwd.length < 6) {
+        alertEl.innerHTML = '<div class="alert-box error">Le nouveau mot de passe doit contenir au moins 6 caractères.</div>'; return;
+      }
+      try {
+        const res = await fetch('/api/auth/change-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() },
+          body: JSON.stringify({ current_password: current, new_password: newPwd })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          alertEl.innerHTML = `<div class="alert-box success">${data.message}</div>`;
+          document.getElementById('sellerCurrentPwd').value = '';
+          document.getElementById('sellerNewPwd').value = '';
+          document.getElementById('sellerConfirmPwd').value = '';
+        } else {
+          alertEl.innerHTML = `<div class="alert-box error">${data.error}</div>`;
+        }
+      } catch(e) {
+        alertEl.innerHTML = '<div class="alert-box error">Erreur réseau.</div>';
+      }
+    }
+
+    // ---- INIT ----
+    document.addEventListener('DOMContentLoaded', initDashboard);
+  </script>
+</body>
+</html>

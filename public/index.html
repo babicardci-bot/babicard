@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Babicard.ci — Vos Cartes Cadeaux Gaming en Côte d'Ivoire</title>
+  <meta name="description" content="Achetez vos cartes cadeaux iTunes, PSN, Xbox, Google Play, Steam, Netflix en Côte d'Ivoire. Paiement Wave CI & Orange Money. Livraison immédiate par email et SMS.">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <nav class="navbar" id="navbar">
+    <div class="nav-container">
+      <a href="/" class="nav-logo">
+        <span class="logo-icon">🎮</span>
+        <span class="logo-text">GiftCard <span class="logo-accent">CI</span></span>
+      </a>
+
+      <div class="nav-links" id="navLinks">
+        <a href="#categories" class="nav-link">Catégories</a>
+        <a href="#products" class="nav-link">Produits</a>
+        <a href="#how-it-works" class="nav-link">Comment ça marche</a>
+        <a href="#contact" class="nav-link">Contact</a>
+        <a href="/seller-register" class="nav-link" style="color: var(--color-primary-light);">🏪 Vendre ici</a>
+      </div>
+
+      <div class="nav-actions">
+        <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Mode clair / sombre">
+          <div class="theme-toggle-knob" id="themeKnob">🌙</div>
+        </button>
+        <button class="btn-cart" id="cartBtn" onclick="toggleCart()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-1.5 6h13M9 19a1 1 0 100 2 1 1 0 000-2zm8 0a1 1 0 100 2 1 1 0 000-2z"/></svg>
+          <span class="cart-badge" id="cartCount">0</span>
+        </button>
+        <div class="nav-auth" id="navAuth">
+          <a href="/login" class="btn-outline-nav">Connexion</a>
+          <a href="/register" class="btn-primary-nav">S'inscrire</a>
+        </div>
+        <div class="nav-user hidden" id="navUser">
+          <a href="/dashboard" class="btn-outline-nav">Mon compte</a>
+          <button onclick="logout()" class="btn-logout-nav">Déconnexion</button>
+        </div>
+      </div>
+
+      <button class="nav-toggle" id="navToggle" onclick="toggleMobileNav()">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- HERO SLIDER -->
+  <section class="hero-section" id="home">
+    <div class="particles-bg" id="particles"></div>
+
+    <div class="slider-container" id="heroSlider">
+      <!-- Slide 1: PlayStation -->
+      <div class="slide active" data-slide="0">
+        <div class="slide-bg slide-ps"></div>
+        <div class="slide-content">
+          <div class="slide-brand">
+            <div class="brand-badge ps-badge">
+              <svg viewBox="0 0 100 100" width="60" height="60"><circle cx="50" cy="50" r="45" fill="#003087"/><text x="50" y="65" text-anchor="middle" fill="white" font-size="50" font-weight="bold">P</text></svg>
+            </div>
+          </div>
+          <div class="slide-text">
+            <span class="slide-tag">🎮 Gaming</span>
+            <h1 class="slide-title">PlayStation<br><span class="slide-title-accent">Network Cards</span></h1>
+            <p class="slide-desc">Rechargez votre PSN. Achetez des jeux, DLC, PS Plus directement depuis votre PS4/PS5.</p>
+            <div class="slide-prices">
+              <span class="price-tag">10$ → 6 500 FCFA</span>
+              <span class="price-tag">20$ → 12 500 FCFA</span>
+              <span class="price-tag">50$ → 30 500 FCFA</span>
+            </div>
+            <a href="#products" class="slide-cta">Acheter maintenant →</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slide 2: Xbox -->
+      <div class="slide" data-slide="1">
+        <div class="slide-bg slide-xbox"></div>
+        <div class="slide-content">
+          <div class="slide-brand">
+            <div class="brand-badge xbox-badge">
+              <svg viewBox="0 0 100 100" width="60" height="60"><circle cx="50" cy="50" r="45" fill="#107C10"/><text x="50" y="65" text-anchor="middle" fill="white" font-size="40" font-weight="bold">X</text></svg>
+            </div>
+          </div>
+          <div class="slide-text">
+            <span class="slide-tag">🟢 Microsoft</span>
+            <h1 class="slide-title">Xbox<br><span class="slide-title-accent">Gift Cards</span></h1>
+            <p class="slide-desc">Alimentez votre Xbox Wallet. Jeux, add-ons, Xbox Game Pass Ultimate à portée de main.</p>
+            <div class="slide-prices">
+              <span class="price-tag">10$ → 6 500 FCFA</span>
+              <span class="price-tag">25$ → 15 500 FCFA</span>
+            </div>
+            <a href="#products" class="slide-cta">Découvrir →</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slide 3: iTunes -->
+      <div class="slide" data-slide="2">
+        <div class="slide-bg slide-itunes"></div>
+        <div class="slide-content">
+          <div class="slide-brand">
+            <div class="brand-badge itunes-badge">
+              <svg viewBox="0 0 100 100" width="60" height="60"><circle cx="50" cy="50" r="45" fill="#555"/><text x="50" y="65" text-anchor="middle" fill="white" font-size="40" font-weight="bold">🍎</text></svg>
+            </div>
+          </div>
+          <div class="slide-text">
+            <span class="slide-tag">🍎 Apple</span>
+            <h1 class="slide-title">iTunes &<br><span class="slide-title-accent">App Store Cards</span></h1>
+            <p class="slide-desc">Achetez apps, musiques, films, séries sur l'App Store et iTunes. Valable pour les comptes US.</p>
+            <div class="slide-prices">
+              <span class="price-tag">5$ → 3 200 FCFA</span>
+              <span class="price-tag">10$ → 6 200 FCFA</span>
+              <span class="price-tag">25$ → 15 200 FCFA</span>
+            </div>
+            <a href="#products" class="slide-cta">Acheter →</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slide 4: Steam -->
+      <div class="slide" data-slide="3">
+        <div class="slide-bg slide-steam"></div>
+        <div class="slide-content">
+          <div class="slide-brand">
+            <div class="brand-badge steam-badge">
+              <svg viewBox="0 0 100 100" width="60" height="60"><circle cx="50" cy="50" r="45" fill="#1b2838"/><text x="50" y="65" text-anchor="middle" fill="white" font-size="40">🖥️</text></svg>
+            </div>
+          </div>
+          <div class="slide-text">
+            <span class="slide-tag">🖥️ PC Gaming</span>
+            <h1 class="slide-title">Steam<br><span class="slide-title-accent">Wallet Cards</span></h1>
+            <p class="slide-desc">Des milliers de jeux PC sur Steam. Rechargez votre wallet et profitez des meilleures promos.</p>
+            <div class="slide-prices">
+              <span class="price-tag">10$ → 6 500 FCFA</span>
+              <span class="price-tag">20$ → 12 500 FCFA</span>
+            </div>
+            <a href="#products" class="slide-cta">Explorer →</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slide 5: Google Play -->
+      <div class="slide" data-slide="4">
+        <div class="slide-bg slide-google"></div>
+        <div class="slide-content">
+          <div class="slide-brand">
+            <div class="brand-badge google-badge">
+              <svg viewBox="0 0 100 100" width="60" height="60"><circle cx="50" cy="50" r="45" fill="#4285F4"/><text x="50" y="65" text-anchor="middle" fill="white" font-size="40">▶</text></svg>
+            </div>
+          </div>
+          <div class="slide-text">
+            <span class="slide-tag">🎯 Android</span>
+            <h1 class="slide-title">Google Play<br><span class="slide-title-accent">Gift Cards</span></h1>
+            <p class="slide-desc">Apps, jeux, films, livres sur le Google Play Store. Compatible avec tout appareil Android.</p>
+            <div class="slide-prices">
+              <span class="price-tag">10$ → 6 200 FCFA</span>
+              <span class="price-tag">25$ → 15 200 FCFA</span>
+            </div>
+            <a href="#products" class="slide-cta">Acheter →</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slider Controls -->
+      <button class="slider-arrow slider-prev" onclick="changeSlide(-1)">&#8249;</button>
+      <button class="slider-arrow slider-next" onclick="changeSlide(1)">&#8250;</button>
+
+      <!-- Dots -->
+      <div class="slider-dots">
+        <button class="dot active" onclick="goToSlide(0)"></button>
+        <button class="dot" onclick="goToSlide(1)"></button>
+        <button class="dot" onclick="goToSlide(2)"></button>
+        <button class="dot" onclick="goToSlide(3)"></button>
+        <button class="dot" onclick="goToSlide(4)"></button>
+      </div>
+    </div>
+
+    <!-- Scroll indicator -->
+    <div class="scroll-indicator">
+      <span>Défiler</span>
+      <div class="scroll-arrow"></div>
+    </div>
+  </section>
+
+  <!-- STATS BAR -->
+  <section class="stats-bar">
+    <div class="container">
+      <div class="stat-item">
+        <span class="stat-number">500+</span>
+        <span class="stat-label">Clients satisfaits</span>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat-item">
+        <span class="stat-number">8</span>
+        <span class="stat-label">Plateformes</span>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat-item">
+        <span class="stat-number">&lt; 5 min</span>
+        <span class="stat-label">Livraison</span>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat-item">
+        <span class="stat-number">7j/7</span>
+        <span class="stat-label">Support</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- CATEGORIES -->
+  <section class="categories-section" id="categories">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">Nos plateformes</span>
+        <h2 class="section-title">Toutes vos <span class="text-gradient">Catégories</span></h2>
+        <p class="section-desc">Sélectionnez votre plateforme préférée</p>
+      </div>
+      <div class="categories-grid">
+        <button class="category-card active" data-category="" onclick="filterProducts('')">
+          <span class="cat-icon">🎯</span>
+          <span class="cat-name">Tous</span>
+        </button>
+        <button class="category-card" data-category="apple" onclick="filterProducts('apple')">
+          <span class="cat-icon">🍎</span>
+          <span class="cat-name">Apple</span>
+        </button>
+        <button class="category-card" data-category="playstation" onclick="filterProducts('playstation')">
+          <span class="cat-icon ps-color">PS</span>
+          <span class="cat-name">PlayStation</span>
+        </button>
+        <button class="category-card" data-category="xbox" onclick="filterProducts('xbox')">
+          <span class="cat-icon xbox-color">X</span>
+          <span class="cat-name">Xbox</span>
+        </button>
+        <button class="category-card" data-category="google" onclick="filterProducts('google')">
+          <span class="cat-icon">🎮</span>
+          <span class="cat-name">Google Play</span>
+        </button>
+        <button class="category-card" data-category="steam" onclick="filterProducts('steam')">
+          <span class="cat-icon">🖥️</span>
+          <span class="cat-name">Steam</span>
+        </button>
+        <button class="category-card" data-category="netflix" onclick="filterProducts('netflix')">
+          <span class="cat-icon netflix-color">N</span>
+          <span class="cat-name">Netflix</span>
+        </button>
+        <button class="category-card" data-category="amazon" onclick="filterProducts('amazon')">
+          <span class="cat-icon">📦</span>
+          <span class="cat-name">Amazon</span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- PRODUCTS SECTION -->
+  <section class="products-section" id="products">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">Boutique</span>
+        <h2 class="section-title">Nos <span class="text-gradient">Cartes Cadeaux</span></h2>
+        <p class="section-desc">Livraison instantanée par email et SMS après paiement</p>
+      </div>
+
+      <!-- Search bar -->
+      <div class="search-bar">
+        <input type="text" id="searchInput" placeholder="Rechercher une carte..." oninput="searchProducts(this.value)">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+      </div>
+
+      <!-- Products Grid -->
+      <div class="products-grid" id="productsGrid">
+        <div class="loading-products">
+          <div class="loading-spinner"></div>
+          <p>Chargement des produits...</p>
+        </div>
+      </div>
+
+      <div class="no-products hidden" id="noProducts">
+        <div class="no-products-icon">🔍</div>
+        <p>Aucun produit trouvé pour cette recherche.</p>
+        <button onclick="filterProducts('')" class="btn-secondary">Voir tous les produits</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section class="how-it-works" id="how-it-works">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">Simple & Rapide</span>
+        <h2 class="section-title">Comment ça <span class="text-gradient">marche ?</span></h2>
+      </div>
+      <div class="steps-grid">
+        <div class="step-card">
+          <div class="step-number">01</div>
+          <div class="step-icon">🛒</div>
+          <h3 class="step-title">Choisissez votre carte</h3>
+          <p class="step-desc">Parcourez notre catalogue et sélectionnez la carte cadeau qui vous convient. Ajoutez-la à votre panier.</p>
+        </div>
+        <div class="step-connector"></div>
+        <div class="step-card">
+          <div class="step-number">02</div>
+          <div class="step-icon">💳</div>
+          <h3 class="step-title">Payez en toute sécurité</h3>
+          <p class="step-desc">Payez facilement avec <strong>Wave CI</strong> ou <strong>Orange Money</strong>. Transactions 100% sécurisées.</p>
+        </div>
+        <div class="step-connector"></div>
+        <div class="step-card">
+          <div class="step-number">03</div>
+          <div class="step-icon">⚡</div>
+          <h3 class="step-title">Recevez votre code</h3>
+          <p class="step-desc">Votre code est envoyé <strong>instantanément</strong> par email et SMS. Utilisez-le immédiatement!</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PAYMENT METHODS -->
+  <section class="payment-section">
+    <div class="container">
+      <div class="section-header">
+        <h2 class="section-title">Moyens de <span class="text-gradient">Paiement</span></h2>
+        <p class="section-desc">Paiement sécurisé via les solutions locales</p>
+      </div>
+      <div class="payment-methods">
+        <div class="payment-card wave-card">
+          <div class="payment-logo">
+            <div class="wave-logo-badge">
+              <span class="wave-penguin">🐧</span>
+              <span class="wave-text">wave</span>
+            </div>
+          </div>
+          <h3>Wave CI</h3>
+          <p>Paiement mobile rapide et sécurisé via l'application Wave. Disponible partout en Côte d'Ivoire.</p>
+          <div class="payment-features">
+            <span>✓ Instantané</span>
+            <span>✓ Sans frais</span>
+            <span>✓ Sécurisé</span>
+          </div>
+        </div>
+        <div class="payment-card orange-card">
+          <div class="payment-logo">🟠</div>
+          <h3>Orange Money CI</h3>
+          <p>Payez directement depuis votre compte Orange Money. Solution #1 de paiement mobile en Côte d'Ivoire.</p>
+          <div class="payment-features">
+            <span>✓ Fiable</span>
+            <span>✓ Large réseau</span>
+            <span>✓ Protégé</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TESTIMONIALS -->
+  <section class="testimonials-section">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">Avis clients</span>
+        <h2 class="section-title">Ils nous font <span class="text-gradient">confiance</span></h2>
+      </div>
+      <div class="testimonials-grid">
+        <div class="testimonial-card">
+          <div class="testimonial-stars">⭐⭐⭐⭐⭐</div>
+          <p class="testimonial-text">"J'ai reçu mon code PSN en moins de 2 minutes! Service impeccable. Je recommande vivement Babicard.ci."</p>
+          <div class="testimonial-author">
+            <div class="author-avatar">K</div>
+            <div>
+              <strong>Kouamé A.</strong>
+              <span>Abidjan, Cocody</span>
+            </div>
+          </div>
+        </div>
+        <div class="testimonial-card">
+          <div class="testimonial-stars">⭐⭐⭐⭐⭐</div>
+          <p class="testimonial-text">"Super site! J'achète régulièrement des cartes iTunes ici. Paiement Wave très pratique et rapide."</p>
+          <div class="testimonial-author">
+            <div class="author-avatar">A</div>
+            <div>
+              <strong>Aminata D.</strong>
+              <span>Abidjan, Yopougon</span>
+            </div>
+          </div>
+        </div>
+        <div class="testimonial-card">
+          <div class="testimonial-stars">⭐⭐⭐⭐⭐</div>
+          <p class="testimonial-text">"Excellent service! Mon code Xbox est arrivé par SMS immédiatement. Prix compétitifs et service client top."</p>
+          <div class="testimonial-author">
+            <div class="author-avatar">M</div>
+            <div>
+              <strong>Moussa T.</strong>
+              <span>Bouaké</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer" id="contact">
+    <div class="footer-main">
+      <div class="container">
+        <div class="footer-grid">
+          <div class="footer-brand">
+            <a href="/" class="nav-logo">
+              <span class="logo-icon">🎮</span>
+              <span class="logo-text">GiftCard <span class="logo-accent">CI</span></span>
+            </a>
+            <p>Votre boutique de cartes cadeaux gaming en Côte d'Ivoire. Livraison instantanée, paiement local sécurisé.</p>
+            <div class="social-links">
+              <a href="#" class="social-link">📘</a>
+              <a href="#" class="social-link">📸</a>
+              <a href="#" class="social-link">💬</a>
+            </div>
+          </div>
+          <div class="footer-links">
+            <h4>Produits</h4>
+            <ul>
+              <li><a href="#" onclick="filterProducts('apple')">iTunes / App Store</a></li>
+              <li><a href="#" onclick="filterProducts('playstation')">PlayStation Network</a></li>
+              <li><a href="#" onclick="filterProducts('xbox')">Xbox Gift Cards</a></li>
+              <li><a href="#" onclick="filterProducts('google')">Google Play</a></li>
+              <li><a href="#" onclick="filterProducts('steam')">Steam Wallet</a></li>
+              <li><a href="#" onclick="filterProducts('netflix')">Netflix</a></li>
+            </ul>
+          </div>
+          <div class="footer-links">
+            <h4>Mon Compte</h4>
+            <ul>
+              <li><a href="/login">Connexion</a></li>
+              <li><a href="/register">Créer un compte</a></li>
+              <li><a href="/dashboard">Mes commandes</a></li>
+            </ul>
+          </div>
+          <div class="footer-contact">
+            <h4>Contact</h4>
+            <div class="contact-item">
+              <span>📍</span>
+              <span>Abidjan, Côte d'Ivoire<br>Cocody, Riviera</span>
+            </div>
+            <div class="contact-item">
+              <span>📧</span>
+              <a href="mailto:support@babicard.ci">support@babicard.ci</a>
+            </div>
+            <div class="contact-item">
+              <span>📱</span>
+              <a href="https://wa.me/2250708598080" target="_blank">WhatsApp: +225 07 08 59 80 80</a>
+            </div>
+            <div class="contact-item">
+              <span>🕐</span>
+              <span>Disponible 7j/7 — 8h à 22h</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <div class="container">
+        <p>© 2024 Babicard.ci. Tous droits réservés. | Abidjan, Côte d'Ivoire 🇨🇮</p>
+        <div class="footer-badges">
+          <span class="badge-secure">🔒 Paiement sécurisé</span>
+          <span class="badge-fast">⚡ Livraison immédiate</span>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- CART SIDEBAR -->
+  <div class="cart-overlay" id="cartOverlay" onclick="toggleCart()"></div>
+  <div class="cart-sidebar" id="cartSidebar">
+    <div class="cart-header">
+      <h3>🛒 Mon Panier</h3>
+      <button onclick="toggleCart()" class="cart-close">✕</button>
+    </div>
+    <div class="cart-items" id="cartItems">
+      <div class="cart-empty">
+        <div class="cart-empty-icon">🛒</div>
+        <p>Votre panier est vide</p>
+        <button onclick="toggleCart()" class="btn-secondary">Continuer vos achats</button>
+      </div>
+    </div>
+    <div class="cart-footer" id="cartFooter">
+      <div class="cart-total">
+        <span>Total:</span>
+        <strong id="cartTotal">0 FCFA</strong>
+      </div>
+      <div class="cart-payment-selector" id="cartPaymentSelector">
+        <p>Méthode de paiement:</p>
+        <div class="payment-options">
+          <label class="payment-option">
+            <input type="radio" name="paymentMethod" value="wave" checked>
+            <span class="wave-badge-sm">🐧 wave</span>
+          </label>
+          <label class="payment-option">
+            <input type="radio" name="paymentMethod" value="orange_money">
+            <span>🟠 Orange Money</span>
+          </label>
+        </div>
+        <input type="tel" id="paymentPhone" placeholder="Numéro téléphone (+225...)" class="phone-input" style="display:none">
+      </div>
+      <button class="btn-checkout" id="checkoutBtn" onclick="openDeliveryModal()">
+        Payer maintenant
+      </button>
+    </div>
+  </div>
+
+  <!-- DELIVERY CONFIRMATION MODAL -->
+  <div class="modal-overlay" id="deliveryModalOverlay" onclick="closeDeliveryModal()" style="z-index:1100"></div>
+  <div id="deliveryModal" style="
+    display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+    z-index:1101;width:90%;max-width:440px;
+    background:var(--bg-secondary);border:1px solid var(--border-color);
+    border-radius:16px;padding:28px;box-shadow:0 24px 60px rgba(0,0,0,0.4);">
+    <h3 style="font-size:1.1rem;font-weight:700;margin-bottom:6px">📦 Confirmer la livraison</h3>
+    <p style="font-size:0.83rem;color:var(--text-secondary);margin-bottom:20px">Vos codes seront envoyés à ces coordonnées après paiement.</p>
+
+    <div style="margin-bottom:14px">
+      <label style="font-size:0.78rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px">Adresse email *</label>
+      <input type="email" id="deliveryEmail" placeholder="votre@email.com"
+        style="width:100%;padding:11px 14px;background:var(--bg-card);border:1px solid var(--border-color);border-radius:10px;color:var(--text-primary);font-size:0.9rem;outline:none;box-sizing:border-box;">
+    </div>
+    <div style="margin-bottom:22px">
+      <label style="font-size:0.78rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px">Numéro WhatsApp / téléphone</label>
+      <input type="tel" id="deliveryPhone" placeholder="+225 07 XX XX XX XX"
+        style="width:100%;padding:11px 14px;background:var(--bg-card);border:1px solid var(--border-color);border-radius:10px;color:var(--text-primary);font-size:0.9rem;outline:none;box-sizing:border-box;">
+      <div style="font-size:0.72rem;color:var(--text-muted);margin-top:5px">Optionnel — pour recevoir vos codes par SMS/WhatsApp également</div>
+    </div>
+
+    <div style="display:flex;gap:10px">
+      <button onclick="closeDeliveryModal()" style="flex:1;padding:12px;border-radius:10px;background:var(--bg-card);border:1px solid var(--border-color);color:var(--text-secondary);font-size:0.9rem;cursor:pointer;">Annuler</button>
+      <button onclick="confirmDeliveryAndPay()" id="confirmDeliveryBtn" style="flex:2;padding:12px;border-radius:10px;background:linear-gradient(135deg,var(--color-primary),#8b5cf6);border:none;color:#fff;font-size:0.9rem;font-weight:700;cursor:pointer;">✅ Confirmer et payer</button>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- PRODUCT MODAL -->
+  <div class="modal-overlay" id="modalOverlay" onclick="closeModal()"></div>
+  <div class="product-modal" id="productModal">
+    <div class="modal-content" id="modalContent"></div>
+  </div>
+
+  <script src="/js/auth.js"></script>
+  <script src="/js/main.js"></script>
+  <script src="/js/shop.js"></script>
+</body>
+</html>

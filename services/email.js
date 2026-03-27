@@ -1,0 +1,511 @@
+const nodemailer = require('nodemailer');
+
+let transporter = null;
+
+function getTransporter() {
+  if (!transporter) {
+    if (process.env.EMAIL_USER && process.env.EMAIL_PASS &&
+        process.env.EMAIL_USER !== 'your@gmail.com') {
+      transporter = nodemailer.createTransport({
+        host: process.env.EMAIL_HOST || 'mail1.netim.hosting',
+        port: parseInt(process.env.EMAIL_PORT || '465'),
+        secure: true, // SSL/TLS
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS
+        }
+      });
+    } else {
+      transporter = null;
+    }
+  }
+  return transporter;
+}
+
+function formatPrice(amount) {
+  return new Intl.NumberFormat('fr-FR').format(amount) + ' FCFA';
+}
+
+function getCategoryColor(category) {
+  const colors = {
+    apple: '#555555',
+    playstation: '#003087',
+    xbox: '#107C10',
+    google: '#4285F4',
+    steam: '#1b2838',
+    netflix: '#E50914',
+    amazon: '#FF9900',
+    default: '#6C63FF'
+  };
+  return colors[category] || colors.default;
+}
+
+function getCategoryIcon(platform) {
+  const icons = {
+    'iTunes': '🍎',
+    'App Store': '🍎',
+    'PlayStation': '🎮',
+    'PSN': '🎮',
+    'Xbox': '🟢',
+    'Google Play': '🎯',
+    'Steam': '🖥️',
+    'Netflix': '🎬',
+    'Amazon': '📦'
+  };
+  for (const [key, icon] of Object.entries(icons)) {
+    if (platform && platform.includes(key)) return icon;
+  }
+  return '🎁';
+}
+
+async function sendOrderConfirmationEmail(user, order, items) {
+  const t = getTransporter();
+
+  const itemsHtml = items.map(item => {
+    const icon = getCategoryIcon(item.platform);
+    const color = getCategoryColor(item.category || 'default');
+    let codeSection = '';
+
+    if (item.card_code) {
+      codeSection = `
+        <div style="background: #f8f9fa; border: 2px dashed #6C63FF; border-radius: 8px; padding: 16px; margin: 12px 0; text-align: center;">
+          <p style="margin: 0 0 8px; font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 1px;">Code de la carte</p>
+          <p style="margin: 0; font-size: 20px; font-weight: bold; color: #1a1a2e; letter-spacing: 3px; font-family: 'Courier New', monospace;">${item.card_code}</p>
+          ${item.card_pin ? `<p style="margin: 8px 0 0; font-size: 14px; color: #555;">PIN: <strong>${item.card_pin}</strong></p>` : ''}
+          ${item.card_serial ? `<p style="margin: 4px 0 0; font-size: 12px; color: #888;">Série: ${item.card_serial}</p>` : ''}
+        </div>
+      `;
+    }
+
+    return `
+      <div style="border: 1px solid #e0e0e0; border-radius: 12px; padding: 20px; margin-bottom: 16px; background: white;">
+        <div style="display: flex; align-items: center; margin-bottom: 12px;">
+          <div style="width: 50px; height: 50px; background: ${color}; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 24px; margin-right: 15px;">
+            ${icon}
+          </div>
+          <div>
+            <h3 style="margin: 0; font-size: 16px; color: #1a1a2e;">${item.product_name}</h3>
+            <p style="margin: 4px 0 0; font-size: 14px; color: #666;">${item.platform || ''} ${item.denomination ? '• ' + item.denomination : ''}</p>
+          </div>
+          <div style="margin-left: auto; text-align: right;">
+            <p style="margin: 0; font-size: 16px; font-weight: bold; color: #6C63FF;">${formatPrice(item.unit_price)}</p>
+          </div>
+        </div>
+        ${codeSection}
+      </div>
+    `;
+  }).join('');
+
+  const hasCards = items.some(item => item.card_code);
+
+  const htmlContent = `
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Confirmation de commande - Babicard.ci</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f0f7;">
+
+  <!-- Header -->
+  <div style="background: linear-gradient(135deg, #0a0a1f 0%, #1a1a3e 50%, #0d0d2e 100%); padding: 40px 20px; text-align: center;">
+    <div style="font-size: 36px; margin-bottom: 8px;">🎮</div>
+    <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 800;">Babicard.ci</h1>
+    <p style="margin: 8px 0 0; color: #a78bfa; font-size: 14px; letter-spacing: 2px; text-transform: uppercase;">Vos Cartes Cadeaux Gaming</p>
+  </div>
+
+  <!-- Main Content -->
+  <div style="max-width: 600px; margin: 0 auto; padding: 30px 20px;">
+
+    <!-- Success Banner -->
+    <div style="background: linear-gradient(135deg, #10B981, #059669); border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 24px;">
+      <div style="font-size: 40px; margin-bottom: 8px;">✅</div>
+      <h2 style="margin: 0; color: white; font-size: 22px;">${hasCards ? 'Paiement confirmé ! Voici vos codes' : 'Commande confirmée !'}</h2>
+      <p style="margin: 8px 0 0; color: rgba(255,255,255,0.9); font-size: 14px;">
+        ${hasCards ? 'Vos cartes cadeaux sont prêtes à l\'emploi.' : 'Votre commande a été enregistrée.'}
+      </p>
+    </div>
+
+    <!-- Greeting -->
+    <div style="background: white; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.08);">
+      <h2 style="margin: 0 0 12px; color: #1a1a2e; font-size: 20px;">Bonjour ${user.name} 👋</h2>
+      <p style="margin: 0; color: #555; line-height: 1.6;">
+        ${hasCards
+          ? `Merci pour votre achat ! Votre paiement de <strong>${formatPrice(order.total_amount)}</strong> a été confirmé. Retrouvez ci-dessous vos codes de cartes cadeaux.`
+          : `Merci pour votre commande ! Votre paiement de <strong>${formatPrice(order.total_amount)}</strong> est en cours de traitement.`
+        }
+      </p>
+    </div>
+
+    <!-- Order Info -->
+    <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.08);">
+      <h3 style="margin: 0 0 16px; color: #1a1a2e; font-size: 16px; border-bottom: 2px solid #f0f0f7; padding-bottom: 10px;">
+        📋 Détails de la commande
+      </h3>
+      <table style="width: 100%; border-collapse: collapse;">
+        <tr>
+          <td style="padding: 8px 0; color: #666; font-size: 14px;">N° Commande</td>
+          <td style="padding: 8px 0; color: #1a1a2e; font-weight: bold; font-size: 14px; text-align: right;">#${order.id}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 0; color: #666; font-size: 14px;">Méthode de paiement</td>
+          <td style="padding: 8px 0; color: #1a1a2e; font-size: 14px; text-align: right;">
+            ${order.payment_method === 'wave' ? '🌊 Wave CI' : '🟠 Orange Money'}
+          </td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 0; color: #666; font-size: 14px;">Référence paiement</td>
+          <td style="padding: 8px 0; color: #6C63FF; font-size: 13px; text-align: right; font-family: monospace;">${order.payment_ref || 'N/A'}</td>
+        </tr>
+        <tr style="border-top: 2px solid #f0f0f7;">
+          <td style="padding: 12px 0 0; color: #1a1a2e; font-weight: bold; font-size: 16px;">Total payé</td>
+          <td style="padding: 12px 0 0; color: #6C63FF; font-weight: bold; font-size: 18px; text-align: right;">${formatPrice(order.total_amount)}</td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- Cards/Items -->
+    <div style="margin-bottom: 24px;">
+      <h3 style="color: #1a1a2e; margin-bottom: 16px; font-size: 18px;">
+        🎁 ${hasCards ? 'Vos cartes cadeaux' : 'Articles commandés'}
+      </h3>
+      ${itemsHtml}
+    </div>
+
+    ${hasCards ? `
+    <!-- Instructions -->
+    <div style="background: #fffbeb; border: 1px solid #fbbf24; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+      <h4 style="margin: 0 0 12px; color: #92400e; font-size: 15px;">⚠️ Instructions importantes</h4>
+      <ul style="margin: 0; padding-left: 20px; color: #78350f; font-size: 14px; line-height: 1.8;">
+        <li>Gardez vos codes en lieu sûr — ils ne peuvent pas être récupérés si perdus.</li>
+        <li>Ne partagez jamais vos codes avec qui que ce soit.</li>
+        <li>Les codes sont à usage unique et non remboursables.</li>
+        <li>En cas de problème, contactez notre support avec votre N° de commande.</li>
+      </ul>
+    </div>
+    ` : ''}
+
+    <!-- Support -->
+    <div style="background: linear-gradient(135deg, #1a1a3e, #0d0d2e); border-radius: 12px; padding: 24px; text-align: center; color: white;">
+      <p style="margin: 0 0 8px; font-size: 16px; font-weight: bold;">Besoin d'aide ? 🤝</p>
+      <p style="margin: 0 0 16px; font-size: 14px; color: #a78bfa;">Notre équipe est disponible 7j/7</p>
+      <p style="margin: 0; font-size: 14px;">
+        📧 <a href="mailto:${process.env.ADMIN_EMAIL || 'support@babicard.ci'}" style="color: #60a5fa;">${process.env.ADMIN_EMAIL || 'support@babicard.ci'}</a>
+      </p>
+      <p style="margin: 8px 0 0; font-size: 14px;">📱 WhatsApp: +225 07 XX XX XX XX</p>
+    </div>
+
+  </div>
+
+  <!-- Footer -->
+  <div style="text-align: center; padding: 20px; color: #999; font-size: 12px;">
+    <p style="margin: 0;">© ${new Date().getFullYear()} Babicard.ci — Abidjan, Côte d'Ivoire</p>
+    <p style="margin: 4px 0 0;">Merci de votre confiance! 🙏</p>
+  </div>
+
+</body>
+</html>
+  `;
+
+  const mailOptions = {
+    from: `"Babicard.ci 🎮" <${process.env.EMAIL_USER || 'noreply@giftcardci.com'}>`,
+    to: user.email,
+    subject: hasCards
+      ? `✅ [Babicard.ci] Vos codes cartes cadeaux - Commande #${order.id}`
+      : `📦 [Babicard.ci] Confirmation commande #${order.id}`,
+    html: htmlContent,
+    text: `Babicard.ci - Commande #${order.id}\n\nBonjour ${user.name},\n\nMerci pour votre achat de ${formatPrice(order.total_amount)}.\n\n${items.map(item => `${item.product_name}: ${item.card_code || 'En traitement'}`).join('\n')}\n\nContact: ${process.env.ADMIN_EMAIL || 'support@babicard.ci'}`
+  };
+
+  try {
+    if (t) {
+      const info = await t.sendMail(mailOptions);
+      console.log(`Email envoyé à ${user.email}: ${info.messageId}`);
+      return { success: true, messageId: info.messageId };
+    } else {
+      // Simulate for demo mode
+      console.log(`[EMAIL DEMO] Envoi à ${user.email} pour commande #${order.id}`);
+      console.log(`[EMAIL DEMO] Codes: ${items.map(i => i.card_code).filter(Boolean).join(', ') || 'aucun code'}`);
+      return { success: true, demo: true, to: user.email };
+    }
+  } catch (err) {
+    console.error('Erreur envoi email:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+async function sendLowStockEmail(seller, productName, remainingStock) {
+  const t = getTransporter();
+
+  const htmlContent = `
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background-color:#f0f0f7;">
+  <div style="background:linear-gradient(135deg,#0a0a1f 0%,#1a1a3e 50%,#0d0d2e 100%);padding:40px 20px;text-align:center;">
+    <div style="font-size:36px;margin-bottom:8px;">🎮</div>
+    <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:800;">Babicard.ci</h1>
+    <p style="margin:8px 0 0;color:#fbbf24;font-size:14px;letter-spacing:2px;text-transform:uppercase;">⚠️ Alerte Stock Faible</p>
+  </div>
+  <div style="max-width:600px;margin:0 auto;padding:30px 20px;">
+    <div style="background:#fffbeb;border:2px solid #fbbf24;border-radius:12px;padding:24px;margin-bottom:20px;">
+      <div style="font-size:48px;text-align:center;margin-bottom:12px;">⚠️</div>
+      <h2 style="margin:0 0 12px;color:#92400e;text-align:center;">Stock presque épuisé !</h2>
+      <p style="color:#78350f;margin:0 0 16px;line-height:1.6;">
+        Bonjour <strong>${seller.name}</strong>,<br><br>
+        Il ne reste que <strong style="font-size:20px;color:#dc2626;">${remainingStock} code${remainingStock > 1 ? 's' : ''}</strong> disponible${remainingStock > 1 ? 's' : ''} pour votre produit :
+      </p>
+      <div style="background:white;border-radius:8px;padding:16px;text-align:center;border:1px solid #fde68a;">
+        <p style="margin:0;font-size:18px;font-weight:bold;color:#1a1a2e;">🎁 ${productName}</p>
+      </div>
+    </div>
+    <div style="background:white;border-radius:12px;padding:24px;box-shadow:0 2px 10px rgba(0,0,0,0.08);">
+      <h3 style="margin:0 0 12px;color:#1a1a2e;">Action requise</h3>
+      <p style="color:#555;line-height:1.6;margin:0 0 20px;">Pour éviter une rupture de stock et continuer à vendre, veuillez ajouter de nouveaux codes dès que possible depuis votre tableau de bord vendeur.</p>
+      <div style="text-align:center;">
+        <a href="${process.env.BASE_URL || 'http://localhost:3000'}/seller" style="background:linear-gradient(135deg,#6C63FF,#5a52d5);color:white;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:15px;display:inline-block;">📦 Ajouter des codes</a>
+      </div>
+    </div>
+    <div style="background:linear-gradient(135deg,#1a1a3e,#0d0d2e);border-radius:12px;padding:20px;text-align:center;color:white;margin-top:20px;">
+      <p style="margin:0;font-size:14px;">📧 <a href="mailto:${process.env.ADMIN_EMAIL || 'support@babicard.ci'}" style="color:#60a5fa;">${process.env.ADMIN_EMAIL || 'support@babicard.ci'}</a></p>
+    </div>
+  </div>
+  <div style="text-align:center;padding:20px;color:#999;font-size:12px;">
+    <p style="margin:0;">© ${new Date().getFullYear()} Babicard.ci — Abidjan, Côte d'Ivoire</p>
+  </div>
+</body>
+</html>`;
+
+  const mailOptions = {
+    from: `"Babicard.ci 🎮" <${process.env.EMAIL_USER || 'noreply@babicard.ci'}>`,
+    to: seller.email,
+    subject: `⚠️ [Babicard.ci] Stock faible — ${productName} (${remainingStock} code${remainingStock > 1 ? 's' : ''} restant${remainingStock > 1 ? 's' : ''})`,
+    html: htmlContent,
+    text: `Babicard.ci - Alerte stock faible\n\nBonjour ${seller.name},\n\nIl ne reste que ${remainingStock} code(s) pour "${productName}".\n\nConnectez-vous pour en ajouter: ${process.env.BASE_URL || 'http://localhost:3000'}/seller`
+  };
+
+  try {
+    if (t) {
+      await t.sendMail(mailOptions);
+      console.log(`[STOCK] Email alerte stock envoyé à ${seller.email} pour "${productName}" (${remainingStock} restants)`);
+    } else {
+      console.log(`[STOCK DEMO] Alerte stock faible pour ${seller.email}: "${productName}" — ${remainingStock} codes restants`);
+    }
+    return { success: true };
+  } catch (err) {
+    console.error('Erreur envoi email stock faible:', err);
+    return { success: false };
+  }
+}
+
+async function sendWithdrawalStatusEmail(seller, shopName, amount, status, adminNote) {
+  const t = getTransporter();
+  const isPaid = status === 'paid';
+  const isRejected = status === 'rejected';
+  const isApproved = status === 'approved';
+
+  const statusLabel = isPaid ? '💰 Paiement effectué' : isApproved ? '✅ Demande approuvée' : '❌ Demande rejetée';
+  const statusColor = isPaid ? '#22c55e' : isApproved ? '#6C63FF' : '#ef4444';
+  const statusBg = isPaid ? '#f0fdf4' : isApproved ? '#f5f3ff' : '#fef2f2';
+  const statusBorder = isPaid ? '#86efac' : isApproved ? '#c4b5fd' : '#fca5a5';
+
+  const htmlContent = `
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background-color:#f0f0f7;">
+  <div style="background:linear-gradient(135deg,#0a0a1f 0%,#1a1a3e 50%,#0d0d2e 100%);padding:40px 20px;text-align:center;">
+    <div style="font-size:36px;margin-bottom:8px;">🎮</div>
+    <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:800;">Babicard.ci</h1>
+    <p style="margin:8px 0 0;color:#a78bfa;font-size:14px;letter-spacing:2px;text-transform:uppercase;">Demande de retrait</p>
+  </div>
+  <div style="max-width:600px;margin:0 auto;padding:30px 20px;">
+    <div style="background:${statusBg};border:2px solid ${statusBorder};border-radius:12px;padding:24px;margin-bottom:20px;text-align:center;">
+      <div style="font-size:48px;margin-bottom:8px;">${isPaid ? '💰' : isApproved ? '✅' : '❌'}</div>
+      <h2 style="margin:0;color:${statusColor};font-size:22px;">${statusLabel}</h2>
+    </div>
+    <div style="background:white;border-radius:12px;padding:28px;box-shadow:0 2px 10px rgba(0,0,0,0.08);">
+      <p style="color:#555;line-height:1.6;margin:0 0 20px;">Bonjour <strong>${seller.name}</strong>,<br><br>
+      ${isPaid
+        ? `Votre demande de retrait de <strong style="color:#22c55e">${new Intl.NumberFormat('fr-FR').format(amount)} FCFA</strong> pour la boutique <strong>${shopName}</strong> a été <strong>payée</strong>. Les fonds ont été envoyés sur votre compte.`
+        : isApproved
+        ? `Votre demande de retrait de <strong style="color:#6C63FF">${new Intl.NumberFormat('fr-FR').format(amount)} FCFA</strong> pour la boutique <strong>${shopName}</strong> a été <strong>approuvée</strong>. Le paiement sera effectué très prochainement.`
+        : `Votre demande de retrait de <strong>${new Intl.NumberFormat('fr-FR').format(amount)} FCFA</strong> pour la boutique <strong>${shopName}</strong> a été <strong>rejetée</strong>.`
+      }</p>
+      ${adminNote ? `
+      <div style="background:#f8f9fa;border-left:4px solid ${statusColor};border-radius:4px;padding:14px;margin-top:16px;">
+        <p style="margin:0;font-size:14px;color:#555;"><strong>Note de l'administrateur :</strong><br>${adminNote}</p>
+      </div>` : ''}
+      ${isRejected ? `
+      <div style="text-align:center;margin-top:24px;">
+        <a href="${process.env.BASE_URL || 'http://localhost:3000'}/seller" style="background:linear-gradient(135deg,#6C63FF,#5a52d5);color:white;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:14px;display:inline-block;">Faire une nouvelle demande</a>
+      </div>` : ''}
+    </div>
+    <div style="background:linear-gradient(135deg,#1a1a3e,#0d0d2e);border-radius:12px;padding:20px;text-align:center;color:white;margin-top:20px;">
+      <p style="margin:0;font-size:14px;">📧 <a href="mailto:${process.env.ADMIN_EMAIL || 'support@babicard.ci'}" style="color:#60a5fa;">${process.env.ADMIN_EMAIL || 'support@babicard.ci'}</a></p>
+    </div>
+  </div>
+  <div style="text-align:center;padding:20px;color:#999;font-size:12px;">
+    <p style="margin:0;">© ${new Date().getFullYear()} Babicard.ci — Abidjan, Côte d'Ivoire</p>
+  </div>
+</body>
+</html>`;
+
+  const subjectLabel = isPaid ? '💰 Retrait payé' : isApproved ? '✅ Retrait approuvé' : '❌ Retrait rejeté';
+  const mailOptions = {
+    from: `"Babicard.ci 🎮" <${process.env.EMAIL_USER || 'noreply@babicard.ci'}>`,
+    to: seller.email,
+    subject: `${subjectLabel} — ${new Intl.NumberFormat('fr-FR').format(amount)} FCFA — Babicard.ci`,
+    html: htmlContent,
+    text: `Babicard.ci - ${statusLabel}\n\nBonjour ${seller.name},\nVotre retrait de ${amount} FCFA pour "${shopName}" : ${statusLabel}.\n${adminNote ? 'Note: ' + adminNote : ''}`
+  };
+
+  try {
+    if (t) {
+      await t.sendMail(mailOptions);
+      console.log(`[WITHDRAWAL] Email statut "${status}" envoyé à ${seller.email}`);
+    } else {
+      console.log(`[WITHDRAWAL DEMO] Email statut "${status}" pour ${seller.email}`);
+    }
+    return { success: true };
+  } catch (err) {
+    console.error('Erreur envoi email statut retrait:', err);
+    return { success: false };
+  }
+}
+
+async function sendWithdrawalRequestEmail(seller, shopName, amount, paymentMethod, paymentNumber) {
+  const t = getTransporter();
+  const adminEmail = process.env.ADMIN_EMAIL || 'support@babicard.ci';
+  const methodLabel = paymentMethod === 'wave' ? '🌊 Wave CI' : '🟠 Orange Money';
+
+  const htmlContent = `
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background-color:#f0f0f7;">
+  <div style="background:linear-gradient(135deg,#0a0a1f 0%,#1a1a3e 50%,#0d0d2e 100%);padding:40px 20px;text-align:center;">
+    <div style="font-size:36px;margin-bottom:8px;">🎮</div>
+    <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:800;">Babicard.ci</h1>
+    <p style="margin:8px 0 0;color:#a78bfa;font-size:14px;letter-spacing:2px;text-transform:uppercase;">💸 Nouvelle demande de retrait</p>
+  </div>
+  <div style="max-width:600px;margin:0 auto;padding:30px 20px;">
+    <div style="background:white;border-radius:12px;padding:32px;box-shadow:0 2px 10px rgba(0,0,0,0.08);margin-bottom:20px;">
+      <h2 style="margin:0 0 20px;color:#1a1a2e;">💸 Demande de retrait reçue</h2>
+      <table style="width:100%;border-collapse:collapse;">
+        <tr style="border-bottom:1px solid #f0f0f7;">
+          <td style="padding:12px 0;color:#666;font-size:14px;">Vendeur</td>
+          <td style="padding:12px 0;color:#1a1a2e;font-weight:600;text-align:right;">${seller.name}</td>
+        </tr>
+        <tr style="border-bottom:1px solid #f0f0f7;">
+          <td style="padding:12px 0;color:#666;font-size:14px;">Boutique</td>
+          <td style="padding:12px 0;color:#1a1a2e;font-weight:600;text-align:right;">${shopName}</td>
+        </tr>
+        <tr style="border-bottom:1px solid #f0f0f7;">
+          <td style="padding:12px 0;color:#666;font-size:14px;">Email</td>
+          <td style="padding:12px 0;color:#6C63FF;text-align:right;">${seller.email}</td>
+        </tr>
+        <tr style="border-bottom:1px solid #f0f0f7;">
+          <td style="padding:12px 0;color:#666;font-size:14px;">Montant demandé</td>
+          <td style="padding:12px 0;color:#22c55e;font-weight:800;font-size:18px;text-align:right;">${new Intl.NumberFormat('fr-FR').format(amount)} FCFA</td>
+        </tr>
+        <tr style="border-bottom:1px solid #f0f0f7;">
+          <td style="padding:12px 0;color:#666;font-size:14px;">Méthode</td>
+          <td style="padding:12px 0;color:#1a1a2e;font-weight:600;text-align:right;">${methodLabel}</td>
+        </tr>
+        <tr>
+          <td style="padding:12px 0;color:#666;font-size:14px;">Numéro de paiement</td>
+          <td style="padding:12px 0;color:#1a1a2e;font-weight:600;font-family:monospace;text-align:right;">${paymentNumber}</td>
+        </tr>
+      </table>
+      <div style="text-align:center;margin-top:28px;">
+        <a href="${process.env.BASE_URL || 'http://localhost:3000'}/admin" style="background:linear-gradient(135deg,#6C63FF,#5a52d5);color:white;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:15px;display:inline-block;">⚙️ Traiter la demande</a>
+      </div>
+    </div>
+  </div>
+  <div style="text-align:center;padding:20px;color:#999;font-size:12px;">
+    <p style="margin:0;">© ${new Date().getFullYear()} Babicard.ci — Abidjan, Côte d'Ivoire</p>
+  </div>
+</body>
+</html>`;
+
+  const mailOptions = {
+    from: `"Babicard.ci 🎮" <${process.env.EMAIL_USER || 'noreply@babicard.ci'}>`,
+    to: adminEmail,
+    subject: `💸 [Babicard.ci] Demande de retrait — ${shopName} — ${new Intl.NumberFormat('fr-FR').format(amount)} FCFA`,
+    html: htmlContent,
+    text: `Nouvelle demande de retrait\n\nVendeur: ${seller.name} (${seller.email})\nBoutique: ${shopName}\nMontant: ${amount} FCFA\nMéthode: ${methodLabel}\nNuméro: ${paymentNumber}\n\nConnectez-vous pour traiter: ${process.env.BASE_URL || 'http://localhost:3000'}/admin`
+  };
+
+  try {
+    if (t) {
+      await t.sendMail(mailOptions);
+      console.log(`[WITHDRAWAL] Email notif admin envoyé pour retrait de ${shopName} (${amount} FCFA)`);
+    } else {
+      console.log(`[WITHDRAWAL DEMO] Demande retrait: ${shopName} — ${amount} FCFA via ${methodLabel} sur ${paymentNumber}`);
+    }
+    return { success: true };
+  } catch (err) {
+    console.error('Erreur envoi email retrait:', err);
+    return { success: false };
+  }
+}
+
+async function sendPasswordResetEmail(user, resetLink) {
+  const t = getTransporter();
+
+  const htmlContent = `
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background-color:#f0f0f7;">
+  <div style="background:linear-gradient(135deg,#0a0a1f 0%,#1a1a3e 50%,#0d0d2e 100%);padding:40px 20px;text-align:center;">
+    <div style="font-size:36px;margin-bottom:8px;">🎮</div>
+    <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:800;">Babicard.ci</h1>
+    <p style="margin:8px 0 0;color:#a78bfa;font-size:14px;letter-spacing:2px;text-transform:uppercase;">Réinitialisation de mot de passe</p>
+  </div>
+  <div style="max-width:600px;margin:0 auto;padding:30px 20px;">
+    <div style="background:white;border-radius:12px;padding:32px;box-shadow:0 2px 10px rgba(0,0,0,0.08);">
+      <h2 style="margin:0 0 16px;color:#1a1a2e;">Bonjour ${user.name} 👋</h2>
+      <p style="color:#555;line-height:1.6;margin:0 0 24px;">Vous avez demandé la réinitialisation de votre mot de passe. Cliquez sur le bouton ci-dessous pour choisir un nouveau mot de passe.</p>
+      <div style="text-align:center;margin:28px 0;">
+        <a href="${resetLink}" style="background:linear-gradient(135deg,#6C63FF,#5a52d5);color:white;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:16px;display:inline-block;">🔒 Réinitialiser mon mot de passe</a>
+      </div>
+      <p style="color:#888;font-size:13px;margin:0 0 8px;">Ce lien est valable <strong>1 heure</strong>. Si vous n'avez pas fait cette demande, ignorez cet email.</p>
+      <p style="color:#aaa;font-size:12px;margin:0;word-break:break-all;">Ou copiez ce lien: ${resetLink}</p>
+    </div>
+    <div style="background:linear-gradient(135deg,#1a1a3e,#0d0d2e);border-radius:12px;padding:20px;text-align:center;color:white;margin-top:20px;">
+      <p style="margin:0;font-size:14px;">📧 <a href="mailto:${process.env.ADMIN_EMAIL || 'support@babicard.ci'}" style="color:#60a5fa;">${process.env.ADMIN_EMAIL || 'support@babicard.ci'}</a></p>
+    </div>
+  </div>
+  <div style="text-align:center;padding:20px;color:#999;font-size:12px;">
+    <p style="margin:0;">© ${new Date().getFullYear()} Babicard.ci — Abidjan, Côte d'Ivoire</p>
+  </div>
+</body>
+</html>`;
+
+  const mailOptions = {
+    from: `"Babicard.ci 🎮" <${process.env.EMAIL_USER || 'noreply@babicard.ci'}>`,
+    to: user.email,
+    subject: '🔒 [Babicard.ci] Réinitialisation de votre mot de passe',
+    html: htmlContent,
+    text: `Babicard.ci - Réinitialisation de mot de passe\n\nBonjour ${user.name},\n\nCliquez sur ce lien pour réinitialiser votre mot de passe:\n${resetLink}\n\nCe lien est valable 1 heure.`
+  };
+
+  try {
+    if (t) {
+      const info = await t.sendMail(mailOptions);
+      console.log(`Email reset envoyé à ${user.email}: ${info.messageId}`);
+      return { success: true };
+    } else {
+      console.log(`[EMAIL DEMO] Reset password pour ${user.email}: ${resetLink}`);
+      return { success: true, demo: true };
+    }
+  } catch (err) {
+    console.error('Erreur envoi email reset:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+module.exports = { sendOrderConfirmationEmail, sendLowStockEmail, sendWithdrawalRequestEmail, sendWithdrawalStatusEmail, sendPasswordResetEmail };
