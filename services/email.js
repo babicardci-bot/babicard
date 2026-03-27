@@ -232,7 +232,7 @@ async function sendOrderConfirmationEmail(user, order, items) {
       <p style="margin: 0; font-size: 14px;">
         📧 <a href="mailto:${process.env.ADMIN_EMAIL || 'support@babicard.ci'}" style="color: #60a5fa;">${process.env.ADMIN_EMAIL || 'support@babicard.ci'}</a>
       </p>
-      <p style="margin: 8px 0 0; font-size: 14px;">📱 WhatsApp: +225 07 XX XX XX XX</p>
+      <p style="margin: 8px 0 0; font-size: 14px;">📱 WhatsApp: +225 07 08 59 80 80</p>
     </div>
 
   </div>
