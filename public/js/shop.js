@@ -305,7 +305,7 @@ async function checkout(deliveryEmail, deliveryPhone) {
             method: 'POST',
             body: JSON.stringify({ payment_ref: paymentData.payment_ref, success: true })
           });
-          const simData = await simRes.json();
+          await simRes.json();
 
           if (simRes.ok) {
             // Clear cart
@@ -317,6 +317,9 @@ async function checkout(deliveryEmail, deliveryPhone) {
             setTimeout(() => {
               window.location.href = `/dashboard?order=${orderId}&status=success`;
             }, 2000);
+          } else {
+            const errData = await simRes.json().catch(() => ({}));
+            showToast('Erreur paiement: ' + (errData.error || simRes.status), 'error');
           }
         } catch (e) {
           showToast('Erreur simulation: ' + e.message, 'error');
