@@ -1,4 +1,26 @@
 const nodemailer = require('nodemailer');
+const axios = require('axios');
+
+// Envoi via SendGrid HTTP API (contourne le blocage SMTP de Railway)
+async function sendViaSendGrid(mailOptions) {
+  const apiKey = process.env.SENDGRID_API_KEY;
+  if (!apiKey) return null;
+
+  const response = await axios.post('https://api.sendgrid.com/v3/mail/send', {
+    personalizations: [{ to: [{ email: mailOptions.to }] }],
+    from: { email: process.env.EMAIL_USER || 'noreply@babicard.ci', name: 'Babicard.ci' },
+    subject: mailOptions.subject,
+    content: [{ type: 'text/html', value: mailOptions.html }]
+  }, {
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json'
+    }
+  });
+
+  console.log(`[EMAIL] SendGrid envoyé à ${mailOptions.to} — status: ${response.status}`);
+  return { success: true };
+}
 
 let transporter = null;
 
@@ -7,6 +29,7 @@ function getTransporter() {
     if (process.env.EMAIL_USER && process.env.EMAIL_PASS &&
         process.env.EMAIL_USER !== 'your@gmail.com') {
       const port = parseInt(process.env.EMAIL_PORT || '465');
+      console.log(`[EMAIL] Init transporter SMTP: ${process.env.EMAIL_HOST}:${port} user=${process.env.EMAIL_USER}`);
       transporter = nodemailer.createTransport({
         host: process.env.EMAIL_HOST || 'mail1.netim.hosting',
         port: port,
@@ -17,10 +40,26 @@ function getTransporter() {
         }
       });
     } else {
+      console.log('[EMAIL] SMTP non configuré');
       transporter = null;
     }
   }
   return transporter;
+}
+
+async function sendEmail(mailOptions) {
+  // Priorité : SendGrid si dispo, sinon SMTP
+  if (process.env.SENDGRID_API_KEY) {
+    return sendViaSendGrid(mailOptions);
+  }
+  const t = getTransporter();
+  if (!t) {
+    console.log('[EMAIL] Aucun service email configuré');
+    return null;
+  }
+  const info = await t.sendMail(mailOptions);
+  console.log(`[EMAIL] SMTP envoyé à ${mailOptions.to}: ${info.messageId}`);
+  return { success: true, messageId: info.messageId };
 }
 
 function formatPrice(amount) {
@@ -60,7 +99,6 @@ function getCategoryIcon(platform) {
 }
 
 async function sendOrderConfirmationEmail(user, order, items) {
-  const t = getTransporter();
 
   const itemsHtml = items.map(item => {
     const icon = getCategoryIcon(item.platform);
@@ -220,24 +258,14 @@ async function sendOrderConfirmationEmail(user, order, items) {
   };
 
   try {
-    if (t) {
-      const info = await t.sendMail(mailOptions);
-      console.log(`Email envoyé à ${user.email}: ${info.messageId}`);
-      return { success: true, messageId: info.messageId };
-    } else {
-      // Simulate for demo mode
-      console.log(`[EMAIL DEMO] Envoi à ${user.email} pour commande #${order.id}`);
-      console.log(`[EMAIL DEMO] Codes: ${items.map(i => i.card_code).filter(Boolean).join(', ') || 'aucun code'}`);
-      return { success: true, demo: true, to: user.email };
-    }
+    return await sendEmail(mailOptions);
   } catch (err) {
-    console.error('Erreur envoi email:', err);
+    console.error('Erreur envoi email:', err.message);
     return { success: false, error: err.message };
   }
 }
 
 async function sendLowStockEmail(seller, productName, remainingStock) {
-  const t = getTransporter();
 
   const htmlContent = `
 <!DOCTYPE html>
@@ -287,21 +315,14 @@ async function sendLowStockEmail(seller, productName, remainingStock) {
   };
 
   try {
-    if (t) {
-      await t.sendMail(mailOptions);
-      console.log(`[STOCK] Email alerte stock envoyé à ${seller.email} pour "${productName}" (${remainingStock} restants)`);
-    } else {
-      console.log(`[STOCK DEMO] Alerte stock faible pour ${seller.email}: "${productName}" — ${remainingStock} codes restants`);
-    }
-    return { success: true };
+    return await sendEmail(mailOptions);
   } catch (err) {
-    console.error('Erreur envoi email stock faible:', err);
+    console.error('Erreur envoi email stock faible:', err.message);
     return { success: false };
   }
 }
 
 async function sendWithdrawalStatusEmail(seller, shopName, amount, status, adminNote) {
-  const t = getTransporter();
   const isPaid = status === 'paid';
   const isRejected = status === 'rejected';
   const isApproved = status === 'approved';
@@ -363,21 +384,14 @@ async function sendWithdrawalStatusEmail(seller, shopName, amount, status, admin
   };
 
   try {
-    if (t) {
-      await t.sendMail(mailOptions);
-      console.log(`[WITHDRAWAL] Email statut "${status}" envoyé à ${seller.email}`);
-    } else {
-      console.log(`[WITHDRAWAL DEMO] Email statut "${status}" pour ${seller.email}`);
-    }
-    return { success: true };
+    return await sendEmail(mailOptions);
   } catch (err) {
-    console.error('Erreur envoi email statut retrait:', err);
+    console.error('Erreur envoi email statut retrait:', err.message);
     return { success: false };
   }
 }
 
 async function sendWithdrawalRequestEmail(seller, shopName, amount, paymentMethod, paymentNumber) {
-  const t = getTransporter();
   const adminEmail = process.env.ADMIN_EMAIL || 'support@babicard.ci';
   const methodLabel = paymentMethod === 'wave' ? '🌊 Wave CI' : '🟠 Orange Money';
 
@@ -440,21 +454,14 @@ async function sendWithdrawalRequestEmail(seller, shopName, amount, paymentMetho
   };
 
   try {
-    if (t) {
-      await t.sendMail(mailOptions);
-      console.log(`[WITHDRAWAL] Email notif admin envoyé pour retrait de ${shopName} (${amount} FCFA)`);
-    } else {
-      console.log(`[WITHDRAWAL DEMO] Demande retrait: ${shopName} — ${amount} FCFA via ${methodLabel} sur ${paymentNumber}`);
-    }
-    return { success: true };
+    return await sendEmail(mailOptions);
   } catch (err) {
-    console.error('Erreur envoi email retrait:', err);
+    console.error('Erreur envoi email retrait:', err.message);
     return { success: false };
   }
 }
 
 async function sendPasswordResetEmail(user, resetLink) {
-  const t = getTransporter();
 
   const htmlContent = `
 <!DOCTYPE html>
@@ -495,16 +502,9 @@ async function sendPasswordResetEmail(user, resetLink) {
   };
 
   try {
-    if (t) {
-      const info = await t.sendMail(mailOptions);
-      console.log(`Email reset envoyé à ${user.email}: ${info.messageId}`);
-      return { success: true };
-    } else {
-      console.log(`[EMAIL DEMO] Reset password pour ${user.email}: ${resetLink}`);
-      return { success: true, demo: true };
-    }
+    return await sendEmail(mailOptions);
   } catch (err) {
-    console.error('Erreur envoi email reset:', err);
+    console.error('Erreur envoi email reset:', err.message);
     return { success: false, error: err.message };
   }
 }
