@@ -9,10 +9,13 @@ const { sendWithdrawalRequestEmail } = require('../services/email');
 const bcrypt = require('bcryptjs');
 
 // Multer — seller document upload (one file at a time)
+const persistentBaseS = process.env.DB_PATH ? path.dirname(process.env.DB_PATH) : null;
 const docUpload = multer({
   storage: multer.diskStorage({
     destination: (req, file, cb) => {
-      const dir = path.join(__dirname, '../public/uploads/seller-docs');
+      const dir = persistentBaseS
+        ? path.join(persistentBaseS, 'uploads/seller-docs')
+        : path.join(__dirname, '../public/uploads/seller-docs');
       if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
       cb(null, dir);
     },

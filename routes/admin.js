@@ -8,8 +8,11 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
-// Multer for product images
-const productImgDir = path.join(__dirname, '../public/uploads/products');
+// Multer for product images — store in Railway persistent volume if available
+const persistentBase = process.env.DB_PATH ? path.dirname(process.env.DB_PATH) : null;
+const productImgDir = persistentBase
+  ? path.join(persistentBase, 'uploads/products')
+  : path.join(__dirname, '../public/uploads/products');
 if (!fs.existsSync(productImgDir)) fs.mkdirSync(productImgDir, { recursive: true });
 const productImgUpload = multer({
   storage: multer.diskStorage({
