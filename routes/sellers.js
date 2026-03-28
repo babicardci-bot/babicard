@@ -92,9 +92,12 @@ router.get('/me', authenticateToken, (req, res) => {
       return res.status(404).json({ error: 'Profil vendeur non trouvé.' });
     }
 
-    // Stats — requêtes séparées pour éviter la multiplication des lignes via JOIN
+    // Stats — codes ajoutés par ce vendeur
     const productsCount = db.prepare(`
-      SELECT COUNT(*) as total_products FROM products WHERE seller_id = ? AND is_active = 1
+      SELECT
+        COUNT(CASE WHEN status = 'available' THEN 1 END) as my_available_cards,
+        COUNT(CASE WHEN status = 'sold' THEN 1 END) as my_sold_cards
+      FROM cards WHERE seller_id = ?
     `).get(req.user.id);
 
     const earningsStats = db.prepare(`
@@ -143,79 +146,35 @@ router.put('/me', authenticateToken, requireSeller, (req, res) => {
   }
 });
 
-// GET /api/sellers/products - My products
+// GET /api/sellers/products - Produits admin disponibles pour ajouter des codes
 router.get('/products', authenticateToken, requireSeller, (req, res) => {
   try {
     const db = getDb();
     const products = db.prepare(`
       SELECT p.*,
         (SELECT COUNT(*) FROM cards WHERE product_id = p.id AND status = 'available') as available_cards,
-        (SELECT COUNT(*) FROM cards WHERE product_id = p.id AND status = 'sold') as sold_cards
+        (SELECT COUNT(*) FROM cards WHERE product_id = p.id AND status = 'available' AND seller_id = ?) as my_available_cards,
+        (SELECT COUNT(*) FROM cards WHERE product_id = p.id AND status = 'sold' AND seller_id = ?) as my_sold_cards
       FROM products p
-      WHERE p.seller_id = ?
-      ORDER BY p.created_at DESC
-    `).all(req.user.id);
+      WHERE p.seller_id IS NULL AND p.is_active = 1
+      ORDER BY p.name ASC
+    `).all(req.user.id, req.user.id);
     res.json({ products });
   } catch (err) {
     res.status(500).json({ error: 'Erreur chargement produits.' });
   }
 });
 
-// POST /api/sellers/products - Create product
+// POST /api/sellers/products - Désactivé, seul l'admin peut créer des produits
 router.post('/products', authenticateToken, requireSeller, (req, res) => {
-  try {
-    const { name, description, category, image_url, price, denomination, platform } = req.body;
-    const db = getDb();
-
-    if (!name || !category || !price || !denomination || !platform) {
-      return res.status(400).json({ error: 'Champs obligatoires: name, category, price, denomination, platform.' });
-    }
-    if (parseInt(price) < 500) {
-      return res.status(400).json({ error: 'Le prix minimum est 500 FCFA.' });
-    }
-
-    const result = db.prepare(`
-      INSERT INTO products (name, description, category, image_url, price, denomination, platform, stock_count, is_active, seller_id)
-      VALUES (?, ?, ?, ?, ?, ?, ?, 0, 1, ?)
-    `).run(name, description || '', category, image_url || '', parseInt(price), denomination, platform, req.user.id);
-
-    const product = db.prepare('SELECT * FROM products WHERE id = ?').get(result.lastInsertRowid);
-    res.status(201).json({ message: 'Produit créé.', product });
-  } catch (err) {
-    console.error('Erreur create seller product:', err);
-    res.status(500).json({ error: 'Erreur création produit.' });
-  }
+  res.status(403).json({ error: 'La création de produits est réservée à l\'administrateur.' });
 });
 
-// PUT /api/sellers/products/:id - Update own product
+// PUT /api/sellers/products/:id - Désactivé, seul l'admin peut modifier les produits
 router.put('/products/:id', authenticateToken, requireSeller, (req, res) => {
-  try {
-    const { name, description, category, image_url, price, denomination, platform, is_active } = req.body;
-    const db = getDb();
-
-    const product = db.prepare('SELECT * FROM products WHERE id = ? AND seller_id = ?').get(req.params.id, req.user.id);
-    if (!product) return res.status(404).json({ error: 'Produit non trouvé.' });
-
-    db.prepare(`
-      UPDATE products SET name=?, description=?, category=?, image_url=?, price=?, denomination=?, platform=?, is_active=?
-      WHERE id = ? AND seller_id = ?
-    `).run(
-      name || product.name,
-      description !== undefined ? description : product.description,
-      category || product.category,
-      image_url !== undefined ? image_url : product.image_url,
-      price ? parseInt(price) : product.price,
-      denomination || product.denomination,
-      platform || product.platform,
-      is_active !== undefined ? (is_active ? 1 : 0) : product.is_active,
-      req.params.id, req.user.id
-    );
-
-    res.json({ message: 'Produit mis à jour.' });
-  } catch (err) {
-    res.status(500).json({ error: 'Erreur mise à jour.' });
-  }
+  return res.status(403).json({ error: 'La modification de produits est réservée à l\'administrateur.' });
 });
+
 
 // POST /api/sellers/cards/bulk - Add cards to own product
 router.post('/cards/bulk', authenticateToken, requireSeller, (req, res) => {
@@ -227,16 +186,17 @@ router.post('/cards/bulk', authenticateToken, requireSeller, (req, res) => {
       return res.status(400).json({ error: 'product_id et tableau de cartes requis.' });
     }
 
-    const product = db.prepare('SELECT * FROM products WHERE id = ? AND seller_id = ?').get(product_id, req.user.id);
+    // Produits admin (seller_id IS NULL) accessibles aux vendeurs
+    const product = db.prepare('SELECT * FROM products WHERE id = ? AND seller_id IS NULL AND is_active = 1').get(product_id);
     if (!product) return res.status(404).json({ error: 'Produit non trouvé ou non autorisé.' });
 
-    const insertCard = db.prepare(`INSERT INTO cards (product_id, code, pin, serial, card_name, card_price, status) VALUES (?, ?, ?, ?, ?, ?, 'available')`);
+    const insertCard = db.prepare(`INSERT INTO cards (product_id, seller_id, code, pin, serial, card_name, card_price, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'available')`);
     const insertMany = db.transaction((cards) => {
       let inserted = 0, skipped = 0;
       for (const card of cards) {
         if (!card.code || !card.code.trim()) { skipped++; continue; }
         try {
-          insertCard.run(product_id, card.code.trim(), card.pin || null, card.serial || null, card.card_name || null, card.card_price ? parseFloat(card.card_price) : null);
+          insertCard.run(product_id, req.user.id, card.code.trim(), card.pin || null, card.serial || null, card.card_name || null, card.card_price ? parseFloat(card.card_price) : null);
           inserted++;
         }
         catch(e) { skipped++; }
@@ -272,16 +232,16 @@ router.get('/sales', authenticateToken, requireSeller, (req, res) => {
       JOIN products p ON oi.product_id = p.id
       JOIN users u ON o.user_id = u.id
       LEFT JOIN seller_earnings se ON se.order_item_id = oi.id
-      WHERE p.seller_id = ?
+      LEFT JOIN cards c ON oi.card_id = c.id
+      WHERE se.seller_id = ?
       ORDER BY o.created_at DESC
       LIMIT ? OFFSET ?
     `).all(req.user.id, parseInt(limit), offset);
 
     const total = db.prepare(`
       SELECT COUNT(*) as count FROM order_items oi
-      JOIN orders o ON oi.order_id = o.id
-      JOIN products p ON oi.product_id = p.id
-      WHERE p.seller_id = ?
+      LEFT JOIN seller_earnings se ON se.order_item_id = oi.id
+      WHERE se.seller_id = ?
     `).get(req.user.id).count;
 
     res.json({ sales, total, page: parseInt(page) });

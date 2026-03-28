@@ -100,7 +100,7 @@
       </a>
       <a href="#" class="menu-item" data-section="products" onclick="showSection('products', this)">
         <span class="menu-icon">🎁</span>
-        <span>Mes Produits</span>
+        <span>Produits disponibles</span>
       </a>
       <a href="#" class="menu-item" data-section="addcards" onclick="showSection('addcards', this)">
         <span class="menu-icon">🃏</span>
@@ -184,10 +184,10 @@
           </div>
         </div>
         <div class="stat-card stat-orange">
-          <div class="stat-icon">🎁</div>
+          <div class="stat-icon">🃏</div>
           <div class="stat-info">
             <div class="stat-val" id="stat-products">-</div>
-            <div class="stat-lbl">Produits actifs</div>
+            <div class="stat-lbl">Codes disponibles</div>
           </div>
         </div>
       </div>
@@ -205,8 +205,7 @@
     <!-- ============= PRODUCTS ============= -->
     <section class="admin-section" id="section-products">
       <div class="section-toolbar">
-        <h2>🎁 Mes Produits</h2>
-        <button class="btn-primary" onclick="showAddProductModal()">+ Nouveau produit</button>
+        <h2>🎁 Produits disponibles</h2>
       </div>
       <div id="sellerProductsTable">
         <div class="loading-center"><div class="loading-spinner"></div></div>
@@ -425,70 +424,6 @@
 
   </div>
 
-  <!-- Product Modal -->
-  <div class="modal-overlay" id="productModalOverlay" onclick="closeProductModal()"></div>
-  <div class="admin-modal" id="productModal">
-    <div class="modal-header">
-      <h3 id="productModalTitle">Nouveau produit</h3>
-      <button onclick="closeProductModal()" class="modal-close-btn">✕</button>
-    </div>
-    <form id="sellerProductForm" onsubmit="saveSellerProduct(event)">
-      <div class="modal-body">
-        <input type="hidden" id="editProductId">
-        <div class="form-row">
-          <div class="form-group">
-            <label>Nom du produit *</label>
-            <input type="text" id="spName" required placeholder="ex: iTunes Gift Card 10$">
-          </div>
-          <div class="form-group">
-            <label>Plateforme *</label>
-            <input type="text" id="spPlatform" required placeholder="ex: iTunes / App Store">
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Catégorie *</label>
-            <select id="spCategory" class="form-control" required>
-              <option value="apple">Apple (iTunes)</option>
-              <option value="playstation">PlayStation</option>
-              <option value="xbox">Xbox</option>
-              <option value="google">Google Play</option>
-              <option value="steam">Steam</option>
-              <option value="netflix">Netflix</option>
-              <option value="amazon">Amazon</option>
-              <option value="other">Autre</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Dénomination *</label>
-            <input type="text" id="spDenomination" required placeholder="ex: 10$, 25$">
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Prix (FCFA) *</label>
-            <input type="number" id="spPrice" required min="500" placeholder="6500">
-          </div>
-          <div class="form-group">
-            <label>Actif</label>
-            <select id="spActive" class="form-control">
-              <option value="1">Oui</option>
-              <option value="0">Non</option>
-            </select>
-          </div>
-        </div>
-        <div class="form-group">
-          <label>Description</label>
-          <textarea id="spDescription" rows="3" placeholder="Description du produit..."></textarea>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" onclick="closeProductModal()" class="btn-secondary">Annuler</button>
-        <button type="submit" class="btn-primary" id="spSaveBtn">Enregistrer</button>
-      </div>
-    </form>
-  </div>
-
   <script src="/js/auth.js"></script>
   <script>
     // =============================================
@@ -616,7 +551,7 @@
       const sec = document.getElementById('section-' + name);
       if (sec) sec.classList.add('active');
 
-      const titles = { overview: 'Vue d\'ensemble', products: 'Mes Produits', addcards: 'Ajouter des Codes', sales: 'Mes Ventes', earnings: 'Mes Gains', withdraw: 'Retrait', settings: 'Paramètres' };
+      const titles = { overview: 'Vue d\'ensemble', products: 'Produits disponibles', addcards: 'Ajouter des Codes', sales: 'Mes Ventes', earnings: 'Mes Gains', withdraw: 'Retrait', settings: 'Paramètres' };
       document.getElementById('topbarTitle').textContent = titles[name] || name;
       currentSection = name;
       loadSection(name);
@@ -649,7 +584,7 @@
         document.getElementById('stat-earnings').textContent = fmtPrice(sellerStats.total_earnings);
         document.getElementById('stat-balance').textContent = fmtPrice(sellerStats.available_balance);
         document.getElementById('stat-sales').textContent = sellerStats.total_sales || 0;
-        document.getElementById('stat-products').textContent = sellerStats.total_products || 0;
+        document.getElementById('stat-products').textContent = sellerStats.my_available_cards || 0;
 
         availableBalance = sellerStats.available_balance || 0;
 
@@ -674,7 +609,7 @@
         const recent = (eData.recent || []).slice(0, 5);
 
         if (recent.length === 0) {
-          document.getElementById('recentEarningsList').innerHTML = `<div class="empty-state"><div class="empty-state-icon">📦</div><p>Aucune vente pour l'instant. Ajoutez des produits et des codes !</p></div>`;
+          document.getElementById('recentEarningsList').innerHTML = `<div class="empty-state"><div class="empty-state-icon">📦</div><p>Aucune vente pour l'instant. Ajoutez des codes aux produits disponibles !</p></div>`;
         } else {
           document.getElementById('recentEarningsList').innerHTML = `
             <div class="data-table-wrap">
@@ -713,16 +648,18 @@
           document.getElementById('sellerProductsTable').innerHTML = `
             <div class="empty-state">
               <div class="empty-state-icon">🎁</div>
-              <p>Vous n'avez pas encore de produits. Créez votre premier produit !</p>
-              <button class="btn-primary" style="margin-top:16px;" onclick="showAddProductModal()">+ Créer un produit</button>
+              <p>Aucun produit disponible pour l'instant. L'administrateur ajoutera des produits prochainement.</p>
             </div>`;
           return;
         }
 
         document.getElementById('sellerProductsTable').innerHTML = `
+          <div class="info-box" style="margin-bottom:16px;">
+            ℹ️ Les produits sont créés par l'administrateur. Vous pouvez ajouter des codes à n'importe quel produit ci-dessous.
+          </div>
           <div class="data-table-wrap">
             <table class="data-table">
-              <thead><tr><th>Produit</th><th>Plateforme</th><th>Prix</th><th>Dénomination</th><th>Stock dispo</th><th>Vendus</th><th>Actif</th><th>Actions</th></tr></thead>
+              <thead><tr><th>Produit</th><th>Plateforme</th><th>Prix</th><th>Dénomination</th><th>Mes codes dispo</th><th>Mes codes vendus</th><th>Actions</th></tr></thead>
               <tbody>
                 ${sellerProducts.map(p => `
                   <tr>
@@ -730,17 +667,10 @@
                     <td>${p.platform}</td>
                     <td>${fmtPrice(p.price)}</td>
                     <td>${p.denomination}</td>
-                    <td><span style="color:${p.available_cards > 0 ? '#22c55e' : '#ef4444'};font-weight:600;">${p.available_cards}</span></td>
-                    <td>${p.sold_cards}</td>
+                    <td><span style="color:${p.my_available_cards > 0 ? '#22c55e' : '#a0a0c0'};font-weight:600;">${p.my_available_cards}</span></td>
+                    <td>${p.my_sold_cards}</td>
                     <td>
-                      <label class="toggle-switch">
-                        <input type="checkbox" ${p.is_active ? 'checked' : ''} onchange="toggleProduct(${p.id}, this.checked)">
-                        <span class="toggle-slider"></span>
-                      </label>
-                    </td>
-                    <td>
-                      <button class="btn-sm btn-warning" onclick="editProduct(${p.id})">✏️</button>
-                      <button class="btn-sm btn-primary" onclick="goToAddCards(${p.id})" title="Ajouter des codes">🃏</button>
+                      <button class="btn-sm btn-primary" onclick="goToAddCards(${p.id})" title="Ajouter des codes">🃏 Ajouter codes</button>
                     </td>
                   </tr>
                 `).join('')}
@@ -751,87 +681,6 @@
       } catch(e) {
         document.getElementById('sellerProductsTable').innerHTML = '<p class="text-muted">Erreur chargement produits.</p>';
       }
-    }
-
-    function showAddProductModal() {
-      document.getElementById('editProductId').value = '';
-      document.getElementById('productModalTitle').textContent = 'Nouveau produit';
-      document.getElementById('sellerProductForm').reset();
-      document.getElementById('productModalOverlay').style.display = 'block';
-      document.getElementById('productModal').classList.add('active');
-    }
-
-    function closeProductModal() {
-      document.getElementById('productModalOverlay').style.display = 'none';
-      document.getElementById('productModal').classList.remove('active');
-    }
-
-    function editProduct(id) {
-      const p = sellerProducts.find(x => x.id === id);
-      if (!p) return;
-      document.getElementById('editProductId').value = id;
-      document.getElementById('productModalTitle').textContent = 'Modifier le produit';
-      document.getElementById('spName').value = p.name;
-      document.getElementById('spPlatform').value = p.platform;
-      document.getElementById('spCategory').value = p.category;
-      document.getElementById('spDenomination').value = p.denomination;
-      document.getElementById('spPrice').value = p.price;
-      document.getElementById('spActive').value = p.is_active ? '1' : '0';
-      document.getElementById('spDescription').value = p.description || '';
-      document.getElementById('productModalOverlay').style.display = 'block';
-      document.getElementById('productModal').classList.add('active');
-    }
-
-    async function saveSellerProduct(e) {
-      e.preventDefault();
-      const btn = document.getElementById('spSaveBtn');
-      btn.disabled = true;
-      btn.textContent = 'Enregistrement...';
-
-      const editId = document.getElementById('editProductId').value;
-      const body = {
-        name: document.getElementById('spName').value,
-        platform: document.getElementById('spPlatform').value,
-        category: document.getElementById('spCategory').value,
-        denomination: document.getElementById('spDenomination').value,
-        price: parseInt(document.getElementById('spPrice').value),
-        is_active: document.getElementById('spActive').value === '1' ? 1 : 0,
-        description: document.getElementById('spDescription').value
-      };
-
-      const url = editId ? `/api/sellers/products/${editId}` : '/api/sellers/products';
-      const method = editId ? 'PUT' : 'POST';
-
-      try {
-        const res = await fetch(url, {
-          method, headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() },
-          body: JSON.stringify(body)
-        });
-        const data = await res.json();
-        if (res.ok) {
-          showToast(data.message || 'Produit enregistré.', 'success');
-          closeProductModal();
-          loadProducts();
-        } else {
-          showToast(data.error || 'Erreur.', 'error');
-        }
-      } catch(err) {
-        showToast('Erreur réseau.', 'error');
-      }
-      btn.disabled = false;
-      btn.textContent = 'Enregistrer';
-    }
-
-    async function toggleProduct(id, active) {
-      try {
-        const res = await fetch(`/api/sellers/products/${id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() },
-          body: JSON.stringify({ is_active: active ? 1 : 0 })
-        });
-        const data = await res.json();
-        showToast(res.ok ? 'Statut mis à jour.' : (data.error || 'Erreur.'), res.ok ? 'success' : 'error');
-      } catch(e) { showToast('Erreur réseau.', 'error'); }
     }
 
     // ---- CSV IMPORT (seller) ----
