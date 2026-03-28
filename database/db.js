@@ -252,6 +252,15 @@ function migrateDatabase(db) {
     }
   } catch(e) { console.error('Migration users constraint:', e.message); }
 
+  // Ajouter seller_id aux cards
+  try {
+    const cardCols2 = db.prepare("PRAGMA table_info(cards)").all().map(c => c.name);
+    if (!cardCols2.includes('seller_id')) {
+      db.prepare("ALTER TABLE cards ADD COLUMN seller_id INTEGER").run();
+      console.log('Migration: seller_id ajouté à cards.');
+    }
+  } catch(e) { console.error('Migration cards seller_id:', e.message); }
+
   // Table logs admin
   try {
     db.exec(`

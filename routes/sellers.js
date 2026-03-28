@@ -92,13 +92,16 @@ router.get('/me', authenticateToken, (req, res) => {
       return res.status(404).json({ error: 'Profil vendeur non trouvé.' });
     }
 
-    // Stats — codes ajoutés par ce vendeur
-    const productsCount = db.prepare(`
-      SELECT
-        COUNT(CASE WHEN status = 'available' THEN 1 END) as my_available_cards,
-        COUNT(CASE WHEN status = 'sold' THEN 1 END) as my_sold_cards
-      FROM cards WHERE seller_id = ?
-    `).get(req.user.id);
+    // Stats — codes ajoutés par ce vendeur (défensif si seller_id absent)
+    let productsCount = { my_available_cards: 0, my_sold_cards: 0 };
+    try {
+      productsCount = db.prepare(`
+        SELECT
+          COUNT(CASE WHEN status = 'available' THEN 1 END) as my_available_cards,
+          COUNT(CASE WHEN status = 'sold' THEN 1 END) as my_sold_cards
+        FROM cards WHERE seller_id = ?
+      `).get(req.user.id);
+    } catch(e) { /* seller_id column not yet migrated */ }
 
     const earningsStats = db.prepare(`
       SELECT
@@ -150,17 +153,28 @@ router.put('/me', authenticateToken, requireSeller, (req, res) => {
 router.get('/products', authenticateToken, requireSeller, (req, res) => {
   try {
     const db = getDb();
-    const products = db.prepare(`
-      SELECT p.*,
-        (SELECT COUNT(*) FROM cards WHERE product_id = p.id AND status = 'available') as available_cards,
-        (SELECT COUNT(*) FROM cards WHERE product_id = p.id AND status = 'available' AND seller_id = ?) as my_available_cards,
-        (SELECT COUNT(*) FROM cards WHERE product_id = p.id AND status = 'sold' AND seller_id = ?) as my_sold_cards
-      FROM products p
-      WHERE p.seller_id IS NULL AND p.is_active = 1
-      ORDER BY p.name ASC
-    `).all(req.user.id, req.user.id);
+    // Vérifier si seller_id existe sur cards
+    const cardCols = db.prepare("PRAGMA table_info(cards)").all().map(c => c.name);
+    const hasSellerCol = cardCols.includes('seller_id');
+
+    const query = hasSellerCol
+      ? `SELECT p.*,
+          (SELECT COUNT(*) FROM cards WHERE product_id = p.id AND status = 'available') as available_cards,
+          (SELECT COUNT(*) FROM cards WHERE product_id = p.id AND status = 'available' AND seller_id = ?) as my_available_cards,
+          (SELECT COUNT(*) FROM cards WHERE product_id = p.id AND status = 'sold' AND seller_id = ?) as my_sold_cards
+         FROM products p WHERE p.seller_id IS NULL AND p.is_active = 1 ORDER BY p.name ASC`
+      : `SELECT p.*,
+          (SELECT COUNT(*) FROM cards WHERE product_id = p.id AND status = 'available') as available_cards,
+          0 as my_available_cards, 0 as my_sold_cards
+         FROM products p WHERE p.seller_id IS NULL AND p.is_active = 1 ORDER BY p.name ASC`;
+
+    const products = hasSellerCol
+      ? db.prepare(query).all(req.user.id, req.user.id)
+      : db.prepare(query).all();
+
     res.json({ products });
   } catch (err) {
+    console.error('Erreur seller products:', err);
     res.status(500).json({ error: 'Erreur chargement produits.' });
   }
 });
@@ -190,13 +204,21 @@ router.post('/cards/bulk', authenticateToken, requireSeller, (req, res) => {
     const product = db.prepare('SELECT * FROM products WHERE id = ? AND seller_id IS NULL AND is_active = 1').get(product_id);
     if (!product) return res.status(404).json({ error: 'Produit non trouvé ou non autorisé.' });
 
-    const insertCard = db.prepare(`INSERT INTO cards (product_id, seller_id, code, pin, serial, card_name, card_price, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'available')`);
+    const cardCols = db.prepare("PRAGMA table_info(cards)").all().map(c => c.name);
+    const hasSellerCol = cardCols.includes('seller_id');
+    const insertCard = hasSellerCol
+      ? db.prepare(`INSERT INTO cards (product_id, seller_id, code, pin, serial, card_name, card_price, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'available')`)
+      : db.prepare(`INSERT INTO cards (product_id, code, pin, serial, card_name, card_price, status) VALUES (?, ?, ?, ?, ?, ?, 'available')`);
     const insertMany = db.transaction((cards) => {
       let inserted = 0, skipped = 0;
       for (const card of cards) {
         if (!card.code || !card.code.trim()) { skipped++; continue; }
         try {
-          insertCard.run(product_id, req.user.id, card.code.trim(), card.pin || null, card.serial || null, card.card_name || null, card.card_price ? parseFloat(card.card_price) : null);
+          if (hasSellerCol) {
+            insertCard.run(product_id, req.user.id, card.code.trim(), card.pin || null, card.serial || null, card.card_name || null, card.card_price ? parseFloat(card.card_price) : null);
+          } else {
+            insertCard.run(product_id, card.code.trim(), card.pin || null, card.serial || null, card.card_name || null, card.card_price ? parseFloat(card.card_price) : null);
+          }
           inserted++;
         }
         catch(e) { skipped++; }
