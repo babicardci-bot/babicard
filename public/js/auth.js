@@ -84,19 +84,18 @@ function logout() {
 const INACTIVITY_TIMEOUT = 15 * 60 * 1000; // 15 minutes
 
 function updateActivity() {
-  localStorage.setItem('lastActivity', Date.now());
+  localStorage.setItem('lastActivity', Date.now().toString());
 }
 
 function checkInactivity() {
   if (!isLoggedIn()) return;
   const last = parseInt(localStorage.getItem('lastActivity') || '0');
-  if (last && Date.now() - last > INACTIVITY_TIMEOUT) {
+  if (!last) { updateActivity(); return; }
+  if (Date.now() - last > INACTIVITY_TIMEOUT) {
     clearAuth();
     localStorage.removeItem('cart');
     localStorage.removeItem('lastActivity');
-    const currentPath = window.location.pathname;
-    const redirectTo = currentPath.startsWith('/admin') ? '/login?redirect=/admin' : '/login';
-    alert('Vous avez été déconnecté après 15 minutes d\'inactivité.');
+    const redirectTo = window.location.pathname.startsWith('/admin') ? '/login?redirect=/admin' : '/login';
     window.location.href = redirectTo;
   }
 }
@@ -105,12 +104,12 @@ function checkInactivity() {
 (function initInactivityTracker() {
   if (!isLoggedIn()) return;
   updateActivity();
-  // Réinitialise le timer sur toute interaction
-  ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'].forEach(evt => {
+  // Seulement les actions délibérées (pas mousemove)
+  ['keydown', 'click', 'scroll', 'touchstart', 'mousedown'].forEach(evt => {
     document.addEventListener(evt, updateActivity, { passive: true });
   });
-  // Vérifie toutes les minutes
-  setInterval(checkInactivity, 60 * 1000);
+  // Vérifie toutes les 30 secondes
+  setInterval(checkInactivity, 30 * 1000);
 })();
 
 // Authenticated fetch wrapper
