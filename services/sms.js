@@ -2,17 +2,41 @@ const axios = require('axios');
 
 function formatPhone(phone) {
   if (!phone) return null;
-  // Remove spaces, dashes, parentheses
   let cleaned = phone.replace(/[\s\-\(\)]/g, '');
-  // Ensure it starts with +225 for Côte d'Ivoire
-  if (cleaned.startsWith('00225')) {
-    cleaned = '+' + cleaned.slice(2);
-  } else if (cleaned.startsWith('225') && !cleaned.startsWith('+')) {
-    cleaned = '+' + cleaned;
-  } else if (!cleaned.startsWith('+')) {
-    cleaned = '+225' + cleaned;
-  }
+  if (cleaned.startsWith('00225')) cleaned = '+' + cleaned.slice(2);
+  else if (cleaned.startsWith('225') && !cleaned.startsWith('+')) cleaned = '+' + cleaned;
+  else if (!cleaned.startsWith('+')) cleaned = '+225' + cleaned;
   return cleaned;
+}
+
+// Cache token to avoid requesting a new one on every SMS
+let cachedToken = null;
+let tokenExpiresAt = 0;
+
+async function getOrangeToken() {
+  if (cachedToken && Date.now() < tokenExpiresAt) return cachedToken;
+
+  const clientId = process.env.ORANGE_CLIENT_ID;
+  const clientSecret = process.env.ORANGE_CLIENT_SECRET;
+
+  const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+
+  const response = await axios.post(
+    'https://api.orange.com/oauth/v3/token',
+    'grant_type=client_credentials',
+    {
+      headers: {
+        'Authorization': `Basic ${credentials}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json'
+      }
+    }
+  );
+
+  cachedToken = response.data.access_token;
+  // Expire 1 minute before actual expiry to be safe
+  tokenExpiresAt = Date.now() + (response.data.expires_in - 60) * 1000;
+  return cachedToken;
 }
 
 async function sendSMS(phone, message) {
@@ -22,10 +46,11 @@ async function sendSMS(phone, message) {
     return { success: false, error: 'Numéro invalide' };
   }
 
-  const AT_USERNAME = process.env.AT_USERNAME;
-  const AT_API_KEY = process.env.AT_API_KEY;
+  const clientId = process.env.ORANGE_CLIENT_ID;
+  const clientSecret = process.env.ORANGE_CLIENT_SECRET;
+  const senderNumber = process.env.ORANGE_SENDER_NUMBER;
 
-  if (!AT_USERNAME || !AT_API_KEY || AT_USERNAME === 'sandbox' || AT_API_KEY === 'your_africas_talking_api_key') {
+  if (!clientId || !clientSecret || !senderNumber) {
     // Demo mode
     console.log(`\n[SMS DEMO] ==================`);
     console.log(`[SMS DEMO] À: ${formattedPhone}`);
@@ -35,41 +60,35 @@ async function sendSMS(phone, message) {
   }
 
   try {
-    const apiUrl = AT_USERNAME === 'sandbox'
-      ? 'https://api.sandbox.africastalking.com/version1/messaging'
-      : 'https://api.africastalking.com/version1/messaging';
+    const token = await getOrangeToken();
+    const encodedSender = encodeURIComponent(`tel:${senderNumber}`);
 
     const response = await axios.post(
-      apiUrl,
-      new URLSearchParams({
-        username: AT_USERNAME,
-        to: formattedPhone,
-        message: message,
-        from: process.env.AT_SENDER_ID || 'GiftCardCI'
-      }).toString(),
+      `https://api.orange.com/smsmessaging/v1/outbound/${encodedSender}/requests`,
+      {
+        outboundSMSMessageRequest: {
+          address: [`tel:${formattedPhone}`],
+          senderAddress: `tel:${senderNumber}`,
+          outboundSMSTextMessage: {
+            message: message
+          }
+        }
+      },
       {
         headers: {
-          'apiKey': AT_API_KEY,
-          'Content-Type': 'application/x-www-form-urlencoded',
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
           'Accept': 'application/json'
         }
       }
     );
 
-    const result = response.data;
-    if (result.SMSMessageData && result.SMSMessageData.Recipients) {
-      const recipient = result.SMSMessageData.Recipients[0];
-      if (recipient && recipient.status === 'Success') {
-        console.log(`SMS envoyé à ${formattedPhone}: ${recipient.messageId}`);
-        return { success: true, messageId: recipient.messageId };
-      }
-    }
-
-    console.error('SMS response:', JSON.stringify(result));
-    return { success: false, error: 'Réponse inattendue de l\'API SMS', data: result };
+    console.log(`[SMS] Envoyé à ${formattedPhone}`);
+    return { success: true, data: response.data };
   } catch (err) {
-    console.error('Erreur envoi SMS:', err.response?.data || err.message);
-    return { success: false, error: err.message };
+    const errData = err.response?.data || err.message;
+    console.error('[SMS] Erreur Orange API:', errData);
+    return { success: false, error: JSON.stringify(errData) };
   }
 }
 
@@ -79,16 +98,15 @@ async function sendCardDeliveredSMS(phone, userName, orderId, cards) {
   let message;
   if (cards.length === 1) {
     const card = cards[0];
-    message = `GiftCard CI - Bonjour ${userName.split(' ')[0]}!\nCommande #${orderId} confirmee.\n${card.product_name}\nCode: ${card.card_code}`;
+    message = `Babicard.ci - Bonjour ${userName.split(' ')[0]}!\nCommande #${orderId} confirmee.\n${card.product_name}\nCode: ${card.card_code}`;
     if (card.card_pin) message += `\nPIN: ${card.card_pin}`;
     message += `\nMerci!`;
   } else {
-    message = `GiftCard CI - Bonsoir ${userName.split(' ')[0]}!\nCommande #${orderId}: ${cards.length} cartes livrees. Consultez votre email pour les codes. Merci!`;
+    message = `Babicard.ci - Commande #${orderId}: ${cards.length} cartes livrees. Consultez votre email pour les codes. Merci!`;
   }
 
-  // SMS has 160 char limit, truncate if needed
   if (message.length > 160) {
-    message = `GiftCard CI - Cmd #${orderId}: ${cards.length} carte(s) livree(s). Verifiez votre email pour les codes. Merci!`;
+    message = `Babicard.ci - Cmd #${orderId}: ${cards.length} carte(s) livree(s). Verifiez votre email. Merci!`;
   }
 
   return await sendSMS(phone, message);
@@ -97,7 +115,7 @@ async function sendCardDeliveredSMS(phone, userName, orderId, cards) {
 async function sendPaymentConfirmationSMS(phone, userName, orderId, amount) {
   if (!phone) return { success: false, error: 'Pas de téléphone' };
 
-  const message = `GiftCard CI - Paiement recu! Commande #${orderId} - ${new Intl.NumberFormat('fr-FR').format(amount)} FCFA. Livraison en cours...`;
+  const message = `Babicard.ci - Bonjour ${userName.split(' ')[0]}! Paiement recu. Commande #${orderId} - ${new Intl.NumberFormat('fr-FR').format(amount)} FCFA. Livraison en cours...`;
   return await sendSMS(phone, message);
 }
 
