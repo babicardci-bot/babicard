@@ -746,4 +746,17 @@ router.get('/marketplace-stats', (req, res) => {
   }
 });
 
+// POST /api/admin/test-sms
+router.post('/test-sms', async (req, res) => {
+  try {
+    const { phone } = req.body;
+    if (!phone) return res.status(400).json({ error: 'Numéro requis.' });
+    const { sendSMS } = require('../services/sms');
+    const result = await sendSMS(phone, 'Babicard.ci - Ceci est un SMS de test. Configuration Africa\'s Talking OK!');
+    res.json(result);
+  } catch(err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 module.exports = router;

@@ -1390,6 +1390,29 @@ async function saveWithdrawalStatus() {
   }
 }
 
+// ============ SMS TEST ============
+async function sendTestSMS() {
+  const phone = document.getElementById('smsTestPhone').value.trim();
+  const resultEl = document.getElementById('smsTestResult');
+  if (!phone) { resultEl.innerHTML = '<div class="alert-box error">Entrez un numéro.</div>'; return; }
+
+  resultEl.innerHTML = '<div class="alert-box" style="color:#a0a0c0;">Envoi en cours...</div>';
+  try {
+    const res = await adminFetch('/admin/test-sms', {
+      method: 'POST',
+      body: JSON.stringify({ phone })
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      resultEl.innerHTML = `<div class="alert-box success">✅ SMS envoyé à ${phone}${data.demo ? ' <em>(mode démo — variables non configurées)</em>' : ''}</div>`;
+    } else {
+      resultEl.innerHTML = `<div class="alert-box error">❌ Échec: ${data.error || 'Erreur inconnue'}</div>`;
+    }
+  } catch(e) {
+    resultEl.innerHTML = '<div class="alert-box error">Erreur réseau.</div>';
+  }
+}
+
 // ============ TOAST ============
 function showToast(message, type = 'info') {
   const container = document.getElementById('toastContainer');

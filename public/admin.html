@@ -318,6 +318,20 @@
         <button class="btn-primary" onclick="saveAllAppearance()">💾 Tout sauvegarder</button>
       </div>
 
+      <!-- SMS TEST -->
+      <div class="appearance-block" style="margin-bottom:24px;">
+        <h3 class="appearance-title">📱 Test SMS</h3>
+        <p style="color:#a0a0c0;font-size:0.85rem;margin-bottom:16px;">Envoie un SMS de test pour vérifier que Africa's Talking est bien configuré.</p>
+        <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">
+          <div class="form-group" style="margin:0;flex:1;min-width:200px;">
+            <label>Numéro de téléphone</label>
+            <input type="tel" id="smsTestPhone" class="form-control" placeholder="+225 07 XX XX XX XX">
+          </div>
+          <button class="btn-primary" onclick="sendTestSMS()" style="white-space:nowrap;">📤 Envoyer test</button>
+        </div>
+        <div id="smsTestResult" style="margin-top:12px;"></div>
+      </div>
+
       <!-- LOGO -->
       <div class="appearance-block">
         <h3 class="appearance-title">🖼️ Logo du site</h3>
