@@ -7,6 +7,9 @@ const path = require('path');
 
 const app = express();
 
+// Confiance au proxy Railway
+app.set('trust proxy', 1);
+
 // Sécurité — headers HTTP
 app.use(helmet({
   contentSecurityPolicy: false, // désactivé car on sert des fichiers HTML avec scripts inline
