@@ -149,6 +149,23 @@ function updateNavbar() {
     navAuth.classList.remove('hidden');
     navUser.classList.add('hidden');
   }
+
+  // Update mobile hamburger menu auth links
+  const mobileAuth = document.getElementById('navMobileAuth');
+  if (mobileAuth) {
+    if (user) {
+      mobileAuth.innerHTML = `
+        <a href="/dashboard" style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:rgba(108,99,255,0.12);border-radius:8px;color:#a78bfa;font-weight:600;text-decoration:none;">👤 Mon compte</a>
+        <a href="/dashboard" style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:rgba(108,99,255,0.08);border-radius:8px;color:#f0f0ff;font-weight:600;text-decoration:none;">📦 Mes commandes</a>
+        <a href="#" onclick="logout();return false;" style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:rgba(239,68,68,0.1);border-radius:8px;color:#ef4444;font-weight:600;text-decoration:none;">🚪 Déconnexion</a>
+      `;
+    } else {
+      mobileAuth.innerHTML = `
+        <a href="/login" style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:rgba(108,99,255,0.12);border-radius:8px;color:#a78bfa;font-weight:600;text-decoration:none;">🔑 Connexion</a>
+        <a href="/register" style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:#6C63FF;border-radius:8px;color:white;font-weight:600;text-decoration:none;">✨ S'inscrire</a>
+      `;
+    }
+  }
 }
 
 // Initialize on page load
@@ -173,7 +190,10 @@ function initNavbarScroll() {
 
 function toggleMobileNav() {
   const navLinks = document.getElementById('navLinks');
-  if (navLinks) {
-    navLinks.classList.toggle('mobile-open');
+  if (!navLinks) return;
+  navLinks.classList.toggle('mobile-open');
+  const mobileAuth = document.getElementById('navMobileAuth');
+  if (mobileAuth) {
+    mobileAuth.style.display = navLinks.classList.contains('mobile-open') ? 'flex' : 'none';
   }
 }
