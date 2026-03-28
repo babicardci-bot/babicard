@@ -485,10 +485,16 @@
         <label>Note admin (optionnel)</label>
         <textarea id="withdrawalModalNote" rows="3" class="form-control" placeholder="Référence de paiement, raison du rejet..."></textarea>
       </div>
+      <div class="form-group" id="withdrawalConfirmGroup" style="background:rgba(234,179,8,0.08);border:1px solid rgba(234,179,8,0.3);border-radius:10px;padding:14px;">
+        <label style="color:#eab308;font-weight:600;margin-bottom:8px;display:block;">🔒 Code de confirmation</label>
+        <p style="font-size:0.82rem;color:#a0a0c0;margin:0 0 10px;">Recopiez ce code pour confirmer :</p>
+        <div style="font-size:2rem;font-weight:800;letter-spacing:10px;color:#facc15;text-align:center;padding:10px 0;" id="withdrawalConfirmCode">----</div>
+        <input type="text" id="withdrawalConfirmInput" class="form-control" maxlength="4" placeholder="Entrez le code" style="text-align:center;font-size:1.4rem;letter-spacing:8px;font-weight:700;margin-top:10px;" oninput="this.value=this.value.replace(/\D/g,'')">
+      </div>
     </div>
     <div class="modal-footer">
       <button onclick="closeWithdrawalModal()" class="btn-secondary">Annuler</button>
-      <button onclick="saveWithdrawalStatus()" class="btn-primary">Enregistrer</button>
+      <button onclick="saveWithdrawalStatus()" class="btn-primary">Confirmer</button>
     </div>
   </div>
 

@@ -1317,8 +1317,14 @@ function openWithdrawalModal(id, shopName, amount, method, number) {
   `;
   document.getElementById('withdrawalModalStatus').value = 'approved';
   document.getElementById('withdrawalModalNote').value = '';
+  // Generate random 4-digit confirmation code
+  const code = String(Math.floor(1000 + Math.random() * 9000));
+  document.getElementById('withdrawalConfirmCode').textContent = code;
+  document.getElementById('withdrawalConfirmCode').dataset.code = code;
+  document.getElementById('withdrawalConfirmInput').value = '';
   document.getElementById('withdrawalModalOverlay').style.display = 'block';
   document.getElementById('withdrawalModal').classList.add('active');
+  setTimeout(() => document.getElementById('withdrawalConfirmInput').focus(), 300);
 }
 
 function closeWithdrawalModal() {
@@ -1330,6 +1336,17 @@ async function saveWithdrawalStatus() {
   const id = document.getElementById('withdrawalModalId').value;
   const status = document.getElementById('withdrawalModalStatus').value;
   const note = document.getElementById('withdrawalModalNote').value;
+
+  // Verify confirmation code
+  const expectedCode = document.getElementById('withdrawalConfirmCode').dataset.code;
+  const enteredCode = document.getElementById('withdrawalConfirmInput').value.trim();
+  if (enteredCode !== expectedCode) {
+    document.getElementById('withdrawalConfirmInput').style.borderColor = '#ef4444';
+    showToast('Code de confirmation incorrect.', 'error');
+    document.getElementById('withdrawalConfirmInput').focus();
+    return;
+  }
+  document.getElementById('withdrawalConfirmInput').style.borderColor = '';
 
   try {
     const res = await adminFetch(`/admin/withdrawals/${id}/process`, {
