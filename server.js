@@ -1,17 +1,44 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const path = require('path');
 
 const app = express();
 
-// Middleware
+// Sécurité — headers HTTP
+app.use(helmet({
+  contentSecurityPolicy: false, // désactivé car on sert des fichiers HTML avec scripts inline
+  crossOriginEmbedderPolicy: false
+}));
+
+// CORS
 app.use(cors({
-  origin: process.env.SITE_URL || 'http://localhost:3000',
+  origin: (_origin, cb) => cb(null, true),
   credentials: true
 }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+
+// Rate limiting global — 200 requêtes par 15 minutes par IP
+app.use(rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 200,
+  message: { error: 'Trop de requêtes, réessayez dans 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false
+}));
+
+// Rate limiting strict sur auth — 10 tentatives par 15 minutes
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { error: 'Trop de tentatives, réessayez dans 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+app.use(express.json({ limit: '2mb' }));
+app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 
 // Serve static files
 app.use(express.static(path.join(__dirname, 'public')));
@@ -24,7 +51,7 @@ uploadDirs.forEach(dir => {
 });
 
 // API Routes
-app.use('/api/auth', require('./routes/auth'));
+app.use('/api/auth', authLimiter, require('./routes/auth'));
 app.use('/api/products', require('./routes/products'));
 app.use('/api/orders', require('./routes/orders'));
 app.use('/api/payment', require('./routes/payment'));
