@@ -129,7 +129,7 @@ router.post('/forgot-password', async (req, res) => {
     // Save new token
     db.prepare('INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES (?, ?, ?)').run(user.id, token, expiresAt);
 
-    const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
+    const baseUrl = process.env.SITE_URL || process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
     const resetLink = `${baseUrl}/reset-password?token=${token}`;
 
     await sendPasswordResetEmail(user, resetLink);
