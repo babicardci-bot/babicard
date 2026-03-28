@@ -346,6 +346,11 @@
               <input type="tel" id="withdrawNumber" class="form-control" placeholder="+225 07 XX XX XX XX">
             </div>
 
+            <div class="form-group" id="withdrawPinGroup" style="display:none;">
+              <label>🔐 Code secret de retrait *</label>
+              <input type="password" id="withdrawPin" class="form-control" maxlength="4" placeholder="••••" oninput="this.value=this.value.replace(/\D/g,'')">
+            </div>
+
             <button class="btn-primary" onclick="submitWithdrawal()" style="width:100%;">
               💸 Soumettre la demande
             </button>
@@ -399,6 +404,29 @@
 
         <button class="btn-primary" onclick="saveSettings()" style="width:100%;">
           💾 Enregistrer les modifications
+        </button>
+      </div>
+
+      <div class="admin-form-card" style="max-width:560px;margin-top:24px;">
+        <h3 style="margin:0 0 6px;">🔐 Code secret de retrait</h3>
+        <p style="color:#a0a0c0;font-size:0.83rem;margin:0 0 16px;">Ce code à 4 chiffres vous sera demandé à chaque demande de retrait.</p>
+        <div id="pinAlerts"></div>
+        <div id="pinCurrentGroup" class="form-group" style="display:none;">
+          <label>Code secret actuel</label>
+          <input type="password" id="pinCurrentInput" class="form-control" maxlength="4" placeholder="••••" oninput="this.value=this.value.replace(/\D/g,'')">
+        </div>
+        <div class="form-row-2">
+          <div class="form-group">
+            <label>Nouveau code (4 chiffres)</label>
+            <input type="password" id="pinNewInput" class="form-control" maxlength="4" placeholder="••••" oninput="this.value=this.value.replace(/\D/g,'')">
+          </div>
+          <div class="form-group">
+            <label>Confirmer le code</label>
+            <input type="password" id="pinConfirmInput" class="form-control" maxlength="4" placeholder="••••" oninput="this.value=this.value.replace(/\D/g,'')">
+          </div>
+        </div>
+        <button class="btn-primary" onclick="saveWithdrawalPin()" style="width:100%;">
+          🔐 Enregistrer le code secret
         </button>
       </div>
 
@@ -1027,6 +1055,8 @@
         // Pre-fill payment info from profile
         if (sellerProfile) {
           if (sellerProfile.wave_number) document.getElementById('withdrawNumber').placeholder = sellerProfile.wave_number;
+          // Show PIN field if seller has set a withdrawal PIN
+          document.getElementById('withdrawPinGroup').style.display = sellerProfile.has_withdrawal_pin ? 'block' : 'none';
         }
       } catch(e) {
         console.error(e);
@@ -1054,7 +1084,7 @@
         const res = await fetch('/api/sellers/withdraw', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() },
-          body: JSON.stringify({ amount, payment_method: method, payment_number: number.trim() })
+          body: JSON.stringify({ amount, payment_method: method, payment_number: number.trim(), withdrawal_pin: document.getElementById('withdrawPin').value || undefined })
         });
         const data = await res.json();
         if (res.ok) {
@@ -1062,6 +1092,7 @@
           document.getElementById('withdrawAmount').value = '';
           document.getElementById('withdrawMethod').value = '';
           document.getElementById('withdrawNumber').value = '';
+          document.getElementById('withdrawPin').value = '';
           showToast(data.message, 'success');
           loadWithdraw();
         } else {
@@ -1086,6 +1117,52 @@
       document.getElementById('settingsDescription').value = sellerProfile.description || '';
       document.getElementById('settingsWave').value = sellerProfile.wave_number || '';
       document.getElementById('settingsOrange').value = sellerProfile.orange_number || '';
+      // Show/hide current PIN field
+      document.getElementById('pinCurrentGroup').style.display = sellerProfile.has_withdrawal_pin ? 'block' : 'none';
+      document.getElementById('pinAlerts').innerHTML = sellerProfile.has_withdrawal_pin
+        ? '<div class="alert-box" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#22c55e;padding:8px 12px;border-radius:8px;font-size:0.82rem;margin-bottom:12px;">✅ Code secret actif — entrez-le pour le modifier.</div>'
+        : '';
+    }
+
+    async function saveWithdrawalPin() {
+      const alertEl = document.getElementById('pinAlerts');
+      const currentPin = document.getElementById('pinCurrentInput').value;
+      const newPin = document.getElementById('pinNewInput').value;
+      const confirmPin = document.getElementById('pinConfirmInput').value;
+
+      if (!/^\d{4}$/.test(newPin)) {
+        alertEl.innerHTML = '<div class="alert-box error">Le code doit être exactement 4 chiffres.</div>'; return;
+      }
+      if (newPin !== confirmPin) {
+        alertEl.innerHTML = '<div class="alert-box error">Les codes ne correspondent pas.</div>'; return;
+      }
+
+      try {
+        const body = { pin: newPin };
+        if (currentPin) body.current_pin = currentPin;
+
+        const res = await fetch('/api/sellers/set-pin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() },
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (res.ok) {
+          alertEl.innerHTML = '<div class="alert-box success">Code secret enregistré avec succès.</div>';
+          document.getElementById('pinCurrentInput').value = '';
+          document.getElementById('pinNewInput').value = '';
+          document.getElementById('pinConfirmInput').value = '';
+          showToast('Code secret de retrait activé.', 'success');
+          // Refresh profile to update UI
+          const r2 = await fetch('/api/sellers/me', { headers: { 'Authorization': 'Bearer ' + getToken() } });
+          const d2 = await r2.json();
+          if (d2.profile) { sellerProfile = d2.profile; loadSettings(); }
+        } else {
+          alertEl.innerHTML = `<div class="alert-box error">${data.error}</div>`;
+        }
+      } catch(e) {
+        alertEl.innerHTML = '<div class="alert-box error">Erreur réseau.</div>';
+      }
     }
 
     async function saveSettings() {

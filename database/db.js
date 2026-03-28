@@ -170,6 +170,10 @@ function migrateDatabase(db) {
       db.prepare("ALTER TABLE seller_profiles ADD COLUMN contact_email TEXT DEFAULT ''").run();
       console.log('Migration: contact_email ajouté à seller_profiles.');
     }
+    if (!spCols.includes('withdrawal_pin')) {
+      db.prepare("ALTER TABLE seller_profiles ADD COLUMN withdrawal_pin TEXT DEFAULT NULL").run();
+      console.log('Migration: withdrawal_pin ajouté à seller_profiles.');
+    }
   } catch(e) { console.error('Migration seller_profiles docs:', e.message); }
 
   // Add name/price columns to cards if missing

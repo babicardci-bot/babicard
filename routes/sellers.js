@@ -6,6 +6,7 @@ const multer = require('multer');
 const { getDb } = require('../database/db');
 const { authenticateToken, requireSeller } = require('../middleware/auth');
 const { sendWithdrawalRequestEmail } = require('../services/email');
+const bcrypt = require('bcryptjs');
 
 // Multer — seller document upload (one file at a time)
 const docUpload = multer({
@@ -125,7 +126,11 @@ router.get('/me', authenticateToken, (req, res) => {
     stats.pending_withdrawal = pendingWithdrawals;
     delete stats.gross_available;
 
-    res.json({ profile, stats });
+    // Don't expose the PIN hash to the frontend
+    const { withdrawal_pin, ...safeProfile } = profile;
+    safeProfile.has_withdrawal_pin = !!withdrawal_pin;
+
+    res.json({ profile: safeProfile, stats });
   } catch (err) {
     console.error('Erreur seller me:', err);
     res.status(500).json({ error: 'Erreur chargement profil.' });
@@ -317,11 +322,53 @@ router.get('/earnings', authenticateToken, requireSeller, (req, res) => {
   }
 });
 
-// POST /api/sellers/withdraw - Request withdrawal
-router.post('/withdraw', authenticateToken, requireSeller, (req, res) => {
+// POST /api/sellers/set-pin - Set or change withdrawal PIN
+router.post('/set-pin', authenticateToken, requireSeller, async (req, res) => {
   try {
-    const { amount, payment_method, payment_number } = req.body;
+    const { pin, current_pin } = req.body;
     const db = getDb();
+
+    if (!pin || !/^\d{4}$/.test(pin)) {
+      return res.status(400).json({ error: 'Le code secret doit être exactement 4 chiffres.' });
+    }
+
+    const profile = db.prepare('SELECT withdrawal_pin FROM seller_profiles WHERE user_id = ?').get(req.user.id);
+    if (!profile) return res.status(404).json({ error: 'Profil introuvable.' });
+
+    // If a PIN already exists, require the current one
+    if (profile.withdrawal_pin) {
+      if (!current_pin) return res.status(400).json({ error: 'Entrez votre code secret actuel pour le modifier.' });
+      const valid = await bcrypt.compare(String(current_pin), profile.withdrawal_pin);
+      if (!valid) return res.status(400).json({ error: 'Code secret actuel incorrect.' });
+    }
+
+    const hashed = await bcrypt.hash(pin, 10);
+    db.prepare('UPDATE seller_profiles SET withdrawal_pin = ? WHERE user_id = ?').run(hashed, req.user.id);
+
+    res.json({ message: 'Code secret de retrait enregistré avec succès.' });
+  } catch(err) {
+    console.error('Erreur set-pin:', err);
+    res.status(500).json({ error: 'Erreur serveur.' });
+  }
+});
+
+// POST /api/sellers/withdraw - Request withdrawal
+router.post('/withdraw', authenticateToken, requireSeller, async (req, res) => {
+  try {
+    const { amount, payment_method, payment_number, withdrawal_pin } = req.body;
+    const db = getDb();
+
+    // Verify withdrawal PIN if set
+    const profile = db.prepare('SELECT withdrawal_pin FROM seller_profiles WHERE user_id = ?').get(req.user.id);
+    if (profile && profile.withdrawal_pin) {
+      if (!withdrawal_pin) {
+        return res.status(400).json({ error: 'Code secret requis pour effectuer un retrait.' });
+      }
+      const valid = await bcrypt.compare(String(withdrawal_pin), profile.withdrawal_pin);
+      if (!valid) {
+        return res.status(400).json({ error: 'Code secret incorrect.' });
+      }
+    }
 
     if (!amount || parseInt(amount) < 1000) {
       return res.status(400).json({ error: 'Le montant minimum de retrait est 1 000 FCFA.' });
