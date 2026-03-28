@@ -196,6 +196,12 @@
         updateUI();
         loadOrders();
         checkPaymentNotification();
+        // Open tab from URL hash (#profile or #orders)
+        const hash = window.location.hash.replace('#', '');
+        if (hash && document.getElementById(`tab-${hash}`)) {
+          const el = document.querySelector(`[data-tab="${hash}"]`);
+          showTab(hash, el);
+        }
       } catch (err) {
         localStorage.removeItem('token');
         localStorage.removeItem('user');

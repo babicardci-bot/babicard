@@ -155,8 +155,8 @@ function updateNavbar() {
   if (mobileAuth) {
     if (user) {
       mobileAuth.innerHTML = `
-        <a href="/dashboard" style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:rgba(108,99,255,0.12);border-radius:8px;color:#a78bfa;font-weight:600;text-decoration:none;">👤 Mon profil</a>
-        <a href="/dashboard" style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:rgba(108,99,255,0.08);border-radius:8px;color:#f0f0ff;font-weight:600;text-decoration:none;">📦 Mes commandes</a>
+        <a href="/dashboard#profile" style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:rgba(108,99,255,0.12);border-radius:8px;color:#a78bfa;font-weight:600;text-decoration:none;">👤 Mon profil</a>
+        <a href="/dashboard#orders" style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:rgba(108,99,255,0.08);border-radius:8px;color:#f0f0ff;font-weight:600;text-decoration:none;">📦 Mes commandes</a>
         <a href="#" onclick="logout();return false;" style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:rgba(239,68,68,0.1);border-radius:8px;color:#ef4444;font-weight:600;text-decoration:none;">🚪 Déconnexion</a>
       `;
     } else {
