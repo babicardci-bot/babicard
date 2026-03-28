@@ -535,14 +535,27 @@ router.get('/orders/:id', (req, res) => {
 
     if (!order) return res.status(404).json({ error: 'Commande non trouvée.' });
 
-    const items = db.prepare(`
-      SELECT oi.*, p.name as product_name, p.platform, p.denomination,
-        c.code as card_code, c.pin as card_pin, c.serial as card_serial, c.status as card_status
-      FROM order_items oi
-      JOIN products p ON oi.product_id = p.id
-      LEFT JOIN cards c ON oi.card_id = c.id
-      WHERE oi.order_id = ?
-    `).all(order.id);
+    const cardCols = db.prepare("PRAGMA table_info(cards)").all().map(c => c.name);
+    const hasSellerCol = cardCols.includes('seller_id');
+
+    const itemsQuery = hasSellerCol
+      ? `SELECT oi.*, p.name as product_name, p.platform, p.denomination,
+           c.code as card_code, c.pin as card_pin, c.serial as card_serial, c.status as card_status,
+           u.name as seller_name, sp.shop_name as seller_shop
+         FROM order_items oi
+         JOIN products p ON oi.product_id = p.id
+         LEFT JOIN cards c ON oi.card_id = c.id
+         LEFT JOIN users u ON c.seller_id = u.id
+         LEFT JOIN seller_profiles sp ON c.seller_id = sp.user_id
+         WHERE oi.order_id = ?`
+      : `SELECT oi.*, p.name as product_name, p.platform, p.denomination,
+           c.code as card_code, c.pin as card_pin, c.serial as card_serial, c.status as card_status
+         FROM order_items oi
+         JOIN products p ON oi.product_id = p.id
+         LEFT JOIN cards c ON oi.card_id = c.id
+         WHERE oi.order_id = ?`;
+
+    const items = db.prepare(itemsQuery).all(order.id);
 
     res.json({ order: { ...order, items } });
   } catch (err) {
