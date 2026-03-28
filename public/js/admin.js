@@ -512,6 +512,17 @@ async function loadCardsSection() {
     if (bulkSelect) bulkSelect.innerHTML = `<option value="">Sélectionner...</option>${options}`;
   } catch (e) {}
 
+  // Populate seller filter
+  try {
+    const res = await adminFetch('/admin/sellers?status=approved&limit=100');
+    const data = await res.json();
+    const sel = document.getElementById('cardSellerFilter');
+    if (sel && data.sellers) {
+      const opts = data.sellers.map(s => `<option value="${s.user_id}">${s.shop_name || s.name}</option>`).join('');
+      sel.innerHTML = `<option value="">Tous les vendeurs</option><option value="admin">👤 Admin</option>${opts}`;
+    }
+  } catch (e) {}
+
   loadCards();
 }
 
@@ -522,11 +533,13 @@ async function loadCards() {
 
   const productId = document.getElementById('cardProductFilter')?.value;
   const status = document.getElementById('cardStatusFilter')?.value;
+  const sellerId = document.getElementById('cardSellerFilter')?.value;
 
   try {
     const params = new URLSearchParams();
     if (productId) params.set('product_id', productId);
     if (status) params.set('status', status);
+    if (sellerId) params.set('seller_id', sellerId);
     params.set('limit', 500);
 
     const res = await adminFetch(`/admin/cards?${params}`);
@@ -554,6 +567,7 @@ function renderCardsTable(cards) {
             <th>Produit</th>
             <th>Code</th>
             <th>PIN</th>
+            <th>Vendeur</th>
             <th>Statut</th>
             <th>Ajouté le</th>
             <th>Actions</th>
@@ -565,6 +579,11 @@ function renderCardsTable(cards) {
               <td><strong>${card.product_name}</strong></td>
               <td><span class="code-cell">${card.code}</span></td>
               <td>${card.pin ? `<span class="code-cell">${card.pin}</span>` : '-'}</td>
+              <td style="font-size:0.82rem;">
+                ${card.seller_name
+                  ? `<span style="color:#a78bfa;font-weight:600;">${card.shop_name || card.seller_name}</span>`
+                  : `<span style="color:#888;">👤 Admin</span>`}
+              </td>
               <td><span class="badge badge-${card.status}">${card.status === 'available' ? '✓ Disponible' : '✕ Vendu'}</span></td>
               <td style="font-size:0.78rem">${formatDate(card.added_at)}</td>
               <td>
@@ -590,7 +609,9 @@ function filterCardsTable() {
   const filtered = allCardsData.filter(c =>
     c.code.toLowerCase().includes(q) ||
     (c.product_name || '').toLowerCase().includes(q) ||
-    (c.pin || '').toLowerCase().includes(q)
+    (c.pin || '').toLowerCase().includes(q) ||
+    (c.seller_name || '').toLowerCase().includes(q) ||
+    (c.shop_name || '').toLowerCase().includes(q)
   );
   renderCardsTable(filtered);
 }

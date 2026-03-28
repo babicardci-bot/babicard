@@ -212,9 +212,13 @@
           <option value="available">Disponible</option>
           <option value="sold">Vendu</option>
         </select>
+        <select id="cardSellerFilter" onchange="loadCards()" class="admin-select">
+          <option value="">Tous les vendeurs</option>
+          <option value="admin">👤 Admin</option>
+        </select>
         <div class="search-input-wrap">
           <span class="search-icon">🔍</span>
-          <input type="text" id="cardSearchInput" class="admin-search-input" placeholder="Rechercher par code ou produit…" oninput="filterCardsTable()">
+          <input type="text" id="cardSearchInput" class="admin-search-input" placeholder="Rechercher par code, produit ou vendeur…" oninput="filterCardsTable()">
         </div>
       </div>
 

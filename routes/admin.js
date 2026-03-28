@@ -343,22 +343,33 @@ router.get('/cards', (req, res) => {
     const db = getDb();
     const { product_id, status, page = 1, limit = 50 } = req.query;
 
-    let query = `
-      SELECT c.*, p.name as product_name, p.platform
-      FROM cards c
-      JOIN products p ON c.product_id = p.id
-      WHERE 1=1
-    `;
+    // Check if seller_id exists on cards
+    const cardCols = db.prepare("PRAGMA table_info(cards)").all().map(c => c.name);
+    const hasSellerCol = cardCols.includes('seller_id');
+
+    let query = hasSellerCol
+      ? `SELECT c.*, p.name as product_name, p.platform,
+               u.name as seller_name, sp.shop_name
+         FROM cards c
+         JOIN products p ON c.product_id = p.id
+         LEFT JOIN users u ON c.seller_id = u.id
+         LEFT JOIN seller_profiles sp ON c.seller_id = sp.user_id
+         WHERE 1=1`
+      : `SELECT c.*, p.name as product_name, p.platform
+         FROM cards c
+         JOIN products p ON c.product_id = p.id
+         WHERE 1=1`;
     const params = [];
 
-    if (product_id) {
-      query += ' AND c.product_id = ?';
-      params.push(product_id);
-    }
-
-    if (status) {
-      query += ' AND c.status = ?';
-      params.push(status);
+    const { seller_id } = req.query;
+    if (product_id) { query += ' AND c.product_id = ?'; params.push(product_id); }
+    if (status) { query += ' AND c.status = ?'; params.push(status); }
+    if (seller_id && hasSellerCol) {
+      if (seller_id === 'admin') {
+        query += ' AND c.seller_id IS NULL';
+      } else {
+        query += ' AND c.seller_id = ?'; params.push(seller_id);
+      }
     }
 
     query += ' ORDER BY c.added_at DESC';
