@@ -224,9 +224,18 @@
         const res = await fetch('/api/sellers/me', { headers: { 'Authorization': 'Bearer ' + getToken() } });
         if (res.ok) {
           const data = await res.json();
+          if (data.profile.status === 'approved') {
+            window.location.href = '/seller';
+            return;
+          }
           showStatus(data.profile);
         }
-      } catch(e) {}
+      } catch(e) {
+        // Réseau inaccessible — masquer le formulaire et afficher un message
+        document.getElementById('applicationForm').style.display = 'none';
+        document.getElementById('alertError').textContent = 'Impossible de vérifier votre compte. Vérifiez votre connexion et rechargez la page.';
+        document.getElementById('alertError').style.display = 'block';
+      }
     }
 
     function showStatus(profile) {
@@ -237,7 +246,7 @@
       const titles = { pending: 'Demande en attente', approved: 'Compte approuvé !', rejected: 'Demande rejetée', suspended: 'Compte suspendu' };
       const descs = {
         pending: `Votre boutique "<strong>${profile.shop_name}</strong>" est en attente de validation. L'administrateur vous contactera sous 24h.`,
-        approved: `Félicitations ! Votre boutique "<strong>${profile.shop_name}</strong>" est approuvée. Accédez à votre dashboard vendeur.`,
+        approved: `Félicitations ! Votre boutique "<strong>${profile.shop_name}</strong>" est approuvée. Redirection vers votre dashboard...`,
         rejected: `Votre demande pour "<strong>${profile.shop_name}</strong>" a été rejetée. ${profile.admin_note ? 'Raison : ' + profile.admin_note : ''}`,
         suspended: `Votre compte vendeur "<strong>${profile.shop_name}</strong>" a été suspendu. Contactez l'administrateur.`
       };
@@ -246,6 +255,7 @@
       document.getElementById('statusDesc').innerHTML = descs[profile.status] || '';
       if (profile.status === 'approved') {
         document.getElementById('statusAction').style.display = 'inline-block';
+        setTimeout(() => { window.location.href = '/seller'; }, 1500);
       }
     }
 
