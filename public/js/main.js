@@ -182,7 +182,7 @@ function renderProducts(products) {
       <div class="product-card animate-in" onclick="openProductModal(${product.id})" data-product-id="${product.id}">
         <div class="product-card-image bg-${product.category || 'other'}">
           <span class="product-badge ${inStock ? 'badge-instock' : 'badge-outofstock'}">
-            ${inStock ? `✓ ${product.available_stock} dispo` : '✕ Rupture'}
+            ${inStock ? '✓ Disponible' : '✕ Rupture'}
           </span>
           ${product.image_url
             ? `<img src="${product.image_url}" alt="${product.name}" class="product-card-img-cover">`
@@ -251,8 +251,8 @@ function openProductModal(productId) {
           <div style="font-size:0.9rem;font-weight:600">${product.platform}</div>
         </div>
         <div style="background:var(--bg-card);padding:12px;border-radius:8px;border:1px solid var(--border-color);">
-          <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:1px">Stock</div>
-          <div style="font-size:0.9rem;font-weight:600;color:${inStock ? 'var(--color-green)' : '#ef4444'}">${inStock ? `${product.available_stock} disponible(s)` : 'Rupture de stock'}</div>
+          <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:1px">Disponibilité</div>
+          <div style="font-size:0.9rem;font-weight:600;color:${inStock ? 'var(--color-green)' : '#ef4444'}">${inStock ? '✓ En stock' : '✕ Rupture de stock'}</div>
         </div>
       </div>
 
