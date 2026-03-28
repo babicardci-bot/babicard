@@ -435,7 +435,7 @@ async function sendWithdrawalRequestEmail(seller, shopName, amount, paymentMetho
         </tr>
       </table>
       <div style="text-align:center;margin-top:28px;">
-        <a href="${process.env.BASE_URL || 'http://localhost:3000'}/admin" style="background:linear-gradient(135deg,#6C63FF,#5a52d5);color:white;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:15px;display:inline-block;">⚙️ Traiter la demande</a>
+        <a href="${process.env.SITE_URL || 'http://localhost:3000'}/admin#withdrawals" style="background:linear-gradient(135deg,#6C63FF,#5a52d5);color:white;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:15px;display:inline-block;">⚙️ Traiter la demande</a>
       </div>
     </div>
   </div>

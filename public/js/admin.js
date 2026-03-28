@@ -57,6 +57,13 @@ window.addEventListener('DOMContentLoaded', async () => {
     });
 
     loadDashboard();
+
+    // Ouvrir la section via hash URL (ex: /admin#withdrawals)
+    if (window.location.hash) {
+      const section = window.location.hash.replace('#', '');
+      const menuEl = document.querySelector(`[data-section="${section}"]`);
+      setTimeout(() => showSection(section, menuEl), 300);
+    }
   } catch (err) {
     window.location.href = '/login';
   }
