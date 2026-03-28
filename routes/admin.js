@@ -222,7 +222,9 @@ router.delete('/users/:id', (req, res) => {
       db.prepare('DELETE FROM withdrawal_requests WHERE seller_id = ?').run(user.id);
       db.prepare('DELETE FROM seller_earnings WHERE seller_id = ?').run(user.id);
       db.prepare('DELETE FROM seller_profiles WHERE user_id = ?').run(user.id);
-      db.prepare('UPDATE cards SET seller_id = NULL WHERE seller_id = ?').run(user.id);
+      try {
+        db.prepare('UPDATE cards SET seller_id = NULL WHERE seller_id = ?').run(user.id);
+      } catch(e) { /* seller_id column may not exist yet */ }
       db.prepare('DELETE FROM password_reset_tokens WHERE user_id = ?').run(user.id);
       db.prepare('DELETE FROM users WHERE id = ?').run(user.id);
     });
