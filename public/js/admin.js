@@ -1026,14 +1026,19 @@ async function loadUsers() {
                 <td>${u.total_orders || 0}</td>
                 <td style="color:#a78bfa;font-weight:600">${formatPrice(u.total_spent || 0)}</td>
                 <td style="font-size:0.75rem">${formatDate(u.created_at)}</td>
-                <td>
+                <td style="display:flex;gap:6px;flex-wrap:wrap;">
                   ${u.role !== 'seller' ? `
                     <button class="btn-sm ${u.role === 'admin' ? 'btn-secondary' : 'btn-primary'}"
                       onclick="changeUserRole(${u.id}, '${u.role === 'admin' ? 'client' : 'admin'}', '${u.name.replace(/'/g,"\\'")}')"
                       title="${u.role === 'admin' ? 'Rétrograder en client' : 'Promouvoir en admin'}">
-                      ${u.role === 'admin' ? '👤 Rétrograder' : '🛡️ Rendre admin'}
+                      ${u.role === 'admin' ? '👤 Rétrograder' : '🛡️ Admin'}
                     </button>
-                  ` : '-'}
+                  ` : ''}
+                  ${u.role !== 'admin' ? `
+                    <button class="btn-sm btn-danger" onclick="deleteUser(${u.id}, '${u.name.replace(/'/g,"\\'")}')" title="Supprimer l'utilisateur">
+                      🗑️
+                    </button>
+                  ` : ''}
                 </td>
               </tr>
             `).join('')}
@@ -1054,6 +1059,18 @@ async function changeUserRole(userId, newRole, userName) {
       method: 'PUT',
       body: JSON.stringify({ role: newRole })
     });
+    const data = await res.json();
+    if (res.ok) { showToast(data.message, 'success'); loadUsers(); }
+    else showToast(data.error || 'Erreur', 'error');
+  } catch (err) {
+    showToast('Erreur réseau', 'error');
+  }
+}
+
+async function deleteUser(userId, userName) {
+  if (!confirm(`Supprimer définitivement "${userName}" ?\n\nSes commandes et données seront conservées mais son compte sera supprimé. Cette action est irréversible.`)) return;
+  try {
+    const res = await adminFetch(`/admin/users/${userId}`, { method: 'DELETE' });
     const data = await res.json();
     if (res.ok) { showToast(data.message, 'success'); loadUsers(); }
     else showToast(data.error || 'Erreur', 'error');

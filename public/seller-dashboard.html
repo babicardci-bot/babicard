@@ -82,7 +82,7 @@
     <h1 id="pendingTitle">Vérification du compte...</h1>
     <p id="pendingDesc">Chargement en cours...</p>
     <a href="/" class="btn-back" style="margin-top: 10px;">← Retour à la boutique</a>
-    <button onclick="location.reload()" class="btn-back" style="margin-top: 10px; background: transparent; border: 1px solid #6C63FF;" id="pendingRefreshBtn">🔄 Actualiser</button>
+    <a href="/seller-register" class="btn-back" style="margin-top: 10px; background: transparent; border: 1px solid #6C63FF;" id="pendingApplyBtn">📝 Devenir vendeur</a>
   </div>
 
   <!-- SIDEBAR -->
@@ -496,9 +496,10 @@
         if (sellerProfile.status === 'pending') {
           document.getElementById('pendingIcon').textContent = '⏳';
           document.getElementById('pendingTitle').textContent = 'Candidature en attente';
-          document.getElementById('pendingDesc').textContent = `Votre boutique "${sellerProfile.shop_name}" est en cours de validation. L'administrateur vous contactera sous 24h.`;
-          document.getElementById('pendingApplyBtn').textContent = '← Retour';
-          document.getElementById('pendingApplyBtn').href = '/';
+          document.getElementById('pendingDesc').textContent = `Votre boutique "${sellerProfile.shop_name}" est en cours de validation. L'administrateur vous contactera sous 24h. Cliquez Actualiser une fois approuvé.`;
+          document.getElementById('pendingApplyBtn').textContent = '🔄 Actualiser';
+          document.getElementById('pendingApplyBtn').href = '#';
+          document.getElementById('pendingApplyBtn').onclick = (e) => { e.preventDefault(); location.reload(); };
           return;
         }
 

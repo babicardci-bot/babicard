@@ -208,6 +208,34 @@ router.put('/users/:id/role', (req, res) => {
   }
 });
 
+// DELETE /api/admin/users/:id — Supprimer un utilisateur
+router.delete('/users/:id', (req, res) => {
+  try {
+    const db = getDb();
+    const user = db.prepare('SELECT id, role, email FROM users WHERE id = ?').get(req.params.id);
+    if (!user) return res.status(404).json({ error: 'Utilisateur non trouvé.' });
+    if (user.id === req.user.id) return res.status(400).json({ error: 'Vous ne pouvez pas supprimer votre propre compte.' });
+    if (user.role === 'admin') return res.status(400).json({ error: 'Impossible de supprimer un compte administrateur.' });
+
+    const deleteUser = db.transaction(() => {
+      // Supprimer les données liées dans l'ordre correct
+      db.prepare('DELETE FROM withdrawal_requests WHERE seller_id = ?').run(user.id);
+      db.prepare('DELETE FROM seller_earnings WHERE seller_id = ?').run(user.id);
+      db.prepare('DELETE FROM seller_profiles WHERE user_id = ?').run(user.id);
+      db.prepare('UPDATE cards SET seller_id = NULL WHERE seller_id = ?').run(user.id);
+      db.prepare('DELETE FROM password_reset_tokens WHERE user_id = ?').run(user.id);
+      db.prepare('DELETE FROM users WHERE id = ?').run(user.id);
+    });
+    deleteUser();
+
+    logAdminAction(req, 'delete_user', `user:${req.params.id}`, { email: user.email, role: user.role });
+    res.json({ message: `Utilisateur "${user.email}" supprimé.` });
+  } catch (err) {
+    console.error('Erreur delete user:', err);
+    res.status(500).json({ error: 'Erreur suppression utilisateur.' });
+  }
+});
+
 // ===== PRODUCTS CRUD =====
 
 // GET /api/admin/products
