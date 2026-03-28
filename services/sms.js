@@ -32,14 +32,15 @@ async function sendSMS(phone, message) {
       ? 'https://api.sandbox.africastalking.com/version1/messaging'
       : 'https://api.africastalking.com/version1/messaging';
 
+    const params = { username: AT_USERNAME, to: formattedPhone, message: message };
+    // Only add sender ID if explicitly set and not in sandbox
+    if (process.env.AT_SENDER_ID && AT_USERNAME !== 'sandbox') {
+      params.from = process.env.AT_SENDER_ID;
+    }
+
     const response = await axios.post(
       apiUrl,
-      new URLSearchParams({
-        username: AT_USERNAME,
-        to: formattedPhone,
-        message: message,
-        from: process.env.AT_SENDER_ID || 'Babicard'
-      }).toString(),
+      new URLSearchParams(params).toString(),
       {
         headers: {
           'apiKey': AT_API_KEY,
