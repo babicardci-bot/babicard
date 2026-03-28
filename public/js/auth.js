@@ -75,10 +75,41 @@ function isAdmin() {
 
 function logout() {
   clearAuth();
-  // Clear cart
   localStorage.removeItem('cart');
+  localStorage.removeItem('lastActivity');
   window.location.href = '/';
 }
+
+// ============ AUTO-DÉCONNEXION après 15min d'inactivité ============
+const INACTIVITY_TIMEOUT = 15 * 60 * 1000; // 15 minutes
+
+function updateActivity() {
+  localStorage.setItem('lastActivity', Date.now());
+}
+
+function checkInactivity() {
+  if (!isLoggedIn()) return;
+  const last = parseInt(localStorage.getItem('lastActivity') || '0');
+  if (last && Date.now() - last > INACTIVITY_TIMEOUT) {
+    clearAuth();
+    localStorage.removeItem('cart');
+    localStorage.removeItem('lastActivity');
+    alert('Vous avez été déconnecté après 15 minutes d\'inactivité.');
+    window.location.href = '/login';
+  }
+}
+
+// Démarrer le suivi d'inactivité si l'utilisateur est connecté
+(function initInactivityTracker() {
+  if (!isLoggedIn()) return;
+  updateActivity();
+  // Réinitialise le timer sur toute interaction
+  ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'].forEach(evt => {
+    document.addEventListener(evt, updateActivity, { passive: true });
+  });
+  // Vérifie toutes les minutes
+  setInterval(checkInactivity, 60 * 1000);
+})();
 
 // Authenticated fetch wrapper
 async function authFetch(url, options = {}) {
