@@ -3,7 +3,7 @@ const router = express.Router();
 const { getDb } = require('../database/db');
 const { authenticateToken, requireAdmin, logAdminAction } = require('../middleware/auth');
 const { processDelivery } = require('../services/delivery');
-const { sendWithdrawalStatusEmail } = require('../services/email');
+const { sendWithdrawalStatusEmail, sendSellerApprovalEmail } = require('../services/email');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -605,6 +605,15 @@ router.put('/sellers/:id/status', (req, res) => {
       db.prepare("UPDATE users SET role = 'seller' WHERE id = ?").run(req.params.id);
     } else if (status === 'rejected' || status === 'suspended') {
       db.prepare("UPDATE users SET role = 'client' WHERE id = ?").run(req.params.id);
+    }
+
+    // Send approval email
+    if (status === 'approved' && seller.status !== 'approved') {
+      const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
+      const finalCommissionRate = commission_rate !== undefined ? commission_rate : seller.commission_rate;
+      if (user) {
+        sendSellerApprovalEmail(user, finalCommissionRate || 10).catch(e => console.error('Erreur email approbation vendeur:', e));
+      }
     }
 
     logAdminAction(req, 'update_seller_status', `seller:${req.params.id}`, { status, admin_note });

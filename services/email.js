@@ -588,4 +588,104 @@ async function sendWelcomeEmail(user) {
   }
 }
 
-module.exports = { sendOrderConfirmationEmail, sendLowStockEmail, sendWithdrawalRequestEmail, sendWithdrawalStatusEmail, sendPasswordResetEmail, sendWelcomeEmail };
+async function sendSellerApprovalEmail(user, commissionRate) {
+  const htmlContent = `
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background-color:#f0f0f7;">
+
+  <!-- Header -->
+  <div style="background:linear-gradient(135deg,#0a0a1f 0%,#1a1a3e 50%,#0d0d2e 100%);padding:40px 20px;text-align:center;">
+    <div style="font-size:36px;margin-bottom:8px;">🎮</div>
+    <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:800;">Babicard.ci</h1>
+    <p style="margin:8px 0 0;color:#a78bfa;font-size:14px;letter-spacing:2px;text-transform:uppercase;">Espace Vendeur</p>
+  </div>
+
+  <!-- Body -->
+  <div style="max-width:600px;margin:0 auto;padding:32px 20px;">
+
+    <!-- Congrats card -->
+    <div style="background:linear-gradient(135deg,#6C63FF,#4f46e5);border-radius:16px;padding:32px;text-align:center;margin-bottom:24px;color:white;">
+      <div style="font-size:48px;margin-bottom:12px;">🎉</div>
+      <h2 style="margin:0 0 8px;font-size:24px;font-weight:800;">Félicitations, ${user.name} !</h2>
+      <p style="margin:0;font-size:16px;opacity:0.9;">Votre demande de vendeur a été <strong>approuvée</strong>.</p>
+    </div>
+
+    <!-- Details -->
+    <div style="background:white;border-radius:12px;padding:24px;margin-bottom:24px;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+      <h3 style="margin:0 0 16px;color:#1a1a2e;font-size:18px;">Vos conditions</h3>
+      <table style="width:100%;border-collapse:collapse;">
+        <tr>
+          <td style="padding:10px 0;color:#666;font-size:14px;border-bottom:1px solid #f0f0f7;">Taux de commission</td>
+          <td style="padding:10px 0;color:#1a1a2e;font-weight:bold;font-size:14px;text-align:right;border-bottom:1px solid #f0f0f7;">${commissionRate}%</td>
+        </tr>
+        <tr>
+          <td style="padding:10px 0;color:#666;font-size:14px;">Accès au tableau de bord</td>
+          <td style="padding:10px 0;color:#22c55e;font-weight:bold;font-size:14px;text-align:right;">✓ Activé</td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- Steps -->
+    <div style="background:white;border-radius:12px;padding:24px;margin-bottom:24px;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+      <h3 style="margin:0 0 16px;color:#1a1a2e;font-size:18px;">Comment commencer ?</h3>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div style="display:flex;align-items:flex-start;gap:12px;">
+          <div style="background:#6C63FF;color:white;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:13px;flex-shrink:0;line-height:28px;text-align:center;">1</div>
+          <p style="margin:0;font-size:14px;color:#444;line-height:1.6;">Connectez-vous à votre compte et accédez à votre <strong>tableau de bord vendeur</strong>.</p>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:12px;">
+          <div style="background:#6C63FF;color:white;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:13px;flex-shrink:0;line-height:28px;text-align:center;">2</div>
+          <p style="margin:0;font-size:14px;color:#444;line-height:1.6;">Choisissez un produit et cliquez sur <strong>"Ajouter codes"</strong> pour importer vos cartes.</p>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:12px;">
+          <div style="background:#6C63FF;color:white;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:13px;flex-shrink:0;line-height:28px;text-align:center;">3</div>
+          <p style="margin:0;font-size:14px;color:#444;line-height:1.6;">Vos gains sont calculés automatiquement à chaque vente. Vous pouvez faire une <strong>demande de retrait</strong> depuis le tableau de bord.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- CTA -->
+    <div style="text-align:center;margin-bottom:24px;">
+      <a href="${process.env.SITE_URL || 'https://babicard.ci'}/seller" style="display:inline-block;background:linear-gradient(135deg,#6C63FF,#4f46e5);color:white;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:16px;">
+        Accéder à mon tableau de bord →
+      </a>
+    </div>
+
+    <!-- Support -->
+    <div style="background:linear-gradient(135deg,#1a1a3e,#0d0d2e);border-radius:12px;padding:24px;text-align:center;color:white;">
+      <p style="margin:0 0 8px;font-size:16px;font-weight:bold;">Besoin d'aide ? 🤝</p>
+      <p style="margin:0 0 16px;font-size:14px;color:#a78bfa;">Notre équipe est disponible 7j/7</p>
+      <p style="margin:0;font-size:14px;">📧 <a href="mailto:${process.env.ADMIN_EMAIL || 'support@babicard.ci'}" style="color:#60a5fa;">${process.env.ADMIN_EMAIL || 'support@babicard.ci'}</a></p>
+      <p style="margin:8px 0 0;font-size:14px;">📱 WhatsApp: +225 07 08 59 80 80</p>
+    </div>
+
+  </div>
+
+  <!-- Footer -->
+  <div style="text-align:center;padding:20px;color:#999;font-size:12px;">
+    <p style="margin:0;">© ${new Date().getFullYear()} Babicard.ci — Abidjan, Côte d'Ivoire</p>
+    <p style="margin:4px 0 0;">Merci de votre confiance! 🙏</p>
+  </div>
+
+</body>
+</html>
+  `;
+
+  const mailOptions = {
+    from: `"Babicard.ci 🎮" <${process.env.EMAIL_USER || 'noreply@babicard.ci'}>`,
+    to: user.email,
+    subject: `🎉 [Babicard.ci] Votre compte vendeur est activé !`,
+    html: htmlContent
+  };
+
+  try {
+    return await sendEmail(mailOptions);
+  } catch (err) {
+    console.error('Erreur envoi email approbation vendeur:', err.message);
+    return { success: false };
+  }
+}
+
+module.exports = { sendOrderConfirmationEmail, sendLowStockEmail, sendWithdrawalRequestEmail, sendWithdrawalStatusEmail, sendPasswordResetEmail, sendWelcomeEmail, sendSellerApprovalEmail };
