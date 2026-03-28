@@ -510,7 +510,6 @@ async function sendPasswordResetEmail(user, resetLink) {
 }
 
 async function sendWelcomeEmail(user) {
-  const siteUrl = process.env.SITE_URL || 'https://babicard.ci';
   const htmlContent = `
 <!DOCTYPE html>
 <html lang="fr">
@@ -532,7 +531,7 @@ async function sendWelcomeEmail(user) {
         Votre compte <strong>Babicard.ci</strong> a été créé avec succès.<br>
         Découvrez notre sélection de cartes cadeaux numériques livrées instantanément par email.
       </p>
-      <a href="${siteUrl}" style="background:linear-gradient(135deg,#6C63FF,#5a52d5);color:white;padding:16px 40px;border-radius:10px;text-decoration:none;font-weight:bold;font-size:16px;display:inline-block;">🛍️ Découvrir les cartes</a>
+      <a href="https://www.babicard.ci" style="background:linear-gradient(135deg,#6C63FF,#5a52d5);color:white;padding:16px 40px;border-radius:10px;text-decoration:none;font-weight:bold;font-size:16px;display:inline-block;">🛍️ Découvrir les cartes</a>
     </div>
 
     <div style="background:white;border-radius:16px;padding:28px;box-shadow:0 4px 20px rgba(0,0,0,0.08);margin-bottom:20px;">
