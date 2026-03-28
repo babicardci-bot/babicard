@@ -557,6 +557,10 @@
       document.getElementById('topbarTitle').textContent = titles[name] || name;
       currentSection = name;
       loadSection(name);
+      // Close sidebar on mobile after selecting a section
+      if (window.innerWidth <= 900) {
+        document.getElementById('adminSidebar').classList.remove('mobile-open');
+      }
     }
 
     function loadSection(name) {
@@ -572,7 +576,7 @@
     function refreshSection() { loadSection(currentSection); }
 
     function toggleSidebar() {
-      document.getElementById('adminSidebar').classList.toggle('collapsed');
+      document.getElementById('adminSidebar').classList.toggle('mobile-open');
     }
 
     // ---- OVERVIEW ----
