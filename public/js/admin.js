@@ -970,10 +970,8 @@ async function viewOrderDetail(orderId) {
                 <div style="font-size:0.7rem;color:var(--text-muted);margin-bottom:4px">CODE DE LA CARTE</div>
                 <code style="font-size:1rem;color:#a78bfa;letter-spacing:2px">${item.card_code}</code>
                 ${item.card_pin ? `<div style="font-size:0.82rem;color:var(--text-secondary);margin-top:4px">PIN: <strong>${item.card_pin}</strong></div>` : ''}
-                <div style="margin-top:8px;font-size:0.75rem;color:var(--text-muted);border-top:1px solid rgba(108,99,255,0.15);padding-top:6px">
-                  Vendeur : <strong style="color:${item.seller_name ? '#a78bfa' : 'var(--text-secondary)'}">
-                    ${item.seller_name ? (item.seller_shop || item.seller_name) : '👤 Admin'}
-                  </strong>
+                <div style="margin-top:8px;font-size:0.75rem;border-top:1px solid rgba(108,99,255,0.15);padding-top:6px;color:${item.seller_name ? '#a78bfa' : '#888'}">
+                  Vendeur : <strong>${item.seller_name ? (item.seller_shop || item.seller_name) : '👤 Admin'}</strong>
                 </div>
               </div>
             ` : `<div style="margin-top:8px;font-size:0.78rem;color:#fcd34d">⚠️ Aucune carte assignée</div>`}
