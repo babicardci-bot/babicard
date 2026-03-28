@@ -13,9 +13,19 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false
 }));
 
-// CORS
+// CORS — accepter seulement les origines connues
+const allowedOrigins = [
+  'https://babicard.ci',
+  'https://www.babicard.ci',
+  'https://babicard-production.up.railway.app',
+  'http://localhost:3000',
+  'http://localhost:8080'
+];
 app.use(cors({
-  origin: (_origin, cb) => cb(null, true),
+  origin: (origin, cb) => {
+    if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+    cb(new Error('CORS non autorisé'));
+  },
   credentials: true
 }));
 

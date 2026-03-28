@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { getDb } = require('../database/db');
-const { authenticateToken, requireAdmin } = require('../middleware/auth');
+const { authenticateToken, requireAdmin, logAdminAction } = require('../middleware/auth');
 const { processDelivery } = require('../services/delivery');
 const { sendWithdrawalStatusEmail } = require('../services/email');
 const multer = require('multer');
@@ -200,6 +200,7 @@ router.put('/users/:id/role', (req, res) => {
     if (!user) return res.status(404).json({ error: 'Utilisateur non trouvé.' });
     if (user.id === req.user.id) return res.status(400).json({ error: 'Vous ne pouvez pas modifier votre propre rôle.' });
     db.prepare('UPDATE users SET role = ? WHERE id = ?').run(role, req.params.id);
+    logAdminAction(req, 'change_role', `user:${req.params.id}`, { new_role: role });
     res.json({ message: `Rôle mis à jour → ${role}.` });
   } catch (err) {
     console.error('Erreur change role:', err);
@@ -297,6 +298,7 @@ router.delete('/products/:id', (req, res) => {
 
     // Soft delete
     db.prepare('UPDATE products SET is_active = 0 WHERE id = ?').run(req.params.id);
+    logAdminAction(req, 'delete_product', `product:${req.params.id}`, { name: product.name });
     res.json({ message: 'Produit désactivé avec succès.' });
   } catch (err) {
     res.status(500).json({ error: 'Erreur lors de la suppression du produit.' });
@@ -575,6 +577,7 @@ router.put('/sellers/:id/status', (req, res) => {
       db.prepare("UPDATE users SET role = 'client' WHERE id = ?").run(req.params.id);
     }
 
+    logAdminAction(req, 'update_seller_status', `seller:${req.params.id}`, { status, admin_note });
     res.json({ message: `Vendeur ${status === 'approved' ? 'approuvé' : status === 'rejected' ? 'rejeté' : 'suspendu'} avec succès.` });
   } catch(err) {
     console.error('Erreur update seller status:', err);
@@ -654,6 +657,7 @@ router.put('/withdrawals/:id/process', (req, res) => {
         .catch(err => console.error('[WITHDRAWAL STATUS EMAIL ERROR]', err.message));
     }
 
+    logAdminAction(req, 'process_withdrawal', `withdrawal:${req.params.id}`, { status, amount: withdrawal.amount });
     res.json({ message: `Retrait ${status === 'paid' ? 'marqué comme payé' : status === 'approved' ? 'approuvé' : 'rejeté'}.` });
   } catch(err) {
     console.error('Erreur process withdrawal:', err);

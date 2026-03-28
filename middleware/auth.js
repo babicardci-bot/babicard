@@ -50,4 +50,15 @@ function generateToken(userId) {
   return jwt.sign({ userId }, JWT_SECRET, { expiresIn: '7d' });
 }
 
-module.exports = { authenticateToken, requireAdmin, requireSeller, generateToken };
+function logAdminAction(req, action, target = null, details = null) {
+  try {
+    const db = getDb();
+    const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket?.remoteAddress || 'unknown';
+    db.prepare(`INSERT INTO admin_logs (admin_id, admin_email, action, target, details, ip) VALUES (?, ?, ?, ?, ?, ?)`)
+      .run(req.user.id, req.user.email, action, target, details ? JSON.stringify(details) : null, ip);
+  } catch (e) {
+    console.error('[ADMIN LOG ERROR]', e.message);
+  }
+}
+
+module.exports = { authenticateToken, requireAdmin, requireSeller, generateToken, logAdminAction };

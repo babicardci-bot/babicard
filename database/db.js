@@ -252,6 +252,22 @@ function migrateDatabase(db) {
     }
   } catch(e) { console.error('Migration users constraint:', e.message); }
 
+  // Table logs admin
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS admin_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        admin_id INTEGER NOT NULL,
+        admin_email TEXT NOT NULL,
+        action TEXT NOT NULL,
+        target TEXT,
+        details TEXT,
+        ip TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+  } catch(e) { console.error('Migration admin_logs:', e.message); }
+
   console.log('Migration vérifiée.');
 }
 
