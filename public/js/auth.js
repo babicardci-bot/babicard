@@ -94,8 +94,10 @@ function checkInactivity() {
     clearAuth();
     localStorage.removeItem('cart');
     localStorage.removeItem('lastActivity');
+    const currentPath = window.location.pathname;
+    const redirectTo = currentPath.startsWith('/admin') ? '/login?redirect=/admin' : '/login';
     alert('Vous avez été déconnecté après 15 minutes d\'inactivité.');
-    window.location.href = '/login';
+    window.location.href = redirectTo;
   }
 }
 
