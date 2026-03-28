@@ -9,36 +9,6 @@ function formatPhone(phone) {
   return cleaned;
 }
 
-// Cache token to avoid requesting a new one on every SMS
-let cachedToken = null;
-let tokenExpiresAt = 0;
-
-async function getOrangeToken() {
-  if (cachedToken && Date.now() < tokenExpiresAt) return cachedToken;
-
-  const clientId = process.env.ORANGE_CLIENT_ID;
-  const clientSecret = process.env.ORANGE_CLIENT_SECRET;
-
-  const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
-
-  const response = await axios.post(
-    'https://api.orange.com/oauth/v3/token',
-    'grant_type=client_credentials',
-    {
-      headers: {
-        'Authorization': `Basic ${credentials}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Accept': 'application/json'
-      }
-    }
-  );
-
-  cachedToken = response.data.access_token;
-  // Expire 1 minute before actual expiry to be safe
-  tokenExpiresAt = Date.now() + (response.data.expires_in - 60) * 1000;
-  return cachedToken;
-}
-
 async function sendSMS(phone, message) {
   const formattedPhone = formatPhone(phone);
   if (!formattedPhone) {
@@ -46,12 +16,10 @@ async function sendSMS(phone, message) {
     return { success: false, error: 'Numéro invalide' };
   }
 
-  const clientId = process.env.ORANGE_CLIENT_ID;
-  const clientSecret = process.env.ORANGE_CLIENT_SECRET;
-  const senderNumber = process.env.ORANGE_SENDER_NUMBER;
+  const AT_USERNAME = process.env.AT_USERNAME;
+  const AT_API_KEY = process.env.AT_API_KEY;
 
-  if (!clientId || !clientSecret || !senderNumber) {
-    // Demo mode
+  if (!AT_USERNAME || !AT_API_KEY) {
     console.log(`\n[SMS DEMO] ==================`);
     console.log(`[SMS DEMO] À: ${formattedPhone}`);
     console.log(`[SMS DEMO] Message: ${message}`);
@@ -60,35 +28,41 @@ async function sendSMS(phone, message) {
   }
 
   try {
-    const token = await getOrangeToken();
-    const encodedSender = encodeURIComponent(`tel:${senderNumber}`);
+    const apiUrl = AT_USERNAME === 'sandbox'
+      ? 'https://api.sandbox.africastalking.com/version1/messaging'
+      : 'https://api.africastalking.com/version1/messaging';
 
     const response = await axios.post(
-      `https://api.orange.com/smsmessaging/v1/outbound/${encodedSender}/requests`,
-      {
-        outboundSMSMessageRequest: {
-          address: [`tel:${formattedPhone}`],
-          senderAddress: `tel:${senderNumber}`,
-          outboundSMSTextMessage: {
-            message: message
-          }
-        }
-      },
+      apiUrl,
+      new URLSearchParams({
+        username: AT_USERNAME,
+        to: formattedPhone,
+        message: message,
+        from: process.env.AT_SENDER_ID || 'Babicard'
+      }).toString(),
       {
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
+          'apiKey': AT_API_KEY,
+          'Content-Type': 'application/x-www-form-urlencoded',
           'Accept': 'application/json'
         }
       }
     );
 
-    console.log(`[SMS] Envoyé à ${formattedPhone}`);
-    return { success: true, data: response.data };
+    const result = response.data;
+    if (result.SMSMessageData && result.SMSMessageData.Recipients) {
+      const recipient = result.SMSMessageData.Recipients[0];
+      if (recipient && recipient.status === 'Success') {
+        console.log(`[SMS] Envoyé à ${formattedPhone}: ${recipient.messageId}`);
+        return { success: true, messageId: recipient.messageId };
+      }
+    }
+
+    console.error('[SMS] Réponse inattendue:', JSON.stringify(result));
+    return { success: false, error: 'Réponse inattendue', data: result };
   } catch (err) {
-    const errData = err.response?.data || err.message;
-    console.error('[SMS] Erreur Orange API:', errData);
-    return { success: false, error: JSON.stringify(errData) };
+    console.error('[SMS] Erreur Africa\'s Talking:', err.response?.data || err.message);
+    return { success: false, error: err.message };
   }
 }
 
