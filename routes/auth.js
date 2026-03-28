@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const { getDb } = require('../database/db');
 const { authenticateToken, generateToken } = require('../middleware/auth');
-const { sendPasswordResetEmail } = require('../services/email');
+const { sendPasswordResetEmail, sendWelcomeEmail } = require('../services/email');
 
 // POST /api/auth/register
 router.post('/register', async (req, res) => {
@@ -36,7 +36,8 @@ router.post('/register', async (req, res) => {
     const token = generateToken(userId);
     const user = await db.prepare('SELECT id, name, email, phone, role, created_at FROM users WHERE id = ?').get(userId);
 
-    res.status(201).json({ message: 'Compte créé avec succès! Bienvenue sur GiftCard CI.', token, user });
+    sendWelcomeEmail(user).catch(() => {});
+    res.status(201).json({ message: 'Compte créé avec succès! Bienvenue sur Babicard.ci.', token, user });
   } catch (err) {
     console.error('Erreur register:', err);
     res.status(500).json({ error: 'Erreur lors de la création du compte.' });

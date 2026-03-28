@@ -509,4 +509,83 @@ async function sendPasswordResetEmail(user, resetLink) {
   }
 }
 
-module.exports = { sendOrderConfirmationEmail, sendLowStockEmail, sendWithdrawalRequestEmail, sendWithdrawalStatusEmail, sendPasswordResetEmail };
+async function sendWelcomeEmail(user) {
+  const siteUrl = process.env.SITE_URL || 'https://babicard.ci';
+  const htmlContent = `
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background-color:#f0f0f7;">
+
+  <div style="background:linear-gradient(135deg,#0a0a1f 0%,#1a1a3e 50%,#0d0d2e 100%);padding:40px 20px;text-align:center;">
+    <div style="font-size:48px;margin-bottom:8px;">🎮</div>
+    <h1 style="margin:0;color:#ffffff;font-size:32px;font-weight:800;">Babicard<span style="color:#a78bfa;">.ci</span></h1>
+    <p style="margin:8px 0 0;color:#a78bfa;font-size:14px;letter-spacing:2px;text-transform:uppercase;">Bienvenue !</p>
+  </div>
+
+  <div style="max-width:600px;margin:0 auto;padding:30px 20px;">
+
+    <div style="background:white;border-radius:16px;padding:36px;box-shadow:0 4px 20px rgba(0,0,0,0.08);margin-bottom:20px;text-align:center;">
+      <div style="font-size:56px;margin-bottom:16px;">🎉</div>
+      <h2 style="margin:0 0 12px;color:#1a1a2e;font-size:24px;">Bonjour ${user.name} !</h2>
+      <p style="color:#555;line-height:1.7;margin:0 0 24px;font-size:16px;">
+        Votre compte <strong>Babicard.ci</strong> a été créé avec succès.<br>
+        Découvrez notre sélection de cartes cadeaux numériques livrées instantanément par email.
+      </p>
+      <a href="${siteUrl}" style="background:linear-gradient(135deg,#6C63FF,#5a52d5);color:white;padding:16px 40px;border-radius:10px;text-decoration:none;font-weight:bold;font-size:16px;display:inline-block;">🛍️ Découvrir les cartes</a>
+    </div>
+
+    <div style="background:white;border-radius:16px;padding:28px;box-shadow:0 4px 20px rgba(0,0,0,0.08);margin-bottom:20px;">
+      <h3 style="margin:0 0 20px;color:#1a1a2e;font-size:18px;">✨ Pourquoi choisir Babicard.ci ?</h3>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <span style="font-size:24px;">⚡</span>
+          <div><strong style="color:#1a1a2e;">Livraison instantanée</strong><br><span style="color:#666;font-size:14px;">Vos codes sont envoyés par email dès le paiement confirmé</span></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <span style="font-size:24px;">🔒</span>
+          <div><strong style="color:#1a1a2e;">Paiement sécurisé</strong><br><span style="color:#666;font-size:14px;">Wave CI et Orange Money acceptés</span></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <span style="font-size:24px;">🎁</span>
+          <div><strong style="color:#1a1a2e;">Large catalogue</strong><br><span style="color:#666;font-size:14px;">PlayStation, Xbox, Steam, Netflix, Amazon et plus encore</span></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <span style="font-size:24px;">🤝</span>
+          <div><strong style="color:#1a1a2e;">Support 7j/7</strong><br><span style="color:#666;font-size:14px;">WhatsApp: +225 07 08 59 80 80</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="background:linear-gradient(135deg,#1a1a3e,#0d0d2e);border-radius:12px;padding:24px;text-align:center;color:white;">
+      <p style="margin:0 0 8px;font-size:16px;font-weight:bold;">Besoin d'aide ? 🤝</p>
+      <p style="margin:0 0 12px;font-size:14px;color:#a78bfa;">Notre équipe est disponible 7j/7</p>
+      <p style="margin:0;font-size:14px;">📧 <a href="mailto:${process.env.ADMIN_EMAIL || 'support@babicard.ci'}" style="color:#60a5fa;">${process.env.ADMIN_EMAIL || 'support@babicard.ci'}</a></p>
+      <p style="margin:6px 0 0;font-size:14px;">📱 WhatsApp: +225 07 08 59 80 80</p>
+    </div>
+
+  </div>
+
+  <div style="text-align:center;padding:20px;color:#999;font-size:12px;">
+    <p style="margin:0;">© ${new Date().getFullYear()} Babicard.ci — Abidjan, Côte d'Ivoire</p>
+  </div>
+
+</body>
+</html>`;
+
+  const mailOptions = {
+    from: `"Babicard.ci 🎮" <${process.env.EMAIL_USER || 'noreply@babicard.ci'}>`,
+    to: user.email,
+    subject: `🎉 Bienvenue sur Babicard.ci, ${user.name} !`,
+    html: htmlContent
+  };
+
+  try {
+    return await sendEmail(mailOptions);
+  } catch (err) {
+    console.error('Erreur envoi email bienvenue:', err.message);
+    return { success: false };
+  }
+}
+
+module.exports = { sendOrderConfirmationEmail, sendLowStockEmail, sendWithdrawalRequestEmail, sendWithdrawalStatusEmail, sendPasswordResetEmail, sendWelcomeEmail };
