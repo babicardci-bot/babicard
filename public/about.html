@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#6C63FF">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Babicard">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+  <title>À propos — Babicard.ci</title>
+  <meta name="description" content="Découvrez Babicard.ci, la boutique de cartes cadeaux gaming en Côte d'Ivoire. iTunes, PSN, Xbox, Google Play, Steam, Netflix — paiement Wave & Orange Money.">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://www.babicard.ci/about">
+  <link rel="stylesheet" href="/css/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    .page-hero {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      padding: 120px 0 60px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .page-hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at center, rgba(108,99,255,0.15) 0%, transparent 70%);
+    }
+    .page-hero h1 {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 16px;
+      position: relative;
+    }
+    .page-hero h1 span { color: var(--color-primary-light, #a78bfa); }
+    .page-hero p {
+      color: rgba(255,255,255,0.7);
+      font-size: 1.1rem;
+      max-width: 600px;
+      margin: 0 auto;
+      position: relative;
+    }
+    .about-section {
+      padding: 80px 0;
+    }
+    .about-section:nth-child(even) {
+      background: var(--bg-secondary, #f8f9ff);
+    }
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+    .about-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 60px;
+      align-items: center;
+    }
+    @media (max-width: 768px) {
+      .about-grid { grid-template-columns: 1fr; gap: 32px; }
+    }
+    .about-text h2 {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: clamp(1.6rem, 3vw, 2.2rem);
+      font-weight: 700;
+      color: var(--text-primary, #1a1a2e);
+      margin-bottom: 16px;
+    }
+    .about-text h2 span { color: var(--color-primary, #6C63FF); }
+    .about-text p {
+      color: var(--text-secondary, #555);
+      line-height: 1.8;
+      margin-bottom: 16px;
+      font-size: 1rem;
+    }
+    .about-visual {
+      background: linear-gradient(135deg, #6C63FF 0%, #a78bfa 100%);
+      border-radius: 20px;
+      padding: 40px;
+      text-align: center;
+      color: #fff;
+    }
+    .about-visual .big-icon { font-size: 5rem; display: block; margin-bottom: 16px; }
+    .about-visual h3 { font-family: 'Rajdhani', sans-serif; font-size: 1.8rem; font-weight: 700; margin-bottom: 8px; }
+    .about-visual p { color: rgba(255,255,255,0.85); font-size: 0.95rem; }
+    .values-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 24px;
+      margin-top: 48px;
+    }
+    .value-card {
+      background: var(--card-bg, #fff);
+      border: 1px solid var(--border-color, #e8e8f0);
+      border-radius: 16px;
+      padding: 28px;
+      text-align: center;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .value-card:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(108,99,255,0.15); }
+    .value-icon { font-size: 2.5rem; margin-bottom: 12px; display: block; }
+    .value-card h3 { font-weight: 600; color: var(--text-primary, #1a1a2e); margin-bottom: 8px; font-size: 1.05rem; }
+    .value-card p { color: var(--text-secondary, #666); font-size: 0.9rem; line-height: 1.6; }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 24px;
+      margin-top: 48px;
+    }
+    .stat-card {
+      background: linear-gradient(135deg, #6C63FF 0%, #a78bfa 100%);
+      border-radius: 16px;
+      padding: 28px;
+      text-align: center;
+      color: #fff;
+    }
+    .stat-number { font-family: 'Rajdhani', sans-serif; font-size: 2.5rem; font-weight: 700; display: block; }
+    .stat-label { font-size: 0.9rem; color: rgba(255,255,255,0.85); margin-top: 4px; }
+    .platforms-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 24px;
+    }
+    .platform-badge {
+      background: var(--card-bg, #fff);
+      border: 1px solid var(--border-color, #e8e8f0);
+      border-radius: 50px;
+      padding: 8px 20px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--text-primary, #1a1a2e);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section-title {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: clamp(1.6rem, 3vw, 2.2rem);
+      font-weight: 700;
+      color: var(--text-primary, #1a1a2e);
+      text-align: center;
+      margin-bottom: 8px;
+    }
+    .section-title span { color: var(--color-primary, #6C63FF); }
+    .section-sub { text-align: center; color: var(--text-secondary, #666); margin-bottom: 48px; font-size: 1rem; }
+    .cta-section {
+      background: linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%);
+      padding: 80px 0;
+      text-align: center;
+    }
+    .cta-section h2 { font-family: 'Rajdhani', sans-serif; font-size: 2rem; font-weight: 700; color: #fff; margin-bottom: 16px; }
+    .cta-section p { color: rgba(255,255,255,0.7); margin-bottom: 32px; font-size: 1rem; }
+    .btn-primary {
+      display: inline-block;
+      background: linear-gradient(135deg, #6C63FF, #a78bfa);
+      color: #fff;
+      padding: 14px 32px;
+      border-radius: 50px;
+      font-weight: 600;
+      text-decoration: none;
+      font-size: 1rem;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(108,99,255,0.4); }
+    .btn-outline {
+      display: inline-block;
+      border: 2px solid rgba(255,255,255,0.3);
+      color: #fff;
+      padding: 14px 32px;
+      border-radius: 50px;
+      font-weight: 600;
+      text-decoration: none;
+      font-size: 1rem;
+      margin-left: 16px;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .btn-outline:hover { border-color: #fff; background: rgba(255,255,255,0.1); }
+    @media (max-width: 500px) { .btn-outline { margin-left: 0; margin-top: 12px; } }
+  </style>
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <nav class="navbar" id="navbar">
+    <div class="nav-container">
+      <a href="/" class="nav-logo">
+        <span class="logo-icon">🎮</span>
+        <span class="logo-text">GiftCard <span class="logo-accent">CI</span></span>
+      </a>
+      <div class="nav-links" id="navLinks">
+        <a href="/" class="nav-link">Accueil</a>
+        <a href="/faq" class="nav-link">FAQ</a>
+        <a href="/about" class="nav-link active">À propos</a>
+        <a href="/seller-register" class="nav-link" style="color: var(--color-primary-light);">🏪 Vendre ici</a>
+        <div id="navMobileAuth" style="display:none;border-top:1px solid rgba(108,99,255,0.2);padding-top:12px;margin-top:4px;gap:10px;flex-direction:column;"></div>
+      </div>
+      <div class="nav-actions">
+        <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Mode clair / sombre">
+          <div class="theme-toggle-knob" id="themeKnob">🌙</div>
+        </button>
+        <div class="nav-auth" id="navAuth">
+          <a href="/login" class="btn-outline-nav">Connexion</a>
+          <a href="/register" class="btn-primary-nav">S'inscrire</a>
+        </div>
+        <div class="nav-user hidden" id="navUser">
+          <a href="/dashboard" class="btn-outline-nav">Mon compte</a>
+          <button onclick="logout()" class="btn-logout-nav">Déconnexion</button>
+        </div>
+      </div>
+      <button class="nav-toggle" id="navToggle" onclick="toggleMobileNav()">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="page-hero">
+    <div class="container">
+      <h1>À propos de <span>Babicard.ci</span></h1>
+      <p>La première boutique de cartes cadeaux gaming en Côte d'Ivoire, pensée pour les gamers ivoiriens.</p>
+    </div>
+  </section>
+
+  <!-- NOTRE HISTOIRE -->
+  <section class="about-section">
+    <div class="container">
+      <div class="about-grid">
+        <div class="about-text">
+          <h2>Notre <span>Histoire</span></h2>
+          <p>Babicard.ci est né d'un constat simple : les gamers ivoiriens avaient du mal à acheter des cartes cadeaux numériques en FCFA, avec un paiement local.</p>
+          <p>Nous avons créé une solution 100% locale : vous achetez vos cartes avec <strong>Wave CI</strong> ou <strong>Orange Money</strong>, et recevez votre code instantanément par email et SMS.</p>
+          <p>Plus besoin de cartes Visa, de comptes PayPal ou de correspondants à l'étranger. Babicard.ci c'est simple, rapide et sécurisé.</p>
+        </div>
+        <div class="about-visual">
+          <span class="big-icon">🎮</span>
+          <h3>Babicard.ci</h3>
+          <p>La boutique gaming ivoirienne. Paiement local, livraison instantanée.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- NOS VALEURS -->
+  <section class="about-section">
+    <div class="container">
+      <h2 class="section-title">Nos <span>Valeurs</span></h2>
+      <p class="section-sub">Ce qui guide chacune de nos actions</p>
+      <div class="values-grid">
+        <div class="value-card">
+          <span class="value-icon">⚡</span>
+          <h3>Rapidité</h3>
+          <p>Votre code est livré en quelques secondes après validation du paiement, 7j/7.</p>
+        </div>
+        <div class="value-card">
+          <span class="value-icon">🔒</span>
+          <h3>Sécurité</h3>
+          <p>Paiement sécurisé via Wave CI et Orange Money. Vos données sont protégées.</p>
+        </div>
+        <div class="value-card">
+          <span class="value-icon">💬</span>
+          <h3>Support</h3>
+          <p>Une équipe disponible sur WhatsApp de 8h à 22h pour répondre à vos questions.</p>
+        </div>
+        <div class="value-card">
+          <span class="value-icon">🇨🇮</span>
+          <h3>Local</h3>
+          <p>Une entreprise ivoirienne, qui comprend les besoins des gamers de Côte d'Ivoire.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- NOS PLATEFORMES -->
+  <section class="about-section">
+    <div class="container">
+      <div class="about-grid">
+        <div class="about-text">
+          <h2>Nos <span>Plateformes</span></h2>
+          <p>Nous proposons les cartes cadeaux des plateformes les plus populaires au monde, disponibles en Côte d'Ivoire :</p>
+          <div class="platforms-row">
+            <div class="platform-badge">🍎 iTunes / App Store</div>
+            <div class="platform-badge">🎮 PlayStation Network</div>
+            <div class="platform-badge">🟩 Xbox / Microsoft</div>
+            <div class="platform-badge">🎯 Google Play</div>
+            <div class="platform-badge">🖥️ Steam</div>
+            <div class="platform-badge">🎬 Netflix</div>
+            <div class="platform-badge">🛍️ Amazon</div>
+          </div>
+        </div>
+        <div class="about-text">
+          <h2>Modes de <span>Paiement</span></h2>
+          <p>Nous acceptons les moyens de paiement les plus utilisés en Côte d'Ivoire :</p>
+          <div class="platforms-row">
+            <div class="platform-badge">🌊 Wave CI</div>
+            <div class="platform-badge">🟠 Orange Money CI</div>
+          </div>
+          <p style="margin-top:20px;">D'autres méthodes de paiement seront ajoutées prochainement.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta-section">
+    <div class="container">
+      <h2>Prêt à commencer ?</h2>
+      <p>Créez votre compte gratuitement et achetez votre première carte cadeaux en moins de 2 minutes.</p>
+      <a href="/register" class="btn-primary">Créer un compte</a>
+      <a href="/" class="btn-outline">Voir les produits</a>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer" style="padding:40px 0 20px;">
+    <div class="container" style="text-align:center;">
+      <p style="color:var(--text-secondary,#888);font-size:0.9rem;">
+        © 2024 Babicard.ci — Tous droits réservés |
+        <a href="/about" style="color:var(--color-primary,#6C63FF);text-decoration:none;">À propos</a> ·
+        <a href="/faq" style="color:var(--color-primary,#6C63FF);text-decoration:none;">FAQ</a> ·
+        <a href="/cgu" style="color:var(--color-primary,#6C63FF);text-decoration:none;">CGU</a>
+      </p>
+    </div>
+  </footer>
+
+  <script src="/js/auth.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      if (typeof updateNavbar === 'function') updateNavbar();
+      if (typeof initTheme === 'function') initTheme();
+    });
+  </script>
+</body>
+</html>

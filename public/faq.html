@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#6C63FF">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Babicard">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+  <title>FAQ — Questions fréquentes — Babicard.ci</title>
+  <meta name="description" content="Toutes les réponses à vos questions sur Babicard.ci : livraison, paiement Wave & Orange Money, remboursement, utilisation des cartes cadeaux en Côte d'Ivoire.">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://www.babicard.ci/faq">
+  <link rel="stylesheet" href="/css/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    .page-hero {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      padding: 120px 0 60px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .page-hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at center, rgba(108,99,255,0.15) 0%, transparent 70%);
+    }
+    .page-hero h1 {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 16px;
+      position: relative;
+    }
+    .page-hero h1 span { color: #a78bfa; }
+    .page-hero p { color: rgba(255,255,255,0.7); font-size: 1.1rem; max-width: 600px; margin: 0 auto; position: relative; }
+    .container { max-width: 800px; margin: 0 auto; padding: 0 24px; }
+    .faq-section { padding: 80px 0; }
+    .faq-category { margin-bottom: 48px; }
+    .faq-category-title {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: var(--color-primary, #6C63FF);
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid var(--color-primary, #6C63FF);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .faq-item {
+      background: var(--card-bg, #fff);
+      border: 1px solid var(--border-color, #e8e8f0);
+      border-radius: 12px;
+      margin-bottom: 12px;
+      overflow: hidden;
+      transition: box-shadow 0.2s;
+    }
+    .faq-item:hover { box-shadow: 0 4px 16px rgba(108,99,255,0.1); }
+    .faq-question {
+      padding: 18px 24px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: 600;
+      color: var(--text-primary, #1a1a2e);
+      font-size: 0.95rem;
+      user-select: none;
+    }
+    .faq-question:hover { color: var(--color-primary, #6C63FF); }
+    .faq-icon {
+      font-size: 1.2rem;
+      transition: transform 0.3s;
+      color: var(--color-primary, #6C63FF);
+      flex-shrink: 0;
+      margin-left: 12px;
+    }
+    .faq-answer {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.35s ease, padding 0.2s;
+      padding: 0 24px;
+    }
+    .faq-answer.open {
+      max-height: 500px;
+      padding: 0 24px 18px;
+    }
+    .faq-answer p {
+      color: var(--text-secondary, #555);
+      line-height: 1.7;
+      font-size: 0.92rem;
+      margin: 0;
+    }
+    .faq-answer ul {
+      color: var(--text-secondary, #555);
+      line-height: 1.7;
+      font-size: 0.92rem;
+      padding-left: 20px;
+      margin: 8px 0 0;
+    }
+    .faq-answer li { margin-bottom: 4px; }
+    .faq-item.active .faq-icon { transform: rotate(45deg); }
+    .contact-box {
+      background: linear-gradient(135deg, #6C63FF 0%, #a78bfa 100%);
+      border-radius: 20px;
+      padding: 40px;
+      text-align: center;
+      color: #fff;
+      margin-top: 60px;
+    }
+    .contact-box h3 { font-family: 'Rajdhani', sans-serif; font-size: 1.8rem; font-weight: 700; margin-bottom: 12px; }
+    .contact-box p { color: rgba(255,255,255,0.85); margin-bottom: 24px; font-size: 0.95rem; }
+    .btn-white {
+      display: inline-block;
+      background: #fff;
+      color: #6C63FF;
+      padding: 12px 28px;
+      border-radius: 50px;
+      font-weight: 700;
+      text-decoration: none;
+      font-size: 0.95rem;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .btn-white:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
+  </style>
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <nav class="navbar" id="navbar">
+    <div class="nav-container">
+      <a href="/" class="nav-logo">
+        <span class="logo-icon">🎮</span>
+        <span class="logo-text">GiftCard <span class="logo-accent">CI</span></span>
+      </a>
+      <div class="nav-links" id="navLinks">
+        <a href="/" class="nav-link">Accueil</a>
+        <a href="/faq" class="nav-link active">FAQ</a>
+        <a href="/about" class="nav-link">À propos</a>
+        <a href="/seller-register" class="nav-link" style="color: var(--color-primary-light);">🏪 Vendre ici</a>
+        <div id="navMobileAuth" style="display:none;border-top:1px solid rgba(108,99,255,0.2);padding-top:12px;margin-top:4px;gap:10px;flex-direction:column;"></div>
+      </div>
+      <div class="nav-actions">
+        <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Mode clair / sombre">
+          <div class="theme-toggle-knob" id="themeKnob">🌙</div>
+        </button>
+        <div class="nav-auth" id="navAuth">
+          <a href="/login" class="btn-outline-nav">Connexion</a>
+          <a href="/register" class="btn-primary-nav">S'inscrire</a>
+        </div>
+        <div class="nav-user hidden" id="navUser">
+          <a href="/dashboard" class="btn-outline-nav">Mon compte</a>
+          <button onclick="logout()" class="btn-logout-nav">Déconnexion</button>
+        </div>
+      </div>
+      <button class="nav-toggle" id="navToggle" onclick="toggleMobileNav()">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="page-hero">
+    <div class="container" style="max-width:1100px;">
+      <h1>Questions <span>Fréquentes</span></h1>
+      <p>Tout ce que vous devez savoir sur Babicard.ci. Vous ne trouvez pas votre réponse ? Contactez-nous sur WhatsApp.</p>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="faq-section">
+    <div class="container">
+
+      <!-- Commandes & Livraison -->
+      <div class="faq-category">
+        <div class="faq-category-title">⚡ Commandes & Livraison</div>
+
+        <div class="faq-item">
+          <div class="faq-question" onclick="toggleFaq(this)">
+            Comment puis-je recevoir mon code après l'achat ?
+            <span class="faq-icon">+</span>
+          </div>
+          <div class="faq-answer">
+            <p>Dès que votre paiement est confirmé, le code de votre carte cadeau vous est envoyé automatiquement par <strong>email</strong> et par <strong>SMS</strong>. La livraison est instantanée, généralement en moins de 30 secondes.</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-question" onclick="toggleFaq(this)">
+            Combien de temps faut-il pour recevoir mon code ?
+            <span class="faq-icon">+</span>
+          </div>
+          <div class="faq-answer">
+            <p>La livraison est <strong>immédiate</strong> après validation du paiement. Si vous ne recevez pas votre code dans les 5 minutes, vérifiez votre dossier spam/courriers indésirables, puis contactez notre support WhatsApp.</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-question" onclick="toggleFaq(this)">
+            Puis-je suivre l'état de ma commande ?
+            <span class="faq-icon">+</span>
+          </div>
+          <div class="faq-answer">
+            <p>Oui. Connectez-vous à votre compte et allez dans <strong>Mes commandes</strong> depuis votre tableau de bord. Vous pouvez y voir l'état de chaque commande et retrouver vos codes.</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-question" onclick="toggleFaq(this)">
+            J'ai perdu mon code. Puis-je le récupérer ?
+            <span class="faq-icon">+</span>
+          </div>
+          <div class="faq-answer">
+            <p>Oui. Connectez-vous à votre compte → <strong>Mes commandes</strong> → cliquez sur la commande concernée. Votre code est toujours visible dans votre historique de commandes.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Paiement -->
+      <div class="faq-category">
+        <div class="faq-category-title">💳 Paiement</div>
+
+        <div class="faq-item">
+          <div class="faq-question" onclick="toggleFaq(this)">
+            Quels moyens de paiement acceptez-vous ?
+            <span class="faq-icon">+</span>
+          </div>
+          <div class="faq-answer">
+            <p>Nous acceptons :</p>
+            <ul>
+              <li>🌊 <strong>Wave CI</strong></li>
+              <li>🟠 <strong>Orange Money Côte d'Ivoire</strong></li>
+            </ul>
+            <p>D'autres méthodes seront disponibles prochainement.</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-question" onclick="toggleFaq(this)">
+            Le paiement est-il sécurisé ?
+            <span class="faq-icon">+</span>
+          </div>
+          <div class="faq-answer">
+            <p>Oui. Les paiements sont traités directement par <strong>Wave CI</strong> et <strong>Orange Money</strong>, des opérateurs de confiance. Babicard.ci ne stocke jamais vos informations bancaires.</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-question" onclick="toggleFaq(this)">
+            Mon paiement a échoué, que faire ?
+            <span class="faq-icon">+</span>
+          </div>
+          <div class="faq-answer">
+            <p>Vérifiez que vous avez un solde suffisant sur votre compte Wave ou Orange Money. Si le problème persiste, contactez notre support WhatsApp au <strong>+225 07 08 59 80 80</strong>.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Utilisation des cartes -->
+      <div class="faq-category">
+        <div class="faq-category-title">🎮 Utilisation des cartes</div>
+
+        <div class="faq-item">
+          <div class="faq-question" onclick="toggleFaq(this)">
+            Comment utiliser une carte iTunes / App Store ?
+            <span class="faq-icon">+</span>
+          </div>
+          <div class="faq-answer">
+            <p>Sur iPhone/iPad : Ouvrez l'App Store → appuyez sur votre photo de profil → "Utiliser un code ou une carte cadeau" → entrez le code. Sur Mac/PC : ouvrez iTunes → "Compte" → "Utiliser une carte cadeau". <strong>Attention :</strong> nos cartes sont pour l'App Store américain (région USA).</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-question" onclick="toggleFaq(this)">
+            Comment utiliser une carte PSN (PlayStation) ?
+            <span class="faq-icon">+</span>
+          </div>
+          <div class="faq-answer">
+            <p>Sur PS4/PS5 : allez dans le PlayStation Store → "Utiliser un code" → entrez votre code. Sur PC : connectez-vous sur playstation.com → "Utiliser un code".</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-question" onclick="toggleFaq(this)">
+            Comment utiliser une carte Xbox ?
+            <span class="faq-icon">+</span>
+          </div>
+          <div class="faq-answer">
+            <p>Sur Xbox : Paramètres → "Utiliser un code". Sur PC : Microsoft Store → votre profil → "Utiliser un code". Vous pouvez aussi aller sur microsoft.com/redeem.</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-question" onclick="toggleFaq(this)">
+            Les cartes ont-elles une date d'expiration ?
+            <span class="faq-icon">+</span>
+          </div>
+          <div class="faq-answer">
+            <p>La plupart de nos cartes n'expirent pas une fois achetées. Cependant, nous recommandons de les utiliser dans les 12 mois. Vérifiez les conditions propres à chaque plateforme.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Remboursement -->
+      <div class="faq-category">
+        <div class="faq-category-title">🔄 Remboursement & Problèmes</div>
+
+        <div class="faq-item">
+          <div class="faq-question" onclick="toggleFaq(this)">
+            Puis-je être remboursé après un achat ?
+            <span class="faq-icon">+</span>
+          </div>
+          <div class="faq-answer">
+            <p>En raison de la nature numérique des produits (codes livrés immédiatement), les remboursements ne sont généralement pas possibles une fois le code délivré. Si vous avez reçu un code invalide ou déjà utilisé, contactez-nous immédiatement sur WhatsApp — nous traiterons votre demande sous 24h.</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-question" onclick="toggleFaq(this)">
+            Mon code ne fonctionne pas, que faire ?
+            <span class="faq-icon">+</span>
+          </div>
+          <div class="faq-answer">
+            <p>Contactez notre support WhatsApp au <strong>+225 07 08 59 80 80</strong> avec une capture d'écran du code et de l'erreur. Nous vérifions et résolvons le problème rapidement.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Vendeurs -->
+      <div class="faq-category">
+        <div class="faq-category-title">🏪 Devenir Vendeur</div>
+
+        <div class="faq-item">
+          <div class="faq-question" onclick="toggleFaq(this)">
+            Comment vendre mes cartes sur Babicard.ci ?
+            <span class="faq-icon">+</span>
+          </div>
+          <div class="faq-answer">
+            <p>Créez un compte vendeur sur <a href="/seller-register" style="color:var(--color-primary,#6C63FF);">notre page d'inscription vendeur</a>. Après validation de votre dossier par notre équipe, vous pouvez ajouter vos produits et vendre vos cartes à notre communauté.</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-question" onclick="toggleFaq(this)">
+            Quelle commission prenez-vous sur les ventes ?
+            <span class="faq-icon">+</span>
+          </div>
+          <div class="faq-answer">
+            <p>Une commission est prélevée sur chaque vente. Le taux exact vous sera communiqué lors de la validation de votre compte vendeur par notre équipe.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bloc contact -->
+      <div class="contact-box">
+        <h3>Vous n'avez pas trouvé votre réponse ?</h3>
+        <p>Notre équipe est disponible 7j/7 de 8h à 22h sur WhatsApp pour vous aider.</p>
+        <a href="https://wa.me/2250708598080" target="_blank" class="btn-white">💬 Nous contacter sur WhatsApp</a>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer" style="padding:40px 0 20px;">
+    <div class="container" style="text-align:center;max-width:1100px;">
+      <p style="color:var(--text-secondary,#888);font-size:0.9rem;">
+        © 2024 Babicard.ci — Tous droits réservés |
+        <a href="/about" style="color:var(--color-primary,#6C63FF);text-decoration:none;">À propos</a> ·
+        <a href="/faq" style="color:var(--color-primary,#6C63FF);text-decoration:none;">FAQ</a> ·
+        <a href="/cgu" style="color:var(--color-primary,#6C63FF);text-decoration:none;">CGU</a>
+      </p>
+    </div>
+  </footer>
+
+  <script src="/js/auth.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      if (typeof updateNavbar === 'function') updateNavbar();
+      if (typeof initTheme === 'function') initTheme();
+    });
+
+    function toggleFaq(el) {
+      const item = el.closest('.faq-item');
+      const answer = item.querySelector('.faq-answer');
+      const isOpen = item.classList.contains('active');
+      // Close all
+      document.querySelectorAll('.faq-item.active').forEach(i => {
+        i.classList.remove('active');
+        i.querySelector('.faq-answer').classList.remove('open');
+      });
+      if (!isOpen) {
+        item.classList.add('active');
+        answer.classList.add('open');
+      }
+    }
+  </script>
+</body>
+</html>

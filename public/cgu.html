@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#6C63FF">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Babicard">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+  <title>CGU & Politique de confidentialité — Babicard.ci</title>
+  <meta name="description" content="Conditions générales d'utilisation et politique de confidentialité de Babicard.ci.">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://www.babicard.ci/cgu">
+  <link rel="stylesheet" href="/css/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    .page-hero {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      padding: 120px 0 60px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .page-hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at center, rgba(108,99,255,0.15) 0%, transparent 70%);
+    }
+    .page-hero h1 {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: clamp(2rem, 5vw, 3rem);
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 16px;
+      position: relative;
+    }
+    .page-hero h1 span { color: #a78bfa; }
+    .page-hero p { color: rgba(255,255,255,0.7); font-size: 1rem; max-width: 600px; margin: 0 auto; position: relative; }
+    .container { max-width: 860px; margin: 0 auto; padding: 0 24px; }
+    .legal-content { padding: 60px 0 80px; }
+    .legal-toc {
+      background: var(--card-bg, #fff);
+      border: 1px solid var(--border-color, #e8e8f0);
+      border-radius: 16px;
+      padding: 24px 28px;
+      margin-bottom: 48px;
+    }
+    .legal-toc h3 {
+      font-weight: 700;
+      color: var(--text-primary, #1a1a2e);
+      margin-bottom: 12px;
+      font-size: 1rem;
+    }
+    .legal-toc ol {
+      color: var(--color-primary, #6C63FF);
+      padding-left: 20px;
+      font-size: 0.9rem;
+      line-height: 2;
+    }
+    .legal-toc a { color: var(--color-primary, #6C63FF); text-decoration: none; }
+    .legal-toc a:hover { text-decoration: underline; }
+    .legal-section { margin-bottom: 48px; }
+    .legal-section h2 {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text-primary, #1a1a2e);
+      margin-bottom: 16px;
+      padding-top: 8px;
+      border-top: 2px solid var(--color-primary, #6C63FF);
+      padding-left: 0;
+    }
+    .legal-section p, .legal-section li {
+      color: var(--text-secondary, #555);
+      line-height: 1.8;
+      font-size: 0.93rem;
+      margin-bottom: 10px;
+    }
+    .legal-section ul, .legal-section ol {
+      padding-left: 20px;
+      margin-bottom: 12px;
+    }
+    .legal-section strong { color: var(--text-primary, #333); }
+    .update-date {
+      background: var(--bg-secondary, #f8f9ff);
+      border-left: 4px solid var(--color-primary, #6C63FF);
+      padding: 12px 20px;
+      border-radius: 0 8px 8px 0;
+      margin-bottom: 40px;
+      font-size: 0.88rem;
+      color: var(--text-secondary, #666);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <nav class="navbar" id="navbar">
+    <div class="nav-container">
+      <a href="/" class="nav-logo">
+        <span class="logo-icon">🎮</span>
+        <span class="logo-text">GiftCard <span class="logo-accent">CI</span></span>
+      </a>
+      <div class="nav-links" id="navLinks">
+        <a href="/" class="nav-link">Accueil</a>
+        <a href="/faq" class="nav-link">FAQ</a>
+        <a href="/about" class="nav-link">À propos</a>
+        <a href="/seller-register" class="nav-link" style="color: var(--color-primary-light);">🏪 Vendre ici</a>
+        <div id="navMobileAuth" style="display:none;border-top:1px solid rgba(108,99,255,0.2);padding-top:12px;margin-top:4px;gap:10px;flex-direction:column;"></div>
+      </div>
+      <div class="nav-actions">
+        <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Mode clair / sombre">
+          <div class="theme-toggle-knob" id="themeKnob">🌙</div>
+        </button>
+        <div class="nav-auth" id="navAuth">
+          <a href="/login" class="btn-outline-nav">Connexion</a>
+          <a href="/register" class="btn-primary-nav">S'inscrire</a>
+        </div>
+        <div class="nav-user hidden" id="navUser">
+          <a href="/dashboard" class="btn-outline-nav">Mon compte</a>
+          <button onclick="logout()" class="btn-logout-nav">Déconnexion</button>
+        </div>
+      </div>
+      <button class="nav-toggle" id="navToggle" onclick="toggleMobileNav()">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="page-hero">
+    <div class="container" style="max-width:1100px;">
+      <h1>CGU & <span>Confidentialité</span></h1>
+      <p>Conditions générales d'utilisation et politique de confidentialité de Babicard.ci</p>
+    </div>
+  </section>
+
+  <!-- CONTENU -->
+  <section class="legal-content">
+    <div class="container">
+
+      <div class="update-date">
+        Dernière mise à jour : 29 mars 2026 · Applicable dès votre inscription sur Babicard.ci
+      </div>
+
+      <!-- Table des matières -->
+      <div class="legal-toc">
+        <h3>📋 Sommaire</h3>
+        <ol>
+          <li><a href="#presentation">Présentation du service</a></li>
+          <li><a href="#inscription">Inscription et compte utilisateur</a></li>
+          <li><a href="#commandes">Commandes et paiement</a></li>
+          <li><a href="#livraison">Livraison et codes</a></li>
+          <li><a href="#remboursement">Remboursement</a></li>
+          <li><a href="#vendeurs">Conditions vendeurs</a></li>
+          <li><a href="#propriete">Propriété intellectuelle</a></li>
+          <li><a href="#confidentialite">Politique de confidentialité</a></li>
+          <li><a href="#cookies">Cookies</a></li>
+          <li><a href="#responsabilite">Limitation de responsabilité</a></li>
+          <li><a href="#contact-legal">Contact</a></li>
+        </ol>
+      </div>
+
+      <!-- 1. Présentation -->
+      <div class="legal-section" id="presentation">
+        <h2>1. Présentation du service</h2>
+        <p>Babicard.ci est une boutique en ligne proposant la vente de cartes cadeaux numériques (iTunes, PSN, Xbox, Google Play, Steam, Netflix, Amazon, etc.) à destination des utilisateurs situés en Côte d'Ivoire.</p>
+        <p>Le site est accessible à l'adresse <strong>https://www.babicard.ci</strong>. En accédant au site et en passant commande, vous acceptez les présentes conditions générales d'utilisation (CGU) dans leur intégralité.</p>
+      </div>
+
+      <!-- 2. Inscription -->
+      <div class="legal-section" id="inscription">
+        <h2>2. Inscription et compte utilisateur</h2>
+        <p>Pour effectuer un achat, vous devez créer un compte en fournissant :</p>
+        <ul>
+          <li>Un nom complet</li>
+          <li>Une adresse email valide</li>
+          <li>Un numéro de téléphone (optionnel mais recommandé)</li>
+          <li>Un mot de passe sécurisé (minimum 8 caractères)</li>
+        </ul>
+        <p>Vous êtes responsable de la confidentialité de vos identifiants. Babicard.ci ne sera pas tenu responsable des conséquences d'un accès non autorisé à votre compte.</p>
+        <p>Vous vous engagez à fournir des informations exactes et à les maintenir à jour. Toute utilisation frauduleuse entraînera la suspension immédiate du compte.</p>
+      </div>
+
+      <!-- 3. Commandes et paiement -->
+      <div class="legal-section" id="commandes">
+        <h2>3. Commandes et paiement</h2>
+        <p>Les prix affichés sur le site sont en <strong>Francs CFA (FCFA)</strong> et incluent toutes les taxes applicables.</p>
+        <p>Les modes de paiement acceptés sont :</p>
+        <ul>
+          <li><strong>Wave CI</strong></li>
+          <li><strong>Orange Money Côte d'Ivoire</strong></li>
+        </ul>
+        <p>Le paiement est exigible immédiatement lors de la commande. La commande n'est confirmée qu'après validation effective du paiement par l'opérateur concerné.</p>
+        <p>Babicard.ci se réserve le droit d'annuler toute commande en cas de suspicion de fraude ou de disponibilité insuffisante du produit.</p>
+      </div>
+
+      <!-- 4. Livraison -->
+      <div class="legal-section" id="livraison">
+        <h2>4. Livraison et codes</h2>
+        <p>Les codes de cartes cadeaux sont des produits numériques. Après confirmation du paiement, le code est livré automatiquement :</p>
+        <ul>
+          <li>Par <strong>email</strong> à l'adresse fournie lors de l'inscription</li>
+          <li>Par <strong>SMS</strong> au numéro de téléphone renseigné</li>
+        </ul>
+        <p>La livraison est généralement immédiate (moins d'une minute). En cas de délai, vérifiez votre dossier spam ou contactez le support.</p>
+        <p>Les codes peuvent également être consultés à tout moment dans votre espace client, rubrique <strong>Mes commandes</strong>.</p>
+        <p><strong>Important :</strong> certaines cartes (notamment iTunes) sont destinées à une région spécifique (ex. USA). Vérifiez la compatibilité avec votre compte avant l'achat.</p>
+      </div>
+
+      <!-- 5. Remboursement -->
+      <div class="legal-section" id="remboursement">
+        <h2>5. Remboursement</h2>
+        <p>En raison de la nature numérique et instantanée des produits vendus, <strong>aucun remboursement n'est possible</strong> une fois le code révélé ou délivré.</p>
+        <p>Exception : si le code reçu est invalide, déjà utilisé ou non fonctionnel, Babicard.ci s'engage à :</p>
+        <ul>
+          <li>Remplacer le code dans les 24 heures suivant la réclamation, ou</li>
+          <li>Procéder à un remboursement complet si le remplacement est impossible.</li>
+        </ul>
+        <p>Toute réclamation doit être effectuée dans un délai de <strong>48 heures</strong> après la réception du code, accompagnée d'une capture d'écran de l'erreur.</p>
+      </div>
+
+      <!-- 6. Vendeurs -->
+      <div class="legal-section" id="vendeurs">
+        <h2>6. Conditions vendeurs</h2>
+        <p>Babicard.ci permet à des vendeurs tiers (après validation) de proposer leurs cartes cadeaux sur la plateforme.</p>
+        <p>En tant que vendeur, vous vous engagez à :</p>
+        <ul>
+          <li>Fournir uniquement des codes valides et non utilisés</li>
+          <li>Ne pas vendre de produits contrefaits ou illégaux</li>
+          <li>Respecter les prix fixés ou négociés avec Babicard.ci</li>
+          <li>Tenir vos stocks à jour</li>
+        </ul>
+        <p>Une commission est prélevée sur chaque vente réalisée. Le taux est communiqué lors de la validation du compte vendeur.</p>
+        <p>Babicard.ci se réserve le droit de suspendre ou bannir tout vendeur ne respectant pas ces conditions.</p>
+      </div>
+
+      <!-- 7. Propriété intellectuelle -->
+      <div class="legal-section" id="propriete">
+        <h2>7. Propriété intellectuelle</h2>
+        <p>L'ensemble du contenu du site Babicard.ci (textes, images, logos, design, code source) est protégé par le droit d'auteur et reste la propriété exclusive de Babicard.ci.</p>
+        <p>Toute reproduction, distribution ou utilisation commerciale sans autorisation écrite préalable est strictement interdite.</p>
+        <p>Les noms et logos de marques tiers (Apple, PlayStation, Xbox, etc.) appartiennent à leurs propriétaires respectifs et sont utilisés à titre indicatif uniquement.</p>
+      </div>
+
+      <!-- 8. Confidentialité -->
+      <div class="legal-section" id="confidentialite">
+        <h2>8. Politique de confidentialité</h2>
+        <p>Babicard.ci collecte et traite vos données personnelles dans le respect de la vie privée et conformément aux lois en vigueur.</p>
+        <p><strong>Données collectées :</strong></p>
+        <ul>
+          <li>Nom, email, numéro de téléphone (lors de l'inscription)</li>
+          <li>Historique des commandes et paiements</li>
+          <li>Adresse IP et données de navigation (à des fins de sécurité)</li>
+        </ul>
+        <p><strong>Utilisation des données :</strong></p>
+        <ul>
+          <li>Traitement et livraison de vos commandes</li>
+          <li>Communication des codes par email et SMS</li>
+          <li>Assistance et support client</li>
+          <li>Amélioration de nos services</li>
+        </ul>
+        <p><strong>Conservation :</strong> vos données sont conservées pendant la durée de votre relation commerciale avec Babicard.ci, puis 3 ans après le dernier achat.</p>
+        <p><strong>Vos droits :</strong> vous pouvez demander l'accès, la rectification ou la suppression de vos données en contactant <a href="mailto:support@babicard.ci" style="color:var(--color-primary,#6C63FF);">support@babicard.ci</a>.</p>
+        <p>Babicard.ci ne vend ni ne loue vos données personnelles à des tiers.</p>
+      </div>
+
+      <!-- 9. Cookies -->
+      <div class="legal-section" id="cookies">
+        <h2>9. Cookies</h2>
+        <p>Babicard.ci utilise des cookies techniques nécessaires au bon fonctionnement du site (authentification, préférences d'affichage).</p>
+        <p>Aucun cookie publicitaire ou de tracking tiers n'est utilisé à ce jour.</p>
+        <p>En continuant à utiliser le site, vous acceptez l'utilisation de ces cookies techniques.</p>
+      </div>
+
+      <!-- 10. Responsabilité -->
+      <div class="legal-section" id="responsabilite">
+        <h2>10. Limitation de responsabilité</h2>
+        <p>Babicard.ci met tout en œuvre pour assurer la disponibilité du service 24h/24, 7j/7. Toutefois, des interruptions techniques peuvent survenir.</p>
+        <p>Babicard.ci ne saurait être tenu responsable :</p>
+        <ul>
+          <li>Des pannes ou modifications apportées par les plateformes tierces (Apple, Sony, Microsoft, etc.)</li>
+          <li>Des codes rendus invalides par les éditeurs après leur émission</li>
+          <li>D'une mauvaise utilisation du code par l'acheteur (mauvaise région, compte non compatible)</li>
+          <li>Des interruptions temporaires du service due à une maintenance ou un cas de force majeure</li>
+        </ul>
+      </div>
+
+      <!-- 11. Contact -->
+      <div class="legal-section" id="contact-legal">
+        <h2>11. Contact</h2>
+        <p>Pour toute question relative aux présentes CGU ou à votre vie privée :</p>
+        <ul>
+          <li>📧 Email : <a href="mailto:support@babicard.ci" style="color:var(--color-primary,#6C63FF);">support@babicard.ci</a></li>
+          <li>📱 WhatsApp : <a href="https://wa.me/2250708598080" target="_blank" style="color:var(--color-primary,#6C63FF);">+225 07 08 59 80 80</a></li>
+          <li>📍 Adresse : Abidjan, Côte d'Ivoire</li>
+        </ul>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer" style="padding:40px 0 20px;">
+    <div class="container" style="text-align:center;max-width:1100px;">
+      <p style="color:var(--text-secondary,#888);font-size:0.9rem;">
+        © 2024 Babicard.ci — Tous droits réservés |
+        <a href="/about" style="color:var(--color-primary,#6C63FF);text-decoration:none;">À propos</a> ·
+        <a href="/faq" style="color:var(--color-primary,#6C63FF);text-decoration:none;">FAQ</a> ·
+        <a href="/cgu" style="color:var(--color-primary,#6C63FF);text-decoration:none;">CGU</a>
+      </p>
+    </div>
+  </footer>
+
+  <script src="/js/auth.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      if (typeof updateNavbar === 'function') updateNavbar();
+      if (typeof initTheme === 'function') initTheme();
+    });
+  </script>
+</body>
+</html>
