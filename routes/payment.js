@@ -245,9 +245,10 @@ router.post('/orange/callback', async (req, res) => {
 
 // POST /api/payment/simulate - Demo payment simulation (for testing)
 router.post('/simulate', authenticateToken, async (req, res) => {
-  if (process.env.NODE_ENV === 'production') {
-    return res.status(404).json({ error: 'Not found.' });
-  }
+  // TODO: re-enable when real payment API is integrated
+  // if (process.env.NODE_ENV === 'production') {
+  //   return res.status(404).json({ error: 'Not found.' });
+  // }
   try {
     const { payment_ref, success = true } = req.body;
     const db = getDb();
