@@ -69,6 +69,11 @@ app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 // Serve static files
 app.use(express.static(path.join(__dirname, 'public')));
 
+// SEO files
+app.get('/sitemap.xml', (req, res) => {
+  res.sendFile(require('path').join(__dirname, 'public/sitemap.xml'));
+});
+
 // Serve uploads from persistent volume (/data/uploads) if available, fallback to public/uploads
 const persistentUploadsDir = process.env.DB_PATH
   ? require('path').join(require('path').dirname(process.env.DB_PATH), 'uploads')

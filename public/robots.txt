@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /seller
+Disallow: /api/
+Disallow: /uploads/
+
+Sitemap: https://www.babicard.ci/sitemap.xml
