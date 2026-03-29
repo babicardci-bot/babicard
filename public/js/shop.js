@@ -2,6 +2,17 @@
 // Babicard.ci — Shopping Cart & Checkout
 // =============================================
 
+// Échappement HTML — protection XSS
+function esc(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 let cart = [];
 
 // ============ CART STORAGE ============
@@ -144,7 +155,7 @@ function updateCartUI() {
         ${getCategoryIcon(item.category)}
       </div>
       <div class="cart-item-info">
-        <div class="cart-item-name">${item.name}</div>
+        <div class="cart-item-name">${esc(item.name)}</div>
         <div class="cart-item-price">${formatPrice(item.price)}</div>
       </div>
       <div class="cart-item-controls">

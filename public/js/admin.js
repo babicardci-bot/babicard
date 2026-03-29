@@ -4,6 +4,17 @@
 
 const API = '/api';
 
+// Échappement HTML — protection XSS sur toutes les données dynamiques
+function esc(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 const STATUS_LABELS = {
   paid: '💰 Payée',
   pending: '⏳ En attente',
@@ -256,8 +267,8 @@ async function loadDashboard() {
     document.getElementById('recentOrders').innerHTML = recentOrders.length ? recentOrders.map(order => `
       <div class="recent-order-row" onclick="viewOrderDetail(${order.id})" style="cursor:pointer">
         <div class="order-user">
-          ${order.user_name}
-          <small>${order.user_email}</small>
+          ${esc(order.user_name)}
+          <small>${esc(order.user_email)}</small>
         </div>
         <div style="display:flex;align-items:center;gap:8px">
           <span class="badge badge-${order.payment_status}">${statusLabel(order.payment_status)}</span>
@@ -271,8 +282,8 @@ async function loadDashboard() {
       <div class="top-product-row">
         <div class="product-rank">${i + 1}</div>
         <div class="product-info-sm">
-          <strong>${p.name}</strong>
-          <span>${p.platform}</span>
+          <strong>${esc(p.name)}</strong>
+          <span>${esc(p.platform)}</span>
         </div>
         <div class="product-sales">${p.sales} ventes</div>
       </div>
@@ -326,17 +337,17 @@ async function loadAdminProducts() {
                   <div style="display:flex;align-items:center;gap:10px">
                     <div style="width:40px;height:40px;border-radius:8px;overflow:hidden;flex-shrink:0;background:${catColors[p.category] || '#6C63FF'}22;display:flex;align-items:center;justify-content:center;border:1px solid var(--admin-border)">
                       ${p.image_url
-                        ? `<img src="${p.image_url}" alt="" style="width:100%;height:100%;object-fit:cover">`
+                        ? `<img src="${esc(p.image_url)}" alt="" style="width:100%;height:100%;object-fit:cover">`
                         : `<span style="font-size:1.2rem">${{apple:'🍎',playstation:'🎮',xbox:'🎮',google:'▶️',steam:'🎮',netflix:'🎬',amazon:'📦'}[p.category] || '🎁'}</span>`
                       }
                     </div>
                     <div>
-                      <strong>${p.name}</strong>
-                      <div style="font-size:0.72rem;color:var(--text-muted)">${p.denomination}</div>
+                      <strong>${esc(p.name)}</strong>
+                      <div style="font-size:0.72rem;color:var(--text-muted)">${esc(p.denomination)}</div>
                     </div>
                   </div>
                 </td>
-                <td>${p.platform}</td>
+                <td>${esc(p.platform)}</td>
                 <td><strong style="color:#a78bfa">${formatPrice(p.price)}</strong></td>
                 <td><span style="color:${p.available_cards > 0 ? '#86efac' : '#fca5a5'}">${p.available_cards}</span></td>
                 <td>${p.sold_cards}</td>
@@ -344,7 +355,7 @@ async function loadAdminProducts() {
                 <td>
                   <div class="td-actions">
                     <button class="btn-edit" onclick="editProduct(${p.id})">✏️ Modifier</button>
-                    <button class="btn-danger" onclick="deleteProduct(${p.id}, '${p.name.replace(/'/g, "\\'")}')">🗑</button>
+                    <button class="btn-danger" onclick="deleteProduct(${p.id})">🗑</button>
                   </div>
                 </td>
               </tr>
@@ -479,8 +490,8 @@ async function saveProduct(e) {
   }
 }
 
-async function deleteProduct(id, name) {
-  if (!confirm(`Désactiver le produit "${name}"?`)) return;
+async function deleteProduct(id) {
+  if (!confirm(`Désactiver ce produit ?`)) return;
   try {
     const res = await adminFetch(`/admin/products/${id}`, { method: 'DELETE' });
     const data = await res.json();
@@ -507,7 +518,7 @@ async function loadCardsSection() {
     const select = document.getElementById('cardProductFilter');
     const bulkSelect = document.getElementById('bulkProductId');
 
-    const options = data.products.map(p => `<option value="${p.id}">${p.name} (${p.denomination})</option>`).join('');
+    const options = data.products.map(p => `<option value="${p.id}">${esc(p.name)} (${esc(p.denomination)})</option>`).join('');
     if (select) select.innerHTML = `<option value="">Tous les produits</option>${options}`;
     if (bulkSelect) bulkSelect.innerHTML = `<option value="">Sélectionner...</option>${options}`;
   } catch (e) {}
@@ -518,7 +529,7 @@ async function loadCardsSection() {
     const data = await res.json();
     const sel = document.getElementById('cardSellerFilter');
     if (sel && data.sellers) {
-      const opts = data.sellers.map(s => `<option value="${s.user_id}">${s.shop_name || s.name}</option>`).join('');
+      const opts = data.sellers.map(s => `<option value="${s.user_id}">${esc(s.shop_name || s.name)}</option>`).join('');
       sel.innerHTML = `<option value="">Tous les vendeurs</option><option value="admin">👤 Admin</option>${opts}`;
     }
   } catch (e) {}
@@ -576,12 +587,12 @@ function renderCardsTable(cards) {
         <tbody>
           ${cards.map(card => `
             <tr>
-              <td><strong>${card.product_name}</strong></td>
-              <td><span class="code-cell">${card.code}</span></td>
-              <td>${card.pin ? `<span class="code-cell">${card.pin}</span>` : '-'}</td>
+              <td><strong>${esc(card.product_name)}</strong></td>
+              <td><span class="code-cell">${esc(card.code)}</span></td>
+              <td>${card.pin ? `<span class="code-cell">${esc(card.pin)}</span>` : '-'}</td>
               <td style="font-size:0.82rem;">
                 ${card.seller_name
-                  ? `<span style="color:#a78bfa;font-weight:600;">${card.shop_name || card.seller_name}</span>`
+                  ? `<span style="color:#a78bfa;font-weight:600;">${esc(card.shop_name || card.seller_name)}</span>`
                   : `<span style="color:#888;">👤 Admin</span>`}
               </td>
               <td><span class="badge badge-${card.status}">${card.status === 'available' ? '✓ Disponible' : '✕ Vendu'}</span></td>
@@ -892,8 +903,8 @@ async function loadAdminOrders() {
               <tr>
                 <td><strong>#${o.id}</strong></td>
                 <td>
-                  <strong>${o.user_name}</strong>
-                  <div style="font-size:0.72rem;color:var(--text-muted)">${o.user_email}</div>
+                  <strong>${esc(o.user_name)}</strong>
+                  <div style="font-size:0.72rem;color:var(--text-muted)">${esc(o.user_email)}</div>
                 </td>
                 <td>${o.payment_method === 'wave' ? '🌊 Wave' : '🟠 Orange'}</td>
                 <td><strong style="color:#a78bfa">${formatPrice(o.total_amount)}</strong></td>
@@ -936,9 +947,9 @@ async function viewOrderDetail(orderId) {
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
         <div style="background:var(--admin-card);padding:16px;border-radius:8px;border:1px solid var(--admin-border)">
           <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:12px;text-transform:uppercase;letter-spacing:1px">Client</div>
-          <strong style="display:block;margin-bottom:4px">${order.user_name}</strong>
-          <span style="font-size:0.82rem;color:var(--text-secondary)">${order.user_email}</span>
-          ${order.user_phone ? `<div style="font-size:0.82rem;color:var(--text-secondary)">${order.user_phone}</div>` : ''}
+          <strong style="display:block;margin-bottom:4px">${esc(order.user_name)}</strong>
+          <span style="font-size:0.82rem;color:var(--text-secondary)">${esc(order.user_email)}</span>
+          ${order.user_phone ? `<div style="font-size:0.82rem;color:var(--text-secondary)">${esc(order.user_phone)}</div>` : ''}
         </div>
         <div style="background:var(--admin-card);padding:16px;border-radius:8px;border:1px solid var(--admin-border)">
           <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:12px;text-transform:uppercase;letter-spacing:1px">Paiement</div>
@@ -947,7 +958,7 @@ async function viewOrderDetail(orderId) {
             <span class="badge badge-${order.delivery_status}">${statusLabel(order.delivery_status)}</span>
           </div>
           <div style="font-size:0.82rem;color:var(--text-secondary)">${order.payment_method === 'wave' ? '🌊 Wave CI' : '🟠 Orange Money'}</div>
-          <div style="font-size:0.78rem;color:var(--text-muted);font-family:monospace;margin-top:4px">${order.payment_ref || 'N/A'}</div>
+          <div style="font-size:0.78rem;color:var(--text-muted);font-family:monospace;margin-top:4px">${esc(order.payment_ref || 'N/A')}</div>
           <div style="font-size:1.1rem;font-weight:700;color:#a78bfa;margin-top:8px">${formatPrice(order.total_amount)}</div>
         </div>
       </div>
@@ -960,18 +971,18 @@ async function viewOrderDetail(orderId) {
           <div style="padding:14px 16px;border-bottom:1px solid rgba(108,99,255,0.1)">
             <div style="display:flex;justify-content:space-between;align-items:flex-start">
               <div>
-                <strong>${item.product_name}</strong>
-                <div style="font-size:0.75rem;color:var(--text-muted)">${item.platform} • ${item.denomination || ''}</div>
+                <strong>${esc(item.product_name)}</strong>
+                <div style="font-size:0.75rem;color:var(--text-muted)">${esc(item.platform)} • ${esc(item.denomination || '')}</div>
               </div>
               <strong style="color:#a78bfa">${formatPrice(item.unit_price)}</strong>
             </div>
             ${item.card_code ? `
               <div style="margin-top:10px;background:rgba(108,99,255,0.07);padding:10px;border-radius:6px;border:1px dashed rgba(108,99,255,0.3)">
                 <div style="font-size:0.7rem;color:var(--text-muted);margin-bottom:4px">CODE DE LA CARTE</div>
-                <code style="font-size:1rem;color:#a78bfa;letter-spacing:2px">${item.card_code}</code>
-                ${item.card_pin ? `<div style="font-size:0.82rem;color:var(--text-secondary);margin-top:4px">PIN: <strong>${item.card_pin}</strong></div>` : ''}
+                <code style="font-size:1rem;color:#a78bfa;letter-spacing:2px">${esc(item.card_code)}</code>
+                ${item.card_pin ? `<div style="font-size:0.82rem;color:var(--text-secondary);margin-top:4px">PIN: <strong>${esc(item.card_pin)}</strong></div>` : ''}
                 <div style="margin-top:8px;font-size:0.75rem;border-top:1px solid rgba(108,99,255,0.15);padding-top:6px;color:${item.seller_name ? '#22d3ee' : '#fb923c'}">
-                  Vendeur : <strong>${item.seller_name ? (item.seller_shop || item.seller_name) : '👤 Admin'}</strong>
+                  Vendeur : <strong>${item.seller_name ? esc(item.seller_shop || item.seller_name) : '👤 Admin'}</strong>
                 </div>
               </div>
             ` : `<div style="margin-top:8px;font-size:0.78rem;color:#fcd34d">⚠️ Aucune carte assignée</div>`}
@@ -1047,12 +1058,12 @@ async function loadUsers() {
               <tr>
                 <td>
                   <div style="display:flex;align-items:center;gap:8px">
-                    <div style="width:30px;height:30px;background:linear-gradient(135deg,var(--admin-primary),#8b5cf6);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.8rem;flex-shrink:0">${u.name.charAt(0).toUpperCase()}</div>
-                    <strong>${u.name}</strong>
+                    <div style="width:30px;height:30px;background:linear-gradient(135deg,var(--admin-primary),#8b5cf6);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.8rem;flex-shrink:0">${esc(u.name.charAt(0).toUpperCase())}</div>
+                    <strong>${esc(u.name)}</strong>
                   </div>
                 </td>
-                <td style="font-size:0.82rem">${u.email}</td>
-                <td style="font-size:0.82rem">${u.phone || '-'}</td>
+                <td style="font-size:0.82rem">${esc(u.email)}</td>
+                <td style="font-size:0.82rem">${esc(u.phone || '-')}</td>
                 <td><span class="badge ${u.role === 'admin' ? 'badge-paid' : 'badge-pending'}">${u.role}</span></td>
                 <td>${u.total_orders || 0}</td>
                 <td style="color:#a78bfa;font-weight:600">${formatPrice(u.total_spent || 0)}</td>
@@ -1060,13 +1071,13 @@ async function loadUsers() {
                 <td style="display:flex;gap:6px;flex-wrap:wrap;">
                   ${u.role !== 'seller' ? `
                     <button class="btn-sm ${u.role === 'admin' ? 'btn-secondary' : 'btn-primary'}"
-                      onclick="changeUserRole(${u.id}, '${u.role === 'admin' ? 'client' : 'admin'}', '${u.name.replace(/'/g,"\\'")}')"
+                      onclick="changeUserRole(${u.id}, '${u.role === 'admin' ? 'client' : 'admin'}')"
                       title="${u.role === 'admin' ? 'Rétrograder en client' : 'Promouvoir en admin'}">
                       ${u.role === 'admin' ? '👤 Rétrograder' : '🛡️ Admin'}
                     </button>
                   ` : ''}
                   ${u.role !== 'admin' ? `
-                    <button class="btn-sm btn-danger" onclick="deleteUser(${u.id}, '${u.name.replace(/'/g,"\\'")}')" title="Supprimer l'utilisateur">
+                    <button class="btn-sm btn-danger" onclick="deleteUser(${u.id})" title="Supprimer l'utilisateur">
                       🗑️
                     </button>
                   ` : ''}
@@ -1082,9 +1093,9 @@ async function loadUsers() {
   }
 }
 
-async function changeUserRole(userId, newRole, userName) {
+async function changeUserRole(userId, newRole) {
   const label = newRole === 'admin' ? 'administrateur' : 'client';
-  if (!confirm(`Changer le rôle de "${userName}" en ${label} ?`)) return;
+  if (!confirm(`Changer le rôle de cet utilisateur en ${label} ?`)) return;
   try {
     const res = await adminFetch(`/admin/users/${userId}/role`, {
       method: 'PUT',
@@ -1098,8 +1109,8 @@ async function changeUserRole(userId, newRole, userName) {
   }
 }
 
-async function deleteUser(userId, userName) {
-  if (!confirm(`Supprimer définitivement "${userName}" ?\n\nSes commandes et données seront conservées mais son compte sera supprimé. Cette action est irréversible.`)) return;
+async function deleteUser(userId) {
+  if (!confirm(`Supprimer définitivement cet utilisateur ?\n\nSes commandes et données seront conservées mais son compte sera supprimé. Cette action est irréversible.`)) return;
   try {
     const res = await adminFetch(`/admin/users/${userId}`, { method: 'DELETE' });
     const data = await res.json();
@@ -1156,10 +1167,10 @@ async function loadAdminSellers() {
           <tbody>
             ${allSellersData.map(s => `
               <tr>
-                <td><strong>${s.shop_name}</strong></td>
-                <td>${s.name}</td>
-                <td>${s.email}</td>
-                <td>${s.phone || '-'}</td>
+                <td><strong>${esc(s.shop_name)}</strong></td>
+                <td>${esc(s.name)}</td>
+                <td>${esc(s.email)}</td>
+                <td>${esc(s.phone || '-')}</td>
                 <td>${s.product_count}</td>
                 <td>${formatPrice(s.total_earnings)}</td>
                 <td>${s.commission_rate}%</td>
@@ -1301,13 +1312,13 @@ async function loadAdminWithdrawals() {
             ${allWithdrawalsData.map(w => `
               <tr>
                 <td>#${w.id}</td>
-                <td><strong>${w.shop_name}</strong></td>
-                <td>${w.seller_name}</td>
+                <td><strong>${esc(w.shop_name)}</strong></td>
+                <td>${esc(w.seller_name)}</td>
                 <td style="font-weight:700;color:#22c55e">${formatPrice(w.amount)}</td>
                 <td>${w.payment_method === 'wave' ? '🌊 Wave CI' : '🟠 Orange Money'}</td>
-                <td>${w.payment_number}</td>
+                <td>${esc(w.payment_number)}</td>
                 <td>${statusBadge(w.status)}</td>
-                <td>${w.admin_note || '-'}</td>
+                <td>${esc(w.admin_note || '-')}</td>
                 <td>${formatDate(w.created_at)}</td>
                 <td>
                   ${w.status !== 'paid' && w.status !== 'rejected' ? `
@@ -1336,8 +1347,8 @@ function openWithdrawalModalById(id) {
 function openWithdrawalModal(id, shopName, amount, method, number) {
   document.getElementById('withdrawalModalId').value = id;
   document.getElementById('withdrawalModalInfo').innerHTML = `
-    <strong>${shopName}</strong> demande le retrait de <strong style="color:#22c55e">${formatPrice(amount)}</strong>
-    via <strong>${method === 'wave' ? '🌊 Wave CI' : '🟠 Orange Money'}</strong> sur le numéro <strong>${number}</strong>
+    <strong>${esc(shopName)}</strong> demande le retrait de <strong style="color:#22c55e">${formatPrice(amount)}</strong>
+    via <strong>${method === 'wave' ? '🌊 Wave CI' : '🟠 Orange Money'}</strong> sur le numéro <strong>${esc(number)}</strong>
   `;
   document.getElementById('withdrawalModalStatus').value = 'approved';
   document.getElementById('withdrawalModalNote').value = '';

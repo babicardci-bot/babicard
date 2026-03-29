@@ -8,6 +8,17 @@
   document.documentElement.setAttribute('data-theme', saved);
 })();
 
+// Échappement HTML — protection XSS
+function esc(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 // ============ SLIDER ============
 let currentSlide = 0;
 let totalSlides = 5;
@@ -185,15 +196,15 @@ function renderProducts(products) {
             ${inStock ? '✓ Disponible' : '✕ Rupture'}
           </span>
           ${product.image_url
-            ? `<img src="${product.image_url}" alt="${product.name}" class="product-card-img-cover">`
+            ? `<img src="${esc(product.image_url)}" alt="${esc(product.name)}" class="product-card-img-cover">`
             : `<span class="card-brand-icon">${icon}</span><span class="card-brand-name">${getCategoryLabel(product.category)}</span>`
           }
         </div>
         <div class="product-card-body">
-          <div class="product-platform">${product.platform}</div>
-          <div class="product-name">${product.name}</div>
-          <div class="product-denomination">${product.denomination}</div>
-          ${product.seller_shop_name ? `<div class="product-seller">🏪 ${product.seller_shop_name}</div>` : '<div class="product-seller" style="color:var(--color-primary-light);font-size:0.7rem;">✓ Babicard.ci Officiel</div>'}
+          <div class="product-platform">${esc(product.platform)}</div>
+          <div class="product-name">${esc(product.name)}</div>
+          <div class="product-denomination">${esc(product.denomination)}</div>
+          ${product.seller_shop_name ? `<div class="product-seller">🏪 ${esc(product.seller_shop_name)}</div>` : '<div class="product-seller" style="color:var(--color-primary-light);font-size:0.7rem;">✓ Babicard.ci Officiel</div>'}
           <div class="product-footer">
             <div class="product-price">
               ${formatPrice(product.price)}
@@ -233,9 +244,9 @@ function openProductModal(productId) {
       <button onclick="closeModal()" style="position:absolute;top:12px;right:12px;width:34px;height:34px;border-radius:50%;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);border:1px solid rgba(255,255,255,0.15);color:#fff;font-size:1rem;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:2;">✕</button>
     </div>
     <div style="padding:24px;">
-      <div style="color:var(--color-primary-light);font-size:0.75rem;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">${product.platform}</div>
-      <h2 style="font-size:1.4rem;font-weight:700;margin-bottom:8px">${product.name}</h2>
-      <p style="color:var(--text-secondary);font-size:0.9rem;line-height:1.6;margin-bottom:20px">${product.description || 'Carte cadeau numérique. Livraison immédiate par email et SMS.'}</p>
+      <div style="color:var(--color-primary-light);font-size:0.75rem;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">${esc(product.platform)}</div>
+      <h2 style="font-size:1.4rem;font-weight:700;margin-bottom:8px">${esc(product.name)}</h2>
+      <p style="color:var(--text-secondary);font-size:0.9rem;line-height:1.6;margin-bottom:20px">${esc(product.description || 'Carte cadeau numérique. Livraison immédiate par email et SMS.')}</p>
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
         <div style="background:var(--bg-card);padding:12px;border-radius:8px;border:1px solid var(--border-color);">
@@ -248,7 +259,7 @@ function openProductModal(productId) {
         </div>
         <div style="background:var(--bg-card);padding:12px;border-radius:8px;border:1px solid var(--border-color);">
           <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:1px">Plateforme</div>
-          <div style="font-size:0.9rem;font-weight:600">${product.platform}</div>
+          <div style="font-size:0.9rem;font-weight:600">${esc(product.platform)}</div>
         </div>
         <div style="background:var(--bg-card);padding:12px;border-radius:8px;border:1px solid var(--border-color);">
           <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:1px">Disponibilité</div>
