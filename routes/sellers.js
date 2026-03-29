@@ -6,6 +6,7 @@ const multer = require('multer');
 const { getDb } = require('../database/db');
 const { authenticateToken, requireSeller } = require('../middleware/auth');
 const { sendWithdrawalRequestEmail } = require('../services/email');
+const { encrypt } = require('../services/encryption');
 const bcrypt = require('bcryptjs');
 
 // Multer — seller document upload (one file at a time)
@@ -240,9 +241,9 @@ router.post('/cards/bulk', authenticateToken, requireSeller, (req, res) => {
         if (!card.code || !card.code.trim()) { skipped++; continue; }
         try {
           if (hasSellerCol) {
-            insertCard.run(product_id, req.user.id, card.code.trim(), card.pin || null, card.serial || null, card.card_name || null, card.card_price ? parseFloat(card.card_price) : null);
+            insertCard.run(product_id, req.user.id, encrypt(card.code.trim()), card.pin ? encrypt(card.pin) : null, card.serial ? encrypt(card.serial) : null, card.card_name || null, card.card_price ? parseFloat(card.card_price) : null);
           } else {
-            insertCard.run(product_id, card.code.trim(), card.pin || null, card.serial || null, card.card_name || null, card.card_price ? parseFloat(card.card_price) : null);
+            insertCard.run(product_id, encrypt(card.code.trim()), card.pin ? encrypt(card.pin) : null, card.serial ? encrypt(card.serial) : null, card.card_name || null, card.card_price ? parseFloat(card.card_price) : null);
           }
           inserted++;
         }

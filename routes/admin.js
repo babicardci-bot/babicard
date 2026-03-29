@@ -3,6 +3,7 @@ const router = express.Router();
 const { getDb } = require('../database/db');
 const { authenticateToken, requireAdmin, logAdminAction } = require('../middleware/auth');
 const { processDelivery } = require('../services/delivery');
+const { encrypt, decrypt } = require('../services/encryption');
 const { sendWithdrawalStatusEmail, sendSellerApprovalEmail } = require('../services/email');
 const multer = require('multer');
 const path = require('path');
@@ -424,9 +425,9 @@ router.post('/cards/bulk', (req, res) => {
         try {
           insertCard.run(
             product_id,
-            card.code.trim(),
-            card.pin || null,
-            card.serial || null,
+            encrypt(card.code.trim()),
+            card.pin ? encrypt(card.pin) : null,
+            card.serial ? encrypt(card.serial) : null,
             card.card_name || null,
             card.card_price ? parseFloat(card.card_price) : null
           );
@@ -558,7 +559,12 @@ router.get('/orders/:id', (req, res) => {
          LEFT JOIN cards c ON oi.card_id = c.id
          WHERE oi.order_id = ?`;
 
-    const items = db.prepare(itemsQuery).all(order.id);
+    const items = db.prepare(itemsQuery).all(order.id).map(item => ({
+      ...item,
+      card_code: decrypt(item.card_code),
+      card_pin: decrypt(item.card_pin),
+      card_serial: decrypt(item.card_serial)
+    }));
 
     res.json({ order: { ...order, items } });
   } catch (err) {

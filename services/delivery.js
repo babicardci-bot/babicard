@@ -1,6 +1,7 @@
 const { getDb } = require('../database/db');
 const { sendOrderConfirmationEmail, sendLowStockEmail } = require('./email');
 const { sendCardDeliveredSMS, sendPaymentConfirmationSMS } = require('./sms');
+const { decrypt } = require('./encryption');
 
 async function processDelivery(orderId, forceRedeliver = false) {
   const db = getDb();
@@ -58,9 +59,9 @@ async function processDelivery(orderId, forceRedeliver = false) {
             order_item_id: item.id,
             product_name: item.product_name,
             card_id: existingCard.id,
-            card_code: existingCard.code,
-            card_pin: existingCard.pin,
-            card_serial: existingCard.serial
+            card_code: decrypt(existingCard.code),
+            card_pin: decrypt(existingCard.pin),
+            card_serial: decrypt(existingCard.serial)
           });
           continue;
         }
@@ -100,9 +101,9 @@ async function processDelivery(orderId, forceRedeliver = false) {
           denomination: item.denomination,
           category: item.category,
           card_id: availableCard.id,
-          card_code: availableCard.code,
-          card_pin: availableCard.pin,
-          card_serial: availableCard.serial
+          card_code: decrypt(availableCard.code),
+          card_pin: decrypt(availableCard.pin),
+          card_serial: decrypt(availableCard.serial)
         });
 
         console.log(`[DELIVERY] Carte assignée: ${item.product_name} -> Code: ${availableCard.code.substring(0, 4)}****`);
