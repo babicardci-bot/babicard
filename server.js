@@ -71,7 +71,12 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // SEO files
 app.get('/sitemap.xml', (req, res) => {
+  res.setHeader('Content-Type', 'application/xml; charset=utf-8');
   res.sendFile(require('path').join(__dirname, 'public/sitemap.xml'));
+});
+app.get('/robots.txt', (req, res) => {
+  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+  res.sendFile(require('path').join(__dirname, 'public/robots.txt'));
 });
 
 // Serve uploads from persistent volume (/data/uploads) if available, fallback to public/uploads
