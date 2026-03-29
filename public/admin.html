@@ -319,6 +319,14 @@
         <button class="btn-primary" onclick="saveAllAppearance()">💾 Tout sauvegarder</button>
       </div>
 
+      <!-- BACKUP BDD -->
+      <div class="appearance-block" style="margin-bottom:24px;">
+        <h3 class="appearance-title">🗄️ Sauvegarde base de données</h3>
+        <p style="color:#a0a0c0;font-size:0.85rem;margin-bottom:16px;">Télécharge une copie complète de la base de données SQLite. À faire régulièrement.</p>
+        <button class="btn-primary" onclick="downloadBackup()">⬇️ Télécharger le backup</button>
+        <div id="backupResult" style="margin-top:12px;"></div>
+      </div>
+
       <!-- SMS TEST -->
       <div class="appearance-block" style="margin-bottom:24px;">
         <h3 class="appearance-title">📱 Test SMS</h3>

@@ -759,4 +759,31 @@ router.post('/test-sms', async (req, res) => {
   }
 });
 
+// GET /api/admin/backup — télécharger une copie de la base de données
+router.get('/backup', (req, res) => {
+  try {
+    const db = getDb();
+    const dbPath = process.env.DB_PATH || path.join(__dirname, '../database/giftcard.db');
+
+    if (!fs.existsSync(dbPath)) {
+      return res.status(404).json({ error: 'Fichier base de données introuvable.' });
+    }
+
+    // WAL checkpoint pour s'assurer que toutes les données sont dans le fichier principal
+    db.pragma('wal_checkpoint(FULL)');
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const filename = `babicard-backup-${timestamp}.db`;
+
+    logAdminAction(req, 'DATABASE_BACKUP', filename);
+
+    res.setHeader('Content-Type', 'application/octet-stream');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.sendFile(dbPath);
+  } catch (err) {
+    console.error('Erreur backup DB:', err);
+    res.status(500).json({ error: 'Erreur lors du backup.' });
+  }
+});
+
 module.exports = router;

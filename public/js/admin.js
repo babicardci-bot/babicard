@@ -1401,6 +1401,35 @@ async function saveWithdrawalStatus() {
   }
 }
 
+// ============ DATABASE BACKUP ============
+async function downloadBackup() {
+  const resultEl = document.getElementById('backupResult');
+  resultEl.innerHTML = '<span style="color:#a0a0c0;font-size:0.85rem;">Préparation du backup...</span>';
+  try {
+    const token = localStorage.getItem('token');
+    const res = await fetch('/api/admin/backup', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      resultEl.innerHTML = `<span style="color:#ef4444;font-size:0.85rem;">❌ ${data.error || 'Erreur'}</span>`;
+      return;
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const disposition = res.headers.get('Content-Disposition') || '';
+    const match = disposition.match(/filename="([^"]+)"/);
+    a.download = match ? match[1] : 'babicard-backup.db';
+    a.href = url;
+    a.click();
+    URL.revokeObjectURL(url);
+    resultEl.innerHTML = '<span style="color:#22c55e;font-size:0.85rem;">✅ Backup téléchargé.</span>';
+  } catch(e) {
+    resultEl.innerHTML = '<span style="color:#ef4444;font-size:0.85rem;">❌ Erreur réseau.</span>';
+  }
+}
+
 // ============ SMS TEST ============
 async function sendTestSMS() {
   const phone = document.getElementById('smsTestPhone').value.trim();
