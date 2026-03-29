@@ -388,7 +388,7 @@ function applySliders(sliders) {
     div.className = 'slide' + (idx === 0 ? ' active' : '');
     div.dataset.slide = idx;
     div.innerHTML =
-      '<div class="slide-bg" style="background:' + (slide.bg_gradient || 'linear-gradient(135deg,#1a1a2e,#16213e)') + '"></div>' +
+      '<div class="slide-bg" style="background:' + (slide.bg_gradient || 'linear-gradient(135deg,#1a1a2e,#16213e)') + ';' + (slide.image_url ? 'background-image:url(' + slide.image_url + ');background-size:cover;background-position:center;background-blend-mode:overlay;' : '') + '"></div>' +
       '<div class="slide-content">' +
       '<div class="slide-brand">' +
       '<div class="brand-badge" style="background:' + (slide.icon_bg || '#333') + ';width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:2rem;">' + (slide.icon_emoji || '🎮') + '</div>' +

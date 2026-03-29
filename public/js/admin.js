@@ -1654,6 +1654,13 @@ function renderSliderCard(slide, idx) {
     '<div class="form-group"><label>Accent titre</label><input class="form-control slide-title-accent" value="' + (slide.title_accent || '') + '" placeholder="Network Cards"></div>' +
     '</div>' +
     '<div class="form-group"><label>Description</label><textarea class="form-control slide-desc" rows="2" placeholder="Description...">' + (slide.description || '') + '</textarea></div>' +
+    '<div class="form-group"><label>Image de fond (optionnel)</label>' +
+    '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">' +
+    '<input class="form-control slide-image-url" value="' + (slide.image_url || '') + '" placeholder="URL ou uploader ci-dessous" style="flex:1;min-width:200px;">' +
+    '<label class="btn btn-outline" style="cursor:pointer;white-space:nowrap;">📁 Uploader<input type="file" accept="image/*" style="display:none;" onchange="uploadSlideImage(this,' + idx + ')"></label>' +
+    '</div>' +
+    (slide.image_url ? '<img src="' + slide.image_url + '" style="margin-top:8px;max-height:80px;border-radius:6px;object-fit:cover;" id="slideImgPreview_' + idx + '">' : '<img id="slideImgPreview_' + idx + '" style="display:none;margin-top:8px;max-height:80px;border-radius:6px;object-fit:cover;">') +
+    '</div>' +
     '<div class="form-group"><label>Gradient CSS</label><input class="form-control slide-gradient" value="' + (slide.bg_gradient || '') + '" placeholder="linear-gradient(...)"></div>' +
     '<div class="form-group"><label>Icône couleur fond</label><input class="form-control slide-icon-bg" value="' + (slide.icon_bg || '') + '" placeholder="#003087"></div>' +
     '<div class="form-group"><label>Texte bouton</label><input class="form-control slide-cta" value="' + (slide.cta_text || 'Acheter →') + '"></div>' +
@@ -1696,11 +1703,30 @@ function removePrice(idx, pi) {
   if (rows[pi]) rows[pi].remove();
 }
 
+async function uploadSlideImage(input, idx) {
+  const file = input.files[0];
+  if (!file) return;
+  const form = new FormData();
+  form.append('image', file);
+  try {
+    const res = await adminFetch('/admin/products/upload-image', { method: 'POST', body: form });
+    const data = await res.json();
+    if (data.url) {
+      const urlInput = document.querySelector(`#slideBody_${idx} .slide-image-url`);
+      if (urlInput) urlInput.value = data.url;
+      const preview = document.getElementById(`slideImgPreview_${idx}`);
+      if (preview) { preview.src = data.url; preview.style.display = 'block'; }
+      showToast('Image uploadée !', 'success');
+    }
+  } catch(e) {
+    showToast('Erreur upload image.', 'error');
+  }
+}
+
 function collectSlidersData() {
   const cards = document.querySelectorAll('#slidersEditor .slider-card');
   const sliders = [];
   cards.forEach((card, idx) => {
-    const body = card.querySelector('.slider-card-body');
     const prices = Array.from(card.querySelectorAll('.price-input'))
       .map(i => i.value.trim()).filter(Boolean);
     sliders.push({
@@ -1714,6 +1740,7 @@ function collectSlidersData() {
       icon_emoji: (card.querySelector('.slide-icon-emoji') || {}).value || '',
       icon_bg: (card.querySelector('.slide-icon-bg') || {}).value || '',
       cta_text: (card.querySelector('.slide-cta') || {}).value || 'Acheter →',
+      image_url: (card.querySelector('.slide-image-url') || {}).value || '',
       prices
     });
   });
