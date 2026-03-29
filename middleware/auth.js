@@ -1,7 +1,11 @@
 const jwt = require('jsonwebtoken');
 const { getDb } = require('../database/db');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'giftcard_ci_secret_2024_fallback';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  console.error('FATAL: JWT_SECRET environment variable is not set.');
+  process.exit(1);
+}
 
 async function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];

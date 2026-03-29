@@ -144,6 +144,23 @@ router.get('/me', authenticateToken, (req, res) => {
 router.put('/me', authenticateToken, requireSeller, (req, res) => {
   try {
     const { description, wave_number, orange_number, logo_url } = req.body;
+
+    // Validate phone numbers
+    if (wave_number && !/^[\d\s\-\+\(\)]{8,20}$/.test(wave_number)) {
+      return res.status(400).json({ error: 'Numéro Wave invalide.' });
+    }
+    if (orange_number && !/^[\d\s\-\+\(\)]{8,20}$/.test(orange_number)) {
+      return res.status(400).json({ error: 'Numéro Orange Money invalide.' });
+    }
+    // Validate description length
+    if (description && description.length > 1000) {
+      return res.status(400).json({ error: 'Description trop longue (max 1000 caractères).' });
+    }
+    // Validate logo URL if provided
+    if (logo_url) {
+      try { new URL(logo_url); } catch { return res.status(400).json({ error: 'URL logo invalide.' }); }
+    }
+
     const db = getDb();
 
     db.prepare(`
@@ -331,8 +348,8 @@ router.post('/set-pin', authenticateToken, requireSeller, async (req, res) => {
     const { pin, current_pin } = req.body;
     const db = getDb();
 
-    if (!pin || !/^\d{4}$/.test(pin)) {
-      return res.status(400).json({ error: 'Le code secret doit être exactement 4 chiffres.' });
+    if (!pin || !/^\d{4,6}$/.test(pin)) {
+      return res.status(400).json({ error: 'Le code secret doit contenir entre 4 et 6 chiffres.' });
     }
 
     const profile = db.prepare('SELECT withdrawal_pin FROM seller_profiles WHERE user_id = ?').get(req.user.id);

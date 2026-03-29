@@ -13,7 +13,11 @@ app.set('trust proxy', 1);
 // Sécurité — headers HTTP
 app.use(helmet({
   contentSecurityPolicy: false, // désactivé car on sert des fichiers HTML avec scripts inline
-  crossOriginEmbedderPolicy: false
+  crossOriginEmbedderPolicy: false,
+  hsts: { maxAge: 31536000, includeSubDomains: true },
+  frameguard: { action: 'deny' },
+  xContentTypeOptions: true,
+  referrerPolicy: { policy: 'strict-origin-when-cross-origin' }
 }));
 
 // CORS — accepter seulement les origines connues
@@ -41,10 +45,10 @@ app.use(rateLimit({
   legacyHeaders: false
 }));
 
-// Rate limiting strict sur login — 10 tentatives par 15 minutes
+// Rate limiting strict sur login — 5 tentatives par 15 minutes
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  max: 5,
   message: { error: 'Trop de tentatives de connexion, réessayez dans 15 minutes.' },
   standardHeaders: true,
   legacyHeaders: false

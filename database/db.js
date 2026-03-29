@@ -296,7 +296,7 @@ function seedDefaultData(db) {
   if (!adminExists) {
     const hash = bcrypt.hashSync('Admin@2024!', 10);
     db.prepare(`INSERT OR IGNORE INTO users (name, email, phone, password_hash, role) VALUES (?, ?, ?, ?, ?)`).run('Administrateur', 'babicardci@gmail.com', '+2250708598080', hash, 'admin');
-    console.log('Admin créé: babicardci@gmail.com / Admin@2024!');
+    console.log('Admin créé: babicardci@gmail.com (voir variables env pour le mot de passe)');
   } else if (adminExists.role !== 'admin') {
     db.prepare('UPDATE users SET role = ? WHERE email = ?').run('admin', 'babicardci@gmail.com');
     console.log('Admin: rôle corrigé → admin');

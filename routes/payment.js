@@ -86,6 +86,10 @@ router.post('/wave/callback', express.raw({ type: 'application/json' }), async (
     if (!client_reference) {
       return res.status(400).json({ error: 'Référence manquante.' });
     }
+    // Validate payment_ref format (basic protection)
+    if (!client_reference || typeof client_reference !== 'string' || client_reference.length > 100) {
+      return res.status(400).json({ error: 'Invalid reference.' });
+    }
 
     const db = getDb();
     const order = db.prepare('SELECT * FROM orders WHERE payment_ref = ?').get(client_reference);
@@ -210,6 +214,10 @@ router.post('/orange/initiate', authenticateToken, async (req, res) => {
 router.post('/orange/callback', async (req, res) => {
   try {
     const { status, order_id: paymentRef, txnid } = req.body;
+    // Validate payment_ref format (basic protection)
+    if (!paymentRef || typeof paymentRef !== 'string' || paymentRef.length > 100) {
+      return res.status(400).json({ error: 'Invalid reference.' });
+    }
     const db = getDb();
 
     const order = db.prepare('SELECT * FROM orders WHERE payment_ref = ?').get(paymentRef);
@@ -237,6 +245,9 @@ router.post('/orange/callback', async (req, res) => {
 
 // POST /api/payment/simulate - Demo payment simulation (for testing)
 router.post('/simulate', authenticateToken, async (req, res) => {
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(404).json({ error: 'Not found.' });
+  }
   try {
     const { payment_ref, success = true } = req.body;
     const db = getDb();

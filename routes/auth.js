@@ -14,8 +14,8 @@ router.post('/register', async (req, res) => {
     if (!name || !email || !password) {
       return res.status(400).json({ error: 'Nom, email et mot de passe sont obligatoires.' });
     }
-    if (password.length < 6) {
-      return res.status(400).json({ error: 'Le mot de passe doit contenir au moins 6 caractères.' });
+    if (password.length < 8) {
+      return res.status(400).json({ error: 'Le mot de passe doit contenir au moins 8 caractères.' });
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return res.status(400).json({ error: 'Adresse email invalide.' });
@@ -87,8 +87,8 @@ router.post('/change-password', authenticateToken, async (req, res) => {
     if (!current_password || !new_password) {
       return res.status(400).json({ error: 'Mot de passe actuel et nouveau mot de passe sont obligatoires.' });
     }
-    if (new_password.length < 6) {
-      return res.status(400).json({ error: 'Le nouveau mot de passe doit contenir au moins 6 caractères.' });
+    if (new_password.length < 8) {
+      return res.status(400).json({ error: 'Le nouveau mot de passe doit contenir au moins 8 caractères.' });
     }
 
     const db = getDb();
@@ -146,7 +146,7 @@ router.post('/reset-password', async (req, res) => {
   try {
     const { token, new_password } = req.body;
     if (!token || !new_password) return res.status(400).json({ error: 'Token et nouveau mot de passe obligatoires.' });
-    if (new_password.length < 6) return res.status(400).json({ error: 'Le mot de passe doit contenir au moins 6 caractères.' });
+    if (new_password.length < 8) return res.status(400).json({ error: 'Le mot de passe doit contenir au moins 8 caractères.' });
 
     const db = getDb();
     const record = db.prepare('SELECT * FROM password_reset_tokens WHERE token = ? AND used = 0').get(token);
