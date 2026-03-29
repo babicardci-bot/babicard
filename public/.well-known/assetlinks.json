@@ -3,6 +3,6 @@
   "target": {
     "namespace": "android_app",
     "package_name": "ci.babicard.app",
-    "sha256_cert_fingerprints": ["PLACEHOLDER_REPLACE_WITH_YOUR_SHA256"]
+    "sha256_cert_fingerprints": ["1F:EB:6D:D0:A3:AD:86:9C:E7:E9:D8:23:41:A4:84:EF:54:C3:6D:02:E2:62:01:44:5B:57:A1:16:91:01:EE"]
   }
 }]
