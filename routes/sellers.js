@@ -380,15 +380,33 @@ router.post('/withdraw', authenticateToken, requireSeller, async (req, res) => {
     const db = getDb();
 
     // Verify withdrawal PIN if set
-    const profile = db.prepare('SELECT withdrawal_pin FROM seller_profiles WHERE user_id = ?').get(req.user.id);
+    const profile = db.prepare('SELECT withdrawal_pin, pin_attempts, pin_locked_until FROM seller_profiles WHERE user_id = ?').get(req.user.id);
     if (profile && profile.withdrawal_pin) {
       if (!withdrawal_pin) {
         return res.status(400).json({ error: 'Code secret requis pour effectuer un retrait.' });
       }
+
+      // Check if account is locked
+      if (profile.pin_locked_until && new Date(profile.pin_locked_until) > new Date()) {
+        const remaining = Math.ceil((new Date(profile.pin_locked_until) - new Date()) / 60000);
+        return res.status(429).json({ error: `Trop de tentatives incorrectes. Réessayez dans ${remaining} minute(s).` });
+      }
+
       const valid = await bcrypt.compare(String(withdrawal_pin), profile.withdrawal_pin);
       if (!valid) {
-        return res.status(400).json({ error: 'Code secret incorrect.' });
+        const newAttempts = (profile.pin_attempts || 0) + 1;
+        const MAX_ATTEMPTS = 5;
+        if (newAttempts >= MAX_ATTEMPTS) {
+          const lockedUntil = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+          db.prepare('UPDATE seller_profiles SET pin_attempts = 0, pin_locked_until = ? WHERE user_id = ?').run(lockedUntil, req.user.id);
+          return res.status(429).json({ error: 'Trop de tentatives incorrectes. Compte bloqué 15 minutes.' });
+        }
+        db.prepare('UPDATE seller_profiles SET pin_attempts = ? WHERE user_id = ?').run(newAttempts, req.user.id);
+        return res.status(400).json({ error: `Code secret incorrect. ${MAX_ATTEMPTS - newAttempts} tentative(s) restante(s).` });
       }
+
+      // Reset attempts on success
+      db.prepare('UPDATE seller_profiles SET pin_attempts = 0, pin_locked_until = NULL WHERE user_id = ?').run(req.user.id);
     }
 
     if (!amount || parseInt(amount) < 1000) {

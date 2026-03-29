@@ -687,6 +687,67 @@ async function sendSellerApprovalEmail(user, commissionRate) {
   }
 }
 
+async function sendDeliveryFailedEmail(user, order, failedItems) {
+  const itemsHtml = failedItems.map(item => `
+    <tr>
+      <td style="padding:10px 0;border-bottom:1px solid #f0f0f7;color:#1a1a2e;">${item.product_name}</td>
+      <td style="padding:10px 0;border-bottom:1px solid #f0f0f7;color:#ef4444;text-align:right;">Rupture de stock</td>
+    </tr>
+  `).join('');
+
+  const htmlContent = `
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background-color:#f0f0f7;">
+  <div style="background:linear-gradient(135deg,#0a0a1f 0%,#1a1a3e 50%,#0d0d2e 100%);padding:40px 20px;text-align:center;">
+    <div style="font-size:36px;margin-bottom:8px;">🎮</div>
+    <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:800;">Babicard.ci</h1>
+    <p style="margin:8px 0 0;color:#a78bfa;font-size:14px;letter-spacing:2px;text-transform:uppercase;">Problème de livraison</p>
+  </div>
+  <div style="max-width:600px;margin:0 auto;padding:30px 20px;">
+    <div style="background:#fef2f2;border:2px solid #fca5a5;border-radius:12px;padding:24px;margin-bottom:20px;text-align:center;">
+      <div style="font-size:48px;margin-bottom:8px;">⚠️</div>
+      <h2 style="margin:0;color:#ef4444;font-size:22px;">Livraison incomplète</h2>
+    </div>
+    <div style="background:white;border-radius:12px;padding:28px;box-shadow:0 2px 10px rgba(0,0,0,0.08);">
+      <p style="color:#555;line-height:1.6;margin:0 0 20px;">Bonjour <strong>${user.name}</strong>,<br><br>
+      Votre paiement pour la commande <strong>#${order.id}</strong> a bien été reçu, mais certains articles sont temporairement en rupture de stock et n'ont pas pu être livrés :</p>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
+        ${itemsHtml}
+      </table>
+      <p style="color:#555;line-height:1.6;margin:0 0 20px;">Notre équipe a été notifiée et vous contactera dans les plus brefs délais. Vous serez remboursé(e) ou les articles vous seront livrés dès qu'ils seront disponibles.</p>
+      <div style="text-align:center;margin-top:24px;">
+        <a href="${process.env.SITE_URL || 'https://babicard.ci'}/dashboard" style="background:linear-gradient(135deg,#6C63FF,#5a52d5);color:white;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:14px;display:inline-block;">Voir mes commandes</a>
+      </div>
+    </div>
+    <div style="background:linear-gradient(135deg,#1a1a3e,#0d0d2e);border-radius:12px;padding:20px;text-align:center;color:white;margin-top:20px;">
+      <p style="margin:0;font-size:14px;">📧 <a href="mailto:${process.env.ADMIN_EMAIL || 'support@babicard.ci'}" style="color:#60a5fa;">${process.env.ADMIN_EMAIL || 'support@babicard.ci'}</a></p>
+      <p style="margin:6px 0 0;font-size:14px;">📱 WhatsApp: +225 07 08 59 80 80</p>
+    </div>
+  </div>
+  <div style="text-align:center;padding:20px;color:#999;font-size:12px;">
+    <p style="margin:0;">© ${new Date().getFullYear()} Babicard.ci — Abidjan, Côte d'Ivoire</p>
+  </div>
+</body>
+</html>`;
+
+  const mailOptions = {
+    from: `"Babicard.ci 🎮" <${process.env.EMAIL_USER || 'noreply@babicard.ci'}>`,
+    to: user.email,
+    subject: `⚠️ [Babicard.ci] Problème de livraison — Commande #${order.id}`,
+    html: htmlContent,
+    text: `Babicard.ci - Problème de livraison\n\nBonjour ${user.name},\nCertains articles de votre commande #${order.id} sont en rupture de stock. Notre équipe vous contactera rapidement.\n\nContactez-nous: ${process.env.ADMIN_EMAIL || 'support@babicard.ci'}`
+  };
+
+  try {
+    return await sendEmail(mailOptions);
+  } catch (err) {
+    console.error('Erreur envoi email livraison échouée:', err.message);
+    return { success: false };
+  }
+}
+
 async function sendEmailVerificationEmail(user, verifyLink) {
   const htmlContent = `
 <!DOCTYPE html>
@@ -734,4 +795,4 @@ async function sendEmailVerificationEmail(user, verifyLink) {
   }
 }
 
-module.exports = { sendOrderConfirmationEmail, sendLowStockEmail, sendWithdrawalRequestEmail, sendWithdrawalStatusEmail, sendPasswordResetEmail, sendWelcomeEmail, sendSellerApprovalEmail, sendEmailVerificationEmail };
+module.exports = { sendOrderConfirmationEmail, sendLowStockEmail, sendWithdrawalRequestEmail, sendWithdrawalStatusEmail, sendPasswordResetEmail, sendWelcomeEmail, sendSellerApprovalEmail, sendEmailVerificationEmail, sendDeliveryFailedEmail };

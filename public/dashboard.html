@@ -112,6 +112,8 @@
                   <input type="tel" id="profilePhone" placeholder="+225 07 XX XX XX XX">
                 </div>
               </div>
+              <div id="profileAlert" class="alert-box hidden" style="margin-top:8px;"></div>
+              <button type="button" class="btn-primary" onclick="saveProfile()" style="margin-top:12px;">💾 Enregistrer</button>
             </form>
           </div>
 
@@ -209,6 +211,35 @@
         window.location.href = '/login';
       }
     });
+
+    async function saveProfile() {
+      const name = document.getElementById('profileName').value.trim();
+      const phone = document.getElementById('profilePhone').value.trim();
+      const alertEl = document.getElementById('profileAlert');
+      alertEl.className = 'alert-box hidden';
+
+      try {
+        const res = await authFetch('/auth/me', {
+          method: 'PUT',
+          body: JSON.stringify({ name, phone })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          currentUser = data.user;
+          localStorage.setItem('user', JSON.stringify(currentUser));
+          updateUI();
+          alertEl.textContent = '✅ Profil mis à jour.';
+          alertEl.className = 'alert-box alert-success';
+        } else {
+          alertEl.textContent = data.error || 'Erreur.';
+          alertEl.className = 'alert-box alert-error';
+        }
+      } catch(e) {
+        alertEl.textContent = 'Erreur réseau.';
+        alertEl.className = 'alert-box alert-error';
+      }
+      alertEl.classList.remove('hidden');
+    }
 
     function updateUI() {
       document.getElementById('navUserName').textContent = currentUser.name;

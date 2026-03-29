@@ -72,6 +72,15 @@ const paymentLimiter = rateLimit({
   legacyHeaders: false
 });
 
+// Rate limiting sur les retraits vendeur — 3 demandes par heure
+const withdrawalLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 3,
+  message: { error: 'Trop de demandes de retrait, réessayez dans 1 heure.' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 
@@ -115,6 +124,7 @@ app.use('/api/payment/wave/initiate', paymentLimiter);
 app.use('/api/payment/orange/initiate', paymentLimiter);
 app.use('/api/payment', require('./routes/payment'));
 app.use('/api/admin', require('./routes/admin'));
+app.use('/api/sellers/withdraw', withdrawalLimiter);
 app.use('/api/sellers', require('./routes/sellers'));
 app.use('/api/settings', require('./routes/settings'));
 

@@ -559,16 +559,43 @@ router.get('/orders/:id', (req, res) => {
          LEFT JOIN cards c ON oi.card_id = c.id
          WHERE oi.order_id = ?`;
 
-    const items = db.prepare(itemsQuery).all(order.id).map(item => ({
-      ...item,
-      card_code: decrypt(item.card_code),
-      card_pin: decrypt(item.card_pin),
-      card_serial: decrypt(item.card_serial)
-    }));
+    const items = db.prepare(itemsQuery).all(order.id).map(item => {
+      const code = decrypt(item.card_code);
+      const pin = decrypt(item.card_pin);
+      const serial = decrypt(item.card_serial);
+      return {
+        ...item,
+        card_code: code ? code.slice(0, 4) + '****' + code.slice(-4) : null,
+        card_pin: pin ? '****' : null,
+        card_serial: serial ? serial.slice(0, 4) + '...' : null,
+        card_id: item.card_id
+      };
+    });
 
     res.json({ order: { ...order, items } });
   } catch (err) {
     res.status(500).json({ error: 'Erreur lors du chargement de la commande.' });
+  }
+});
+
+// GET /api/admin/cards/:id/reveal — voir le vrai code d'une carte (loggé)
+router.get('/cards/:id/reveal', (req, res) => {
+  try {
+    const db = getDb();
+    const card = db.prepare('SELECT id, code, pin, serial FROM cards WHERE id = ?').get(req.params.id);
+    if (!card) return res.status(404).json({ error: 'Carte non trouvée.' });
+
+    logAdminAction(req, 'REVEAL_CARD', `card#${card.id}`);
+
+    res.json({
+      card_id: card.id,
+      code: decrypt(card.code),
+      pin: decrypt(card.pin),
+      serial: decrypt(card.serial)
+    });
+  } catch(err) {
+    console.error('Erreur reveal card:', err);
+    res.status(500).json({ error: 'Erreur.' });
   }
 });
 

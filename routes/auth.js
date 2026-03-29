@@ -156,6 +156,28 @@ router.get('/me', authenticateToken, (req, res) => {
   res.json({ user: req.user });
 });
 
+// PUT /api/auth/me — mettre à jour nom et téléphone
+router.put('/me', authenticateToken, (req, res) => {
+  try {
+    const { name, phone } = req.body;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: 'Le nom est obligatoire.' });
+    }
+    if (name.trim().length < 2) {
+      return res.status(400).json({ error: 'Le nom doit contenir au moins 2 caractères.' });
+    }
+
+    const db = getDb();
+    db.prepare('UPDATE users SET name = ?, phone = ? WHERE id = ?').run(name.trim(), phone?.trim() || null, req.user.id);
+
+    const updated = db.prepare('SELECT id, name, email, phone, role, created_at FROM users WHERE id = ?').get(req.user.id);
+    res.json({ message: 'Profil mis à jour avec succès.', user: updated });
+  } catch (err) {
+    console.error('Erreur update profile:', err);
+    res.status(500).json({ error: 'Erreur lors de la mise à jour du profil.' });
+  }
+});
+
 // POST /api/auth/change-password
 router.post('/change-password', authenticateToken, async (req, res) => {
   try {

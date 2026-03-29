@@ -265,6 +265,19 @@ function migrateDatabase(db) {
     }
   } catch(e) { console.error('Migration cards seller_id:', e.message); }
 
+  // Add PIN brute-force protection columns to seller_profiles
+  try {
+    const spCols2 = db.prepare("PRAGMA table_info(seller_profiles)").all().map(c => c.name);
+    if (!spCols2.includes('pin_attempts')) {
+      db.prepare("ALTER TABLE seller_profiles ADD COLUMN pin_attempts INTEGER NOT NULL DEFAULT 0").run();
+      console.log('Migration: pin_attempts ajouté à seller_profiles.');
+    }
+    if (!spCols2.includes('pin_locked_until')) {
+      db.prepare("ALTER TABLE seller_profiles ADD COLUMN pin_locked_until DATETIME DEFAULT NULL").run();
+      console.log('Migration: pin_locked_until ajouté à seller_profiles.');
+    }
+  } catch(e) { console.error('Migration seller_profiles pin:', e.message); }
+
   // Add email_verified to users (default 1 for existing users, new registrations will use 0)
   try {
     const userCols = db.prepare("PRAGMA table_info(users)").all().map(c => c.name);

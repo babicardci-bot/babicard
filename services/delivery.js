@@ -1,5 +1,5 @@
 const { getDb } = require('../database/db');
-const { sendOrderConfirmationEmail, sendLowStockEmail } = require('./email');
+const { sendOrderConfirmationEmail, sendLowStockEmail, sendDeliveryFailedEmail } = require('./email');
 const { sendCardDeliveredSMS, sendPaymentConfirmationSMS } = require('./sms');
 const { decrypt } = require('./encryption');
 
@@ -203,6 +203,16 @@ async function processDelivery(orderId, forceRedeliver = false) {
   } catch (emailErr) {
     console.error('[DELIVERY] Erreur email:', emailErr);
     results.email = { success: false, error: emailErr.message };
+  }
+
+  // Notify user if some items failed
+  if (results.cards_failed.length > 0) {
+    try {
+      await sendDeliveryFailedEmail(user, order, results.cards_failed);
+      console.log(`[DELIVERY] Email échec livraison envoyé à ${user.email} pour ${results.cards_failed.length} article(s).`);
+    } catch (e) {
+      console.error('[DELIVERY] Erreur email échec livraison:', e.message);
+    }
   }
 
   // Send SMS with card codes

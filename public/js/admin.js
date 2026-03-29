@@ -979,8 +979,9 @@ async function viewOrderDetail(orderId) {
             ${item.card_code ? `
               <div style="margin-top:10px;background:rgba(108,99,255,0.07);padding:10px;border-radius:6px;border:1px dashed rgba(108,99,255,0.3)">
                 <div style="font-size:0.7rem;color:var(--text-muted);margin-bottom:4px">CODE DE LA CARTE</div>
-                <code style="font-size:1rem;color:#a78bfa;letter-spacing:2px">${esc(item.card_code)}</code>
-                ${item.card_pin ? `<div style="font-size:0.82rem;color:var(--text-secondary);margin-top:4px">PIN: <strong>${esc(item.card_pin)}</strong></div>` : ''}
+                <code id="card-code-${item.card_id}" style="font-size:1rem;color:#a78bfa;letter-spacing:2px">${esc(item.card_code)}</code>
+                <span id="card-pin-${item.card_id}" style="font-size:0.82rem;color:var(--text-secondary);margin-top:4px;display:block">${item.card_pin ? `PIN: <strong>****</strong>` : ''}</span>
+                <button onclick="revealCard(${item.card_id})" style="margin-top:6px;font-size:0.72rem;background:rgba(108,99,255,0.2);border:1px solid rgba(108,99,255,0.4);color:#a78bfa;padding:3px 10px;border-radius:4px;cursor:pointer;">👁 Voir le vrai code</button>
                 <div style="margin-top:8px;font-size:0.75rem;border-top:1px solid rgba(108,99,255,0.15);padding-top:6px;color:${item.seller_name ? '#22d3ee' : '#fb923c'}">
                   Vendeur : <strong>${item.seller_name ? esc(item.seller_shop || item.seller_name) : '👤 Admin'}</strong>
                 </div>
@@ -992,6 +993,20 @@ async function viewOrderDetail(orderId) {
     `;
   } catch (err) {
     document.getElementById('orderDetailBody').innerHTML = `<p style="color:var(--admin-danger);padding:20px">Erreur chargement</p>`;
+  }
+}
+
+async function revealCard(cardId) {
+  try {
+    const res = await adminFetch(`/admin/cards/${cardId}/reveal`);
+    const data = await res.json();
+    if (!res.ok) { showToast(data.error || 'Erreur', 'error'); return; }
+    const codeEl = document.getElementById(`card-code-${cardId}`);
+    const pinEl = document.getElementById(`card-pin-${cardId}`);
+    if (codeEl) codeEl.textContent = data.code || '';
+    if (pinEl && data.pin) pinEl.innerHTML = `PIN: <strong>${data.pin}</strong>`;
+  } catch(e) {
+    showToast('Erreur réseau.', 'error');
   }
 }
 
