@@ -167,7 +167,7 @@ router.post('/orange/initiate', authenticateToken, async (req, res) => {
           'https://api.orange.com/orange-money-webpay/ci/v1/webpayment',
           {
             merchant_key: process.env.ORANGE_MERCHANT_KEY,
-            currency: 'OUV',
+            currency: 'XOF',
             order_id: paymentRef,
             amount: order.total_amount,
             return_url: `${process.env.SITE_URL}/api/payment/orange/callback`,

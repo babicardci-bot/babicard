@@ -43,8 +43,12 @@ async function processDelivery(orderId, forceRedeliver = false) {
     sms: null
   };
 
-  // Assign available cards to each order item
-  const assignCards = db.transaction(() => {
+  // Vérifier si seller_id existe sur cards (une seule fois, hors transaction)
+  const cardCols = db.prepare("PRAGMA table_info(cards)").all().map(c => c.name);
+  const hasSellerCol = cardCols.includes('seller_id');
+
+  // Transaction unique : assignation des cartes + création des gains vendeur (atomique)
+  const assignCardsAndEarnings = db.transaction(() => {
     for (const item of orderItems) {
       // Check if card already assigned
       if (item.card_id) {
@@ -102,6 +106,24 @@ async function processDelivery(orderId, forceRedeliver = false) {
         });
 
         console.log(`[DELIVERY] Carte assignée: ${item.product_name} -> Code: ${availableCard.code.substring(0, 4)}****`);
+
+        // Créer gains vendeur dans la même transaction (atomique avec l'assignation)
+        if (hasSellerCol && availableCard.seller_id) {
+          const sellerProfile = db.prepare('SELECT commission_rate FROM seller_profiles WHERE user_id = ?').get(availableCard.seller_id);
+          if (sellerProfile) {
+            const commissionRate = sellerProfile.commission_rate || 10;
+            const saleAmount = item.unit_price;
+            const commissionAmount = Math.round(saleAmount * commissionRate / 100);
+            const netAmount = saleAmount - commissionAmount;
+
+            db.prepare(`
+              INSERT INTO seller_earnings (seller_id, order_id, order_item_id, sale_amount, commission_amount, net_amount, status)
+              VALUES (?, ?, ?, ?, ?, ?, 'available')
+            `).run(availableCard.seller_id, orderId, item.id, saleAmount, commissionAmount, netAmount);
+
+            console.log(`[DELIVERY] Gains vendeur #${availableCard.seller_id}: +${netAmount} FCFA (commission: ${commissionAmount})`);
+          }
+        }
       } else {
         console.error(`[DELIVERY] Pas de carte disponible pour ${item.product_name} (product_id: ${item.product_id})`);
         results.cards_failed.push({
@@ -114,9 +136,9 @@ async function processDelivery(orderId, forceRedeliver = false) {
   });
 
   try {
-    assignCards();
+    assignCardsAndEarnings();
   } catch (err) {
-    console.error('[DELIVERY] Erreur assignation cartes:', err);
+    console.error('[DELIVERY] Erreur assignation cartes/gains:', err);
     db.prepare("UPDATE orders SET delivery_status = 'failed' WHERE id = ?").run(orderId);
     return { success: false, error: 'Erreur lors de l\'assignation des cartes' };
   }
@@ -124,44 +146,10 @@ async function processDelivery(orderId, forceRedeliver = false) {
   const allAssigned = results.cards_failed.length === 0;
   const anyAssigned = results.cards_assigned.length > 0;
 
-  // Create seller earnings — basé sur cards.seller_id (qui a ajouté ce code)
-  const createEarnings = db.transaction(() => {
-    // Vérifier si seller_id existe sur cards
-    const cardCols = db.prepare("PRAGMA table_info(cards)").all().map(c => c.name);
-    const hasSellerCol = cardCols.includes('seller_id');
-    if (!hasSellerCol) return;
-
-    for (const assigned of results.cards_assigned) {
-      const item = orderItems.find(i => i.id === assigned.order_item_id);
-      if (!item) continue;
-
-      // Trouver quel vendeur a ajouté cette carte spécifique
-      const card = db.prepare('SELECT seller_id FROM cards WHERE id = ?').get(assigned.card_id);
-      if (!card || !card.seller_id) continue; // Carte sans vendeur (ajoutée par admin)
-
-      const sellerProfile = db.prepare('SELECT commission_rate FROM seller_profiles WHERE user_id = ?').get(card.seller_id);
-      if (!sellerProfile) continue;
-
-      const commissionRate = sellerProfile.commission_rate || 10;
-      const saleAmount = item.unit_price;
-      const commissionAmount = Math.round(saleAmount * commissionRate / 100);
-      const netAmount = saleAmount - commissionAmount;
-
-      db.prepare(`
-        INSERT INTO seller_earnings (seller_id, order_id, order_item_id, sale_amount, commission_amount, net_amount, status)
-        VALUES (?, ?, ?, ?, ?, ?, 'available')
-      `).run(card.seller_id, orderId, assigned.order_item_id, saleAmount, commissionAmount, netAmount);
-
-      console.log(`[DELIVERY] Gains vendeur #${card.seller_id}: +${netAmount} FCFA (commission: ${commissionAmount})`);
-    }
-  });
-  try { createEarnings(); } catch(e) { console.error('[DELIVERY] Erreur création gains vendeurs:', e); }
-
   // Check stock and alert sellers if their cards are low (<= 5 remaining for this product)
   const LOW_STOCK_THRESHOLD = 5;
   const checkedSellerProducts = new Set();
-  const cardCols2 = db.prepare("PRAGMA table_info(cards)").all().map(c => c.name);
-  if (cardCols2.includes('seller_id')) {
+  if (hasSellerCol) {
     for (const assigned of results.cards_assigned) {
       const item = orderItems.find(i => i.id === assigned.order_item_id);
       if (!item) continue;
