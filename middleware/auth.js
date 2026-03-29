@@ -51,7 +51,7 @@ function requireSeller(req, res, next) {
 }
 
 function generateToken(userId) {
-  return jwt.sign({ userId }, JWT_SECRET, { expiresIn: '7d' });
+  return jwt.sign({ userId }, JWT_SECRET, { expiresIn: '24h' });
 }
 
 function logAdminAction(req, action, target = null, details = null) {

@@ -687,4 +687,51 @@ async function sendSellerApprovalEmail(user, commissionRate) {
   }
 }
 
-module.exports = { sendOrderConfirmationEmail, sendLowStockEmail, sendWithdrawalRequestEmail, sendWithdrawalStatusEmail, sendPasswordResetEmail, sendWelcomeEmail, sendSellerApprovalEmail };
+async function sendEmailVerificationEmail(user, verifyLink) {
+  const htmlContent = `
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background-color:#f0f0f7;">
+  <div style="background:linear-gradient(135deg,#0a0a1f 0%,#1a1a3e 50%,#0d0d2e 100%);padding:40px 20px;text-align:center;">
+    <div style="font-size:36px;margin-bottom:8px;">🎮</div>
+    <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:800;">Babicard.ci</h1>
+    <p style="margin:8px 0 0;color:#a78bfa;font-size:14px;letter-spacing:2px;text-transform:uppercase;">Vérification de votre email</p>
+  </div>
+  <div style="max-width:600px;margin:0 auto;padding:30px 20px;">
+    <div style="background:white;border-radius:12px;padding:32px;box-shadow:0 2px 10px rgba(0,0,0,0.08);">
+      <h2 style="margin:0 0 16px;color:#1a1a2e;">Bonjour ${user.name} 👋</h2>
+      <p style="color:#555;line-height:1.6;margin:0 0 24px;">Merci de vous être inscrit sur Babicard.ci ! Pour activer votre compte et commencer à acheter vos cartes cadeaux, cliquez sur le bouton ci-dessous.</p>
+      <div style="text-align:center;margin:28px 0;">
+        <a href="${verifyLink}" style="background:linear-gradient(135deg,#6C63FF,#5a52d5);color:white;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:16px;display:inline-block;">✅ Vérifier mon adresse email</a>
+      </div>
+      <p style="color:#888;font-size:13px;margin:0 0 8px;">Ce lien est valable <strong>24 heures</strong>. Si vous n'avez pas créé de compte, ignorez cet email.</p>
+      <p style="color:#aaa;font-size:12px;margin:0;word-break:break-all;">Ou copiez ce lien: ${verifyLink}</p>
+    </div>
+    <div style="background:linear-gradient(135deg,#1a1a3e,#0d0d2e);border-radius:12px;padding:20px;text-align:center;color:white;margin-top:20px;">
+      <p style="margin:0;font-size:14px;">📧 <a href="mailto:${process.env.ADMIN_EMAIL || 'support@babicard.ci'}" style="color:#60a5fa;">${process.env.ADMIN_EMAIL || 'support@babicard.ci'}</a></p>
+    </div>
+  </div>
+  <div style="text-align:center;padding:20px;color:#999;font-size:12px;">
+    <p style="margin:0;">© ${new Date().getFullYear()} Babicard.ci — Abidjan, Côte d'Ivoire</p>
+  </div>
+</body>
+</html>`;
+
+  const mailOptions = {
+    from: `"Babicard.ci 🎮" <${process.env.EMAIL_USER || 'noreply@babicard.ci'}>`,
+    to: user.email,
+    subject: '✅ [Babicard.ci] Vérifiez votre adresse email',
+    html: htmlContent,
+    text: `Babicard.ci - Vérification email\n\nBonjour ${user.name},\n\nCliquez sur ce lien pour vérifier votre email:\n${verifyLink}\n\nCe lien est valable 24 heures.`
+  };
+
+  try {
+    return await sendEmail(mailOptions);
+  } catch (err) {
+    console.error('Erreur envoi email vérification:', err.message);
+    return { success: false, error: err.message };
+  }
+}
+
+module.exports = { sendOrderConfirmationEmail, sendLowStockEmail, sendWithdrawalRequestEmail, sendWithdrawalStatusEmail, sendPasswordResetEmail, sendWelcomeEmail, sendSellerApprovalEmail, sendEmailVerificationEmail };

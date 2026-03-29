@@ -63,6 +63,15 @@ const forgotPasswordLimiter = rateLimit({
   legacyHeaders: false
 });
 
+// Rate limiting sur les paiements — 10 initiations par 15 minutes
+const paymentLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { error: 'Trop de tentatives de paiement, réessayez dans 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 
@@ -102,6 +111,8 @@ app.use('/api/auth/reset-password', forgotPasswordLimiter);
 app.use('/api/auth', authLimiter, authRouter);
 app.use('/api/products', require('./routes/products'));
 app.use('/api/orders', require('./routes/orders'));
+app.use('/api/payment/wave/initiate', paymentLimiter);
+app.use('/api/payment/orange/initiate', paymentLimiter);
 app.use('/api/payment', require('./routes/payment'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/sellers', require('./routes/sellers'));

@@ -265,6 +265,30 @@ function migrateDatabase(db) {
     }
   } catch(e) { console.error('Migration cards seller_id:', e.message); }
 
+  // Add email_verified to users (default 1 for existing users, new registrations will use 0)
+  try {
+    const userCols = db.prepare("PRAGMA table_info(users)").all().map(c => c.name);
+    if (!userCols.includes('email_verified')) {
+      db.prepare("ALTER TABLE users ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 1").run();
+      console.log('Migration: email_verified ajouté à users.');
+    }
+  } catch(e) { console.error('Migration users email_verified:', e.message); }
+
+  // email_verification_tokens table
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS email_verification_tokens (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        token TEXT NOT NULL UNIQUE,
+        expires_at DATETIME NOT NULL,
+        used INTEGER NOT NULL DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+      )
+    `);
+  } catch(e) { console.error('Migration email_verification_tokens:', e.message); }
+
   // Table logs admin
   try {
     db.exec(`

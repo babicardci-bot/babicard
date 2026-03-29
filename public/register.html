@@ -197,16 +197,10 @@
           throw new Error(data.error || 'Erreur lors de la création du compte');
         }
 
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('user', JSON.stringify(data.user));
-
-        alertBox.textContent = '✅ Compte créé! Redirection en cours...';
+        alertBox.textContent = '✅ Compte créé ! Vérifiez votre email pour activer votre compte.';
         alertBox.className = 'alert-box alert-success';
         alertBox.classList.remove('hidden');
-
-        setTimeout(() => {
-          window.location.href = '/dashboard';
-        }, 1500);
+        document.getElementById('registerForm').style.display = 'none';
       } catch (err) {
         alertBox.textContent = err.message;
         alertBox.className = 'alert-box alert-error';

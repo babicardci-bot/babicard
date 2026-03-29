@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const { getDb } = require('../database/db');
 const { authenticateToken, generateToken } = require('../middleware/auth');
-const { sendPasswordResetEmail, sendWelcomeEmail } = require('../services/email');
+const { sendPasswordResetEmail, sendWelcomeEmail, sendEmailVerificationEmail } = require('../services/email');
 
 // POST /api/auth/register
 router.post('/register', async (req, res) => {
@@ -22,25 +22,93 @@ router.post('/register', async (req, res) => {
     }
 
     const db = getDb();
-    const existing = await db.prepare('SELECT id FROM users WHERE email = ?').get(email.toLowerCase().trim());
+    const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email.toLowerCase().trim());
     if (existing) {
       return res.status(409).json({ error: 'Un compte existe déjà avec cet email.' });
     }
 
     const password_hash = await bcrypt.hash(password, 12);
-    const result = await db.prepare(
-      `INSERT INTO users (name, email, phone, password_hash, role) VALUES (?, ?, ?, ?, 'client')`
+    const result = db.prepare(
+      `INSERT INTO users (name, email, phone, password_hash, role, email_verified) VALUES (?, ?, ?, ?, 'client', 0)`
     ).run(name.trim(), email.toLowerCase().trim(), phone || null, password_hash);
 
     const userId = result.lastInsertRowid;
-    const token = generateToken(userId);
-    const user = await db.prepare('SELECT id, name, email, phone, role, created_at FROM users WHERE id = ?').get(userId);
+    const user = db.prepare('SELECT id, name, email, phone, role, created_at FROM users WHERE id = ?').get(userId);
 
-    sendWelcomeEmail(user).catch(() => {});
-    res.status(201).json({ message: 'Compte créé avec succès! Bienvenue sur Babicard.ci.', token, user });
+    // Generate email verification token (24h)
+    const verifyToken = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    db.prepare('INSERT INTO email_verification_tokens (user_id, token, expires_at) VALUES (?, ?, ?)').run(userId, verifyToken, expiresAt);
+
+    const baseUrl = process.env.SITE_URL || process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
+    const verifyLink = `${baseUrl}/api/auth/verify-email?token=${verifyToken}`;
+
+    sendEmailVerificationEmail(user, verifyLink).catch(() => {});
+
+    res.status(201).json({
+      message: 'Compte créé ! Vérifiez votre email pour activer votre compte.',
+      email_verification_required: true
+    });
   } catch (err) {
     console.error('Erreur register:', err);
     res.status(500).json({ error: 'Erreur lors de la création du compte.' });
+  }
+});
+
+// GET /api/auth/verify-email?token=xxx
+router.get('/verify-email', (req, res) => {
+  try {
+    const { token } = req.query;
+    if (!token || typeof token !== 'string' || token.length > 100) {
+      return res.redirect('/login?verify_error=1');
+    }
+
+    const db = getDb();
+    const record = db.prepare('SELECT * FROM email_verification_tokens WHERE token = ? AND used = 0').get(token);
+
+    if (!record) return res.redirect('/login?verify_error=1');
+    if (new Date(record.expires_at) < new Date()) return res.redirect('/login?verify_expired=1');
+
+    db.prepare('UPDATE users SET email_verified = 1 WHERE id = ?').run(record.user_id);
+    db.prepare('UPDATE email_verification_tokens SET used = 1 WHERE id = ?').run(record.id);
+
+    res.redirect('/login?verified=1');
+  } catch (err) {
+    console.error('Erreur verify-email:', err);
+    res.redirect('/login?verify_error=1');
+  }
+});
+
+// POST /api/auth/resend-verification
+router.post('/resend-verification', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email obligatoire.' });
+
+    const db = getDb();
+    const user = db.prepare('SELECT id, name, email, email_verified FROM users WHERE email = ?').get(email.toLowerCase().trim());
+
+    // Always return success to avoid email enumeration
+    if (!user || user.email_verified) {
+      return res.json({ message: 'Si cet email existe et n\'est pas encore vérifié, un lien a été envoyé.' });
+    }
+
+    // Invalidate old tokens
+    db.prepare('DELETE FROM email_verification_tokens WHERE user_id = ?').run(user.id);
+
+    const verifyToken = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    db.prepare('INSERT INTO email_verification_tokens (user_id, token, expires_at) VALUES (?, ?, ?)').run(user.id, verifyToken, expiresAt);
+
+    const baseUrl = process.env.SITE_URL || process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
+    const verifyLink = `${baseUrl}/api/auth/verify-email?token=${verifyToken}`;
+
+    await sendEmailVerificationEmail(user, verifyLink);
+
+    res.json({ message: 'Si cet email existe et n\'est pas encore vérifié, un lien a été envoyé.' });
+  } catch (err) {
+    console.error('Erreur resend-verification:', err);
+    res.status(500).json({ error: 'Erreur serveur.' });
   }
 });
 
@@ -53,7 +121,7 @@ router.post('/login', async (req, res) => {
     }
 
     const db = getDb();
-    const user = await db.prepare('SELECT * FROM users WHERE email = ?').get(email.toLowerCase().trim());
+    const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email.toLowerCase().trim());
     if (!user) {
       return res.status(401).json({ error: 'Email ou mot de passe incorrect.' });
     }
@@ -61,6 +129,14 @@ router.post('/login', async (req, res) => {
     const isValid = await bcrypt.compare(password, user.password_hash);
     if (!isValid) {
       return res.status(401).json({ error: 'Email ou mot de passe incorrect.' });
+    }
+
+    // Block unverified accounts (email_verified column may not exist on old DBs — treat NULL/undefined as verified)
+    if (user.email_verified === 0) {
+      return res.status(403).json({
+        error: 'Veuillez vérifier votre adresse email avant de vous connecter.',
+        email_not_verified: true
+      });
     }
 
     const token = generateToken(user.id);
