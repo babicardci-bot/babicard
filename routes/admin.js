@@ -765,6 +765,55 @@ router.post('/test-sms', async (req, res) => {
   }
 });
 
+// POST /api/admin/migrate-encrypt-cards — chiffre toutes les cartes en clair (one-shot)
+router.post('/migrate-encrypt-cards', (req, res) => {
+  try {
+    const { isEncrypted, encrypt } = require('../services/encryption');
+    const db = getDb();
+
+    const cards = db.prepare("SELECT id, code, pin, serial FROM cards WHERE status != 'deleted'").all();
+
+    let encrypted = 0;
+    let alreadyDone = 0;
+    let errors = 0;
+
+    const updateCard = db.prepare('UPDATE cards SET code = ?, pin = ?, serial = ? WHERE id = ?');
+
+    const migrateAll = db.transaction(() => {
+      for (const card of cards) {
+        if (isEncrypted(card.code)) { alreadyDone++; continue; }
+        try {
+          updateCard.run(
+            encrypt(card.code),
+            card.pin ? encrypt(card.pin) : null,
+            card.serial ? encrypt(card.serial) : null,
+            card.id
+          );
+          encrypted++;
+        } catch(e) {
+          console.error(`[MIGRATE] Erreur carte #${card.id}:`, e.message);
+          errors++;
+        }
+      }
+    });
+
+    migrateAll();
+
+    logAdminAction(req, 'MIGRATE_ENCRYPT_CARDS', null, { total: cards.length, encrypted, alreadyDone, errors });
+
+    res.json({
+      message: `Migration terminée.`,
+      total: cards.length,
+      encrypted,
+      already_encrypted: alreadyDone,
+      errors
+    });
+  } catch(err) {
+    console.error('Erreur migration chiffrement:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/admin/backup — télécharger une copie de la base de données
 router.get('/backup', (req, res) => {
   try {

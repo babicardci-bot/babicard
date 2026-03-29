@@ -1401,6 +1401,24 @@ async function saveWithdrawalStatus() {
   }
 }
 
+// ============ MIGRATE ENCRYPT CARDS ============
+async function migrateEncryptCards() {
+  const resultEl = document.getElementById('migrateResult');
+  if (!confirm('Chiffrer toutes les anciennes cartes ? Assurez-vous d\'avoir fait un backup avant.')) return;
+  resultEl.innerHTML = '<span style="color:#a0a0c0;font-size:0.85rem;">Migration en cours...</span>';
+  try {
+    const res = await adminFetch('/admin/migrate-encrypt-cards', { method: 'POST' });
+    const data = await res.json();
+    if (res.ok) {
+      resultEl.innerHTML = `<span style="color:#22c55e;font-size:0.85rem;">✅ ${data.encrypted} carte(s) chiffrée(s), ${data.already_encrypted} déjà chiffrée(s), ${data.errors} erreur(s).</span>`;
+    } else {
+      resultEl.innerHTML = `<span style="color:#ef4444;font-size:0.85rem;">❌ ${data.error}</span>`;
+    }
+  } catch(e) {
+    resultEl.innerHTML = '<span style="color:#ef4444;font-size:0.85rem;">❌ Erreur réseau.</span>';
+  }
+}
+
 // ============ DATABASE BACKUP ============
 async function downloadBackup() {
   const resultEl = document.getElementById('backupResult');

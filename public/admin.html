@@ -327,6 +327,14 @@
         <div id="backupResult" style="margin-top:12px;"></div>
       </div>
 
+      <!-- MIGRATION CHIFFREMENT CARTES -->
+      <div class="appearance-block" style="margin-bottom:24px;">
+        <h3 class="appearance-title">🔐 Chiffrement des anciennes cartes</h3>
+        <p style="color:#a0a0c0;font-size:0.85rem;margin-bottom:16px;">Chiffre toutes les cartes ajoutées avant le déploiement du chiffrement. À lancer <strong>une seule fois</strong>.</p>
+        <button class="btn-primary" onclick="migrateEncryptCards()" style="background:linear-gradient(135deg,#f59e0b,#d97706);">🔐 Lancer la migration</button>
+        <div id="migrateResult" style="margin-top:12px;"></div>
+      </div>
+
       <!-- SMS TEST -->
       <div class="appearance-block" style="margin-bottom:24px;">
         <h3 class="appearance-title">📱 Test SMS</h3>
