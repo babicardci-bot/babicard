@@ -189,8 +189,7 @@
 
         <div class="form-group">
           <label class="form-label">
-            Registre de commerce <span>*</span>
-            <span class="doc-required-badge">OBLIGATOIRE</span>
+            Registre de commerce <span style="color:var(--text-muted);font-weight:400;">(optionnel)</span>
           </label>
           <div class="doc-upload-area" id="addressDocArea" onclick="document.getElementById('addressDocInput').click()">
             <div class="doc-upload-inner">
@@ -203,7 +202,7 @@
             <div class="doc-file-name" id="addressDocName">✓ Fichier sélectionné</div>
           </div>
           <input type="file" id="addressDocInput" accept="image/jpeg,image/png,image/webp,application/pdf" style="display:none" onchange="onDocSelect('address_doc', this)">
-          <div class="form-hint">Document officiel d'enregistrement de votre activité commerciale.</div>
+          <div class="form-hint">Document optionnel d'enregistrement de votre activité commerciale.</div>
         </div>
 
         <div style="background: rgba(108,99,255,0.08); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 24px; font-size: 0.85rem; color: var(--text-secondary);">
@@ -348,13 +347,6 @@
         errEl.style.display = 'block';
         document.getElementById('idDocArea').style.borderColor = '#ef4444';
         document.getElementById('idDocArea').scrollIntoView({ behavior: 'smooth', block: 'center' });
-        return;
-      }
-      if (!uploadedDocs.address_doc) {
-        errEl.textContent = '📎 Le registre de commerce est obligatoire.';
-        errEl.style.display = 'block';
-        document.getElementById('addressDocArea').style.borderColor = '#ef4444';
-        document.getElementById('addressDocArea').scrollIntoView({ behavior: 'smooth', block: 'center' });
         return;
       }
 
