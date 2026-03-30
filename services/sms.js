@@ -2,10 +2,17 @@ const axios = require('axios');
 
 function formatPhone(phone) {
   if (!phone) return null;
-  let cleaned = phone.replace(/[\s\-\(\)]/g, '');
+  let cleaned = phone.replace(/[\s\-\(\)\.]/g, '');
   if (cleaned.startsWith('00225')) cleaned = '+' + cleaned.slice(2);
-  else if (cleaned.startsWith('225') && !cleaned.startsWith('+')) cleaned = '+' + cleaned;
+  else if (cleaned.startsWith('+225')) { /* déjà bon */ }
+  else if (cleaned.startsWith('225')) cleaned = '+' + cleaned;
   else if (!cleaned.startsWith('+')) cleaned = '+225' + cleaned;
+
+  // Numéro CI valide : +225 suivi de 10 chiffres (format post-2021)
+  if (!/^\+225\d{10}$/.test(cleaned)) {
+    console.log(`[SMS] Numéro invalide ou incomplet: ${cleaned}`);
+    return null;
+  }
   return cleaned;
 }
 

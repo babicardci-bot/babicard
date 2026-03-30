@@ -179,8 +179,20 @@ router.put('/me', authenticateToken, (req, res) => {
       return res.status(400).json({ error: 'Le nom doit contenir au moins 2 caractères.' });
     }
 
+    const phoneVal = phone?.trim() || null;
+    if (phoneVal) {
+      const cleaned = phoneVal.replace(/[\s\-\(\)\.]/g, '');
+      const normalized = cleaned.startsWith('00225') ? '+' + cleaned.slice(2)
+        : cleaned.startsWith('+225') ? cleaned
+        : cleaned.startsWith('225') ? '+' + cleaned
+        : '+225' + cleaned;
+      if (!/^\+225\d{10}$/.test(normalized)) {
+        return res.status(400).json({ error: 'Numéro de téléphone invalide. Format attendu : +225 suivi de 10 chiffres.' });
+      }
+    }
+
     const db = getDb();
-    db.prepare('UPDATE users SET name = ?, phone = ? WHERE id = ?').run(name.trim(), phone?.trim() || null, req.user.id);
+    db.prepare('UPDATE users SET name = ?, phone = ? WHERE id = ?').run(name.trim(), phoneVal, req.user.id);
 
     const updated = db.prepare('SELECT id, name, email, phone, role, created_at FROM users WHERE id = ?').get(req.user.id);
     res.json({ message: 'Profil mis à jour avec succès.', user: updated });

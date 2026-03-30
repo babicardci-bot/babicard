@@ -247,6 +247,19 @@
       const alertEl = document.getElementById('profileAlert');
       alertEl.className = 'alert-box hidden';
 
+      if (phone) {
+        const cleaned = phone.replace(/[\s\-\(\)\.]/g, '');
+        const normalized = cleaned.startsWith('00225') ? '+' + cleaned.slice(2)
+          : cleaned.startsWith('+225') ? cleaned
+          : cleaned.startsWith('225') ? '+' + cleaned
+          : '+225' + cleaned;
+        if (!/^\+225\d{10}$/.test(normalized)) {
+          alertEl.textContent = 'Numéro de téléphone invalide. Format attendu : 07 XX XX XX XX (10 chiffres).';
+          alertEl.className = 'alert-box alert-error';
+          return;
+        }
+      }
+
       try {
         const res = await authFetch('/auth/me', {
           method: 'PUT',
