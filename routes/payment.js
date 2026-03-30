@@ -109,6 +109,7 @@ router.post('/wave/callback', express.raw({ type: 'application/json' }), async (
       await processDelivery(order.id);
     } else if (status === 'failed' || status === 'cancelled') {
       db.prepare(`UPDATE orders SET payment_status = 'failed' WHERE id = ?`).run(order.id);
+      db.prepare(`UPDATE cards SET status = 'available', order_id = NULL WHERE order_id = ? AND status = 'reserved'`).run(order.id);
     }
 
     res.json({ received: true });
@@ -234,6 +235,7 @@ router.post('/orange/callback', async (req, res) => {
       await processDelivery(order.id);
     } else {
       db.prepare(`UPDATE orders SET payment_status = 'failed' WHERE id = ?`).run(order.id);
+      db.prepare(`UPDATE cards SET status = 'available', order_id = NULL WHERE order_id = ? AND status = 'reserved'`).run(order.id);
     }
 
     res.json({ received: true });
@@ -272,6 +274,7 @@ router.post('/simulate', authenticateToken, async (req, res) => {
       res.json({ message: 'Paiement simulé avec succès!', delivery: result });
     } else {
       db.prepare(`UPDATE orders SET payment_status = 'failed' WHERE id = ?`).run(order.id);
+      db.prepare(`UPDATE cards SET status = 'available', order_id = NULL WHERE order_id = ? AND status = 'reserved'`).run(order.id);
       res.json({ message: 'Paiement simulé comme échoué.' });
     }
   } catch (err) {

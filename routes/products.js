@@ -44,7 +44,14 @@ router.get('/', (req, res) => {
       SELECT p.*,
         (SELECT COUNT(*) FROM cards WHERE product_id = p.id AND status = 'available') as available_stock,
         sp.shop_name as seller_shop_name,
-        sp.status as seller_status
+        sp.status as seller_status,
+        COALESCE(
+          (SELECT MIN(spp.promo_price)
+           FROM seller_product_promos spp
+           JOIN cards c2 ON c2.seller_id = spp.seller_id AND c2.product_id = p.id AND c2.status = 'available'
+           WHERE spp.product_id = p.id AND spp.status = 'approved'),
+          NULLIF(p.promo_price, 0)
+        ) as best_promo_price
       FROM products p
       LEFT JOIN seller_profiles sp ON p.seller_id = sp.user_id
       WHERE ${baseWhere}
@@ -56,7 +63,7 @@ router.get('/', (req, res) => {
     const enriched = db.prepare(query).all(...params);
 
     res.json({
-      products: enriched,
+      products: enriched.map(p => ({ ...p, promo_price: p.best_promo_price || null })),
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),

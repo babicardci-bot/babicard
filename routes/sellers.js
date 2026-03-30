@@ -184,9 +184,11 @@ router.get('/products', authenticateToken, requireSeller, (req, res) => {
           (SELECT COUNT(*) FROM cards WHERE product_id = p.id AND status = 'available') as available_cards,
           (SELECT COUNT(*) FROM cards WHERE product_id = p.id AND status = 'available' AND seller_id = ?) as my_available_cards,
           (SELECT COUNT(*) FROM cards WHERE product_id = p.id AND status = 'sold' AND seller_id = ?) as my_sold_cards,
-          CASE WHEN p.promo_request_seller_id = ? THEN p.promo_price_requested ELSE NULL END as my_promo_requested,
-          CASE WHEN p.promo_request_seller_id = ? THEN p.promo_request_status ELSE NULL END as my_promo_status
-         FROM products p WHERE p.seller_id IS NULL AND p.is_active = 1 ORDER BY p.name ASC`
+          spp.promo_price as my_promo_requested,
+          spp.status as my_promo_status
+         FROM products p
+         LEFT JOIN seller_product_promos spp ON spp.product_id = p.id AND spp.seller_id = ?
+         WHERE p.seller_id IS NULL AND p.is_active = 1 ORDER BY p.name ASC`
       : `SELECT p.*,
           (SELECT COUNT(*) FROM cards WHERE product_id = p.id AND status = 'available') as available_cards,
           0 as my_available_cards, 0 as my_sold_cards,
@@ -194,7 +196,7 @@ router.get('/products', authenticateToken, requireSeller, (req, res) => {
          FROM products p WHERE p.seller_id IS NULL AND p.is_active = 1 ORDER BY p.name ASC`;
 
     const products = hasSellerCol
-      ? db.prepare(query).all(req.user.id, req.user.id, req.user.id, req.user.id)
+      ? db.prepare(query).all(req.user.id, req.user.id, req.user.id)
       : db.prepare(query).all();
 
     res.json({ products });
@@ -223,9 +225,8 @@ router.post('/products/:id/request-promo', authenticateToken, requireSeller, (re
     const product = db.prepare('SELECT * FROM products WHERE id = ? AND seller_id IS NULL AND is_active = 1').get(req.params.id);
     if (!product) return res.status(404).json({ error: 'Produit non trouvé.' });
 
-    // If cancelling (promo_price = 0 or null), clear the request
     if (!promo_price || parseInt(promo_price) <= 0) {
-      db.prepare(`UPDATE products SET promo_price_requested = NULL, promo_request_status = NULL, promo_request_seller_id = NULL WHERE id = ?`).run(req.params.id);
+      db.prepare('DELETE FROM seller_product_promos WHERE seller_id = ? AND product_id = ?').run(req.user.id, req.params.id);
       return res.json({ message: 'Demande de promotion annulée.' });
     }
 
@@ -237,17 +238,16 @@ router.post('/products/:id/request-promo', authenticateToken, requireSeller, (re
       return res.status(400).json({ error: 'Le prix promo minimum est 100 FCFA.' });
     }
 
-    // Only allow one pending request per product (from any seller)
-    if (product.promo_request_status === 'pending' && product.promo_request_seller_id !== req.user.id) {
-      return res.status(409).json({ error: 'Une demande de promotion est déjà en attente pour ce produit.' });
-    }
-
     db.prepare(`
-      UPDATE products SET promo_price_requested = ?, promo_request_status = 'pending', promo_request_seller_id = ?
-      WHERE id = ?
-    `).run(requested, req.user.id, req.params.id);
+      INSERT INTO seller_product_promos (seller_id, product_id, promo_price, status, updated_at)
+      VALUES (?, ?, ?, 'pending', CURRENT_TIMESTAMP)
+      ON CONFLICT(seller_id, product_id) DO UPDATE SET
+        promo_price = excluded.promo_price,
+        status = 'pending',
+        updated_at = CURRENT_TIMESTAMP
+    `).run(req.user.id, req.params.id, requested);
 
-    res.json({ message: 'Demande de promotion soumise. L\'administrateur va examiner votre proposition.' });
+    res.json({ message: "Demande de promotion soumise. L'administrateur va examiner votre proposition." });
   } catch (err) {
     console.error('Erreur request-promo:', err);
     res.status(500).json({ error: 'Erreur lors de la soumission.' });
@@ -258,12 +258,9 @@ router.post('/products/:id/request-promo', authenticateToken, requireSeller, (re
 router.delete('/products/:id/request-promo', authenticateToken, requireSeller, (req, res) => {
   try {
     const db = getDb();
-    const product = db.prepare('SELECT * FROM products WHERE id = ? AND seller_id IS NULL').get(req.params.id);
-    if (!product) return res.status(404).json({ error: 'Produit non trouvé.' });
-    if (product.promo_request_seller_id !== req.user.id) {
-      return res.status(403).json({ error: 'Vous ne pouvez pas annuler cette demande.' });
-    }
-    db.prepare(`UPDATE products SET promo_price_requested = NULL, promo_request_status = NULL, promo_request_seller_id = NULL WHERE id = ?`).run(req.params.id);
+    const promo = db.prepare('SELECT * FROM seller_product_promos WHERE seller_id = ? AND product_id = ?').get(req.user.id, req.params.id);
+    if (!promo) return res.status(404).json({ error: 'Aucune demande trouvée.' });
+    db.prepare('DELETE FROM seller_product_promos WHERE seller_id = ? AND product_id = ?').run(req.user.id, req.params.id);
     res.json({ message: 'Demande annulée.' });
   } catch (err) {
     res.status(500).json({ error: 'Erreur.' });

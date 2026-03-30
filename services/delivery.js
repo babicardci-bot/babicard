@@ -67,20 +67,34 @@ async function processDelivery(orderId, forceRedeliver = false) {
         }
       }
 
-      // Find AND lock an available card atomically — prevents race condition double-assignment
-      const updateResult = db.prepare(`
-        UPDATE cards SET status = 'sold', sold_at = CURRENT_TIMESTAMP, order_id = ?
-        WHERE id = (
-          SELECT id FROM cards
-          WHERE product_id = ? AND status = 'available'
-          ORDER BY added_at ASC
-          LIMIT 1
-        )
-      `).run(orderId, item.product_id);
+      // Confirm or find a card for this order item
+      let availableCard = null;
 
-      const availableCard = updateResult.changes > 0
-        ? db.prepare('SELECT * FROM cards WHERE product_id = ? AND status = ? AND order_id = ? ORDER BY sold_at DESC LIMIT 1').get(item.product_id, 'sold', orderId)
-        : null;
+      if (item.card_id) {
+        // Card was pre-reserved at order creation — just confirm it
+        const confirmResult = db.prepare(
+          "UPDATE cards SET status = 'sold', sold_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'reserved'"
+        ).run(item.card_id);
+
+        if (confirmResult.changes > 0 || db.prepare('SELECT status FROM cards WHERE id = ?').get(item.card_id)?.status === 'sold') {
+          availableCard = db.prepare('SELECT * FROM cards WHERE id = ?').get(item.card_id);
+        }
+      } else {
+        // Fallback for old orders without pre-assigned cards
+        const updateResult = db.prepare(`
+          UPDATE cards SET status = 'sold', sold_at = CURRENT_TIMESTAMP, order_id = ?
+          WHERE id = (
+            SELECT id FROM cards
+            WHERE product_id = ? AND status = 'available'
+            ORDER BY added_at ASC
+            LIMIT 1
+          )
+        `).run(orderId, item.product_id);
+
+        availableCard = updateResult.changes > 0
+          ? db.prepare('SELECT * FROM cards WHERE product_id = ? AND status = ? AND order_id = ? ORDER BY sold_at DESC LIMIT 1').get(item.product_id, 'sold', orderId)
+          : null;
+      }
 
       if (availableCard) {
         // Card already marked as sold above

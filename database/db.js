@@ -302,6 +302,26 @@ function migrateDatabase(db) {
     }
   } catch(e) { console.error('Migration products promo_price:', e.message); }
 
+  // seller_product_promos table
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS seller_product_promos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        seller_id INTEGER NOT NULL,
+        product_id INTEGER NOT NULL,
+        promo_price INTEGER NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','approved','rejected')),
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(seller_id, product_id),
+        FOREIGN KEY (seller_id) REFERENCES users(id),
+        FOREIGN KEY (product_id) REFERENCES products(id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_seller_product_promos ON seller_product_promos(product_id, status);
+    `);
+    console.log('Migration: seller_product_promos table OK.');
+  } catch(e) { console.error('Migration seller_product_promos:', e.message); }
+
   // email_verification_tokens table
   try {
     db.exec(`

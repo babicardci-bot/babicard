@@ -27,24 +27,56 @@ router.post('/', authenticateToken, (req, res) => {
       requestedItems.push({ product, quantity: parseInt(item.quantity) || 1 });
     }
 
-    // Validate stock + create order atomically to prevent race conditions
+    // Reserve cards + create order atomically to prevent race conditions
     let orderId;
     const createOrder = db.transaction(() => {
+      // Release expired reservations (> 30 minutes) to free stuck cards
+      db.prepare(`
+        UPDATE cards SET status = 'available', order_id = NULL
+        WHERE status = 'reserved' AND order_id IN (
+          SELECT id FROM orders WHERE payment_status = 'pending'
+            AND datetime(created_at) < datetime('now', '-30 minutes')
+        )
+      `).run();
+
       let total_amount = 0;
-      const validatedItems = [];
+      const itemsToInsert = [];
 
       for (const { product, quantity } of requestedItems) {
-        const availableCards = db.prepare(
-          'SELECT COUNT(*) as count FROM cards WHERE product_id = ? AND status = ?'
-        ).get(product.id, 'available');
+        for (let i = 0; i < quantity; i++) {
+          // Find the best-priced available card for this product
+          const cardRow = db.prepare(`
+            SELECT c.id,
+              COALESCE(
+                (SELECT spp.promo_price FROM seller_product_promos spp
+                 WHERE spp.seller_id = c.seller_id AND spp.product_id = c.product_id AND spp.status = 'approved'
+                 LIMIT 1),
+                NULLIF(p.promo_price, 0),
+                p.price
+              ) as effective_price
+            FROM cards c
+            JOIN products p ON c.product_id = p.id
+            WHERE c.product_id = ? AND c.status = 'available'
+            ORDER BY effective_price ASC, c.added_at ASC
+            LIMIT 1
+          `).get(product.id);
 
-        if (availableCards.count < quantity) {
-          throw Object.assign(new Error(`Stock insuffisant pour "${product.name}". Disponible: ${availableCards.count}, demandé: ${quantity}.`), { statusCode: 400 });
+          if (!cardRow) {
+            throw Object.assign(new Error(`Stock insuffisant pour "${product.name}".`), { statusCode: 400 });
+          }
+
+          // Atomically reserve the card — prevents race conditions
+          const reserved = db.prepare(
+            "UPDATE cards SET status = 'reserved' WHERE id = ? AND status = 'available'"
+          ).run(cardRow.id);
+
+          if (reserved.changes === 0) {
+            throw Object.assign(new Error(`Stock insuffisant pour "${product.name}". Réessayez.`), { statusCode: 400 });
+          }
+
+          total_amount += cardRow.effective_price;
+          itemsToInsert.push({ productId: product.id, cardId: cardRow.id, effectivePrice: cardRow.effective_price });
         }
-
-        const effectivePrice = product.promo_price && product.promo_price > 0 ? product.promo_price : product.price;
-        total_amount += effectivePrice * quantity;
-        validatedItems.push({ product, quantity, effectivePrice });
       }
 
       const orderResult = db.prepare(`
@@ -54,13 +86,12 @@ router.post('/', authenticateToken, (req, res) => {
 
       const newOrderId = orderResult.lastInsertRowid;
 
-      for (const { product, quantity, effectivePrice } of validatedItems) {
-        for (let i = 0; i < quantity; i++) {
-          db.prepare(`
-            INSERT INTO order_items (order_id, product_id, quantity, unit_price)
-            VALUES (?, ?, 1, ?)
-          `).run(newOrderId, product.id, effectivePrice);
-        }
+      for (const { productId, cardId, effectivePrice } of itemsToInsert) {
+        db.prepare('UPDATE cards SET order_id = ? WHERE id = ?').run(newOrderId, cardId);
+        db.prepare(`
+          INSERT INTO order_items (order_id, product_id, card_id, quantity, unit_price)
+          VALUES (?, ?, ?, 1, ?)
+        `).run(newOrderId, productId, cardId, effectivePrice);
       }
 
       return newOrderId;
