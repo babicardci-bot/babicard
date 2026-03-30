@@ -197,8 +197,7 @@ function renderProducts(products) {
           <div class="product-footer">
             <div class="product-price">
               ${product.promo_price
-                ? `<span style="text-decoration:line-through;color:var(--text-muted);font-size:0.8rem;font-weight:400;">${formatPrice(product.price)}</span>
-                   <span style="color:#ef4444;font-weight:700;">${formatPrice(product.promo_price)}</span>`
+                ? `<div style="display:flex;flex-direction:column;line-height:1.3;"><span style="text-decoration:line-through;color:var(--text-muted);font-size:0.75rem;font-weight:400;">${formatPrice(product.price)}</span><span style="color:#ef4444;font-weight:700;">${formatPrice(product.promo_price)}</span></div>`
                 : formatPrice(product.price)
               }
               <small>≈ ${product.denomination}</small>
