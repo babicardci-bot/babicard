@@ -47,41 +47,64 @@ router.get('/stats', (req, res) => {
   try {
     const db = getDb();
 
-    const totalUsers = db.prepare('SELECT COUNT(*) as count FROM users WHERE role = ?').get('client').count;
-    const totalOrders = db.prepare('SELECT COUNT(*) as count FROM orders').get().count;
-    const paidOrders = db.prepare('SELECT COUNT(*) as count FROM orders WHERE payment_status = ?').get('paid').count;
-    const pendingOrders = db.prepare('SELECT COUNT(*) as count FROM orders WHERE payment_status = ?').get('pending').count;
-    const totalRevenue = db.prepare('SELECT COALESCE(SUM(total_amount), 0) as total FROM orders WHERE payment_status = ?').get('paid').total;
-    const totalProducts = db.prepare('SELECT COUNT(*) as count FROM products WHERE is_active = 1').get().count;
-    const totalCards = db.prepare('SELECT COUNT(*) as count FROM cards').get().count;
-    const availableCards = db.prepare('SELECT COUNT(*) as count FROM cards WHERE status = ?').get('available').count;
-    const soldCards = db.prepare('SELECT COUNT(*) as count FROM cards WHERE status = ?').get('sold').count;
-
-    // Bénéfices admin = revenus totaux - gains nets versés aux vendeurs
-    const totalSellerPayouts = db.prepare("SELECT COALESCE(SUM(net_amount),0) as total FROM seller_earnings").get().total;
-    const totalCommissions = db.prepare("SELECT COALESCE(SUM(commission_amount),0) as total FROM seller_earnings").get().total;
-    // Revenus directs (produits sans vendeur) + commissions sur ventes vendeurs
-    const directRevenue = db.prepare(`
-      SELECT COALESCE(SUM(oi.unit_price),0) as total
-      FROM order_items oi
-      JOIN orders o ON oi.order_id = o.id
-      JOIN products p ON oi.product_id = p.id
-      WHERE o.payment_status = 'paid' AND p.seller_id IS NULL
-    `).get().total;
-    const adminBenefits = directRevenue + totalCommissions;
-    // Ce mois
-    const benefitsThisMonth = db.prepare(`
-      SELECT COALESCE(SUM(oi.unit_price),0) as direct,
-             (SELECT COALESCE(SUM(se.commission_amount),0) FROM seller_earnings se
-              JOIN orders o2 ON se.order_id = o2.id
-              WHERE strftime('%Y-%m', o2.created_at) = strftime('%Y-%m','now')) as commissions
-      FROM order_items oi
-      JOIN orders o ON oi.order_id = o.id
-      JOIN products p ON oi.product_id = p.id
-      WHERE o.payment_status = 'paid' AND p.seller_id IS NULL
-        AND strftime('%Y-%m', o.created_at) = strftime('%Y-%m','now')
+    // 1 requête pour tous les compteurs orders
+    const orderStats = db.prepare(`
+      SELECT
+        COUNT(*) as totalOrders,
+        COALESCE(SUM(CASE WHEN payment_status = 'paid' THEN 1 ELSE 0 END), 0) as paidOrders,
+        COALESCE(SUM(CASE WHEN payment_status = 'pending' THEN 1 ELSE 0 END), 0) as pendingOrders,
+        COALESCE(SUM(CASE WHEN payment_status = 'paid' THEN total_amount ELSE 0 END), 0) as totalRevenue
+      FROM orders
     `).get();
-    const adminBenefitsMonth = (benefitsThisMonth.direct || 0) + (benefitsThisMonth.commissions || 0);
+
+    // 1 requête pour users
+    const totalUsers = db.prepare("SELECT COUNT(*) as count FROM users WHERE role = 'client'").get().count;
+
+    // 1 requête pour les cartes
+    const cardStats = db.prepare(`
+      SELECT
+        COUNT(*) as totalCards,
+        COALESCE(SUM(CASE WHEN status = 'available' THEN 1 ELSE 0 END), 0) as availableCards,
+        COALESCE(SUM(CASE WHEN status = 'sold' THEN 1 ELSE 0 END), 0) as soldCards
+      FROM cards
+    `).get();
+
+    // 1 requête pour les produits
+    const productStats = db.prepare(`
+      SELECT
+        COALESCE(SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END), 0) as totalProducts,
+        COALESCE(SUM(CASE WHEN stock_count <= 5 AND stock_count > 0 AND is_active = 1 THEN 1 ELSE 0 END), 0) as lowStockProducts,
+        COALESCE(SUM(CASE WHEN stock_count = 0 AND is_active = 1 THEN 1 ELSE 0 END), 0) as outOfStockProducts
+      FROM products
+    `).get();
+
+    // 1 requête pour les alertes vendeurs/retraits
+    const alertStats = db.prepare(`
+      SELECT
+        (SELECT COUNT(*) FROM seller_profiles WHERE status = 'pending') as pendingSellers,
+        (SELECT COUNT(*) FROM withdrawal_requests WHERE status = 'pending') as pendingWithdrawals
+    `).get();
+
+    // 1 requête pour les bénéfices
+    const earningsStats = db.prepare(`
+      SELECT
+        COALESCE(SUM(commission_amount), 0) as totalCommissions,
+        COALESCE(SUM(CASE WHEN strftime('%Y-%m', se.created_at) = strftime('%Y-%m','now') THEN commission_amount ELSE 0 END), 0) as commissionsThisMonth
+      FROM seller_earnings
+    `).get();
+
+    const directRevenueStats = db.prepare(`
+      SELECT
+        COALESCE(SUM(CASE WHEN p.seller_id IS NULL THEN oi.unit_price ELSE 0 END), 0) as directRevenue,
+        COALESCE(SUM(CASE WHEN p.seller_id IS NULL AND strftime('%Y-%m', o.created_at) = strftime('%Y-%m','now') THEN oi.unit_price ELSE 0 END), 0) as directRevenueMonth
+      FROM order_items oi
+      JOIN orders o ON oi.order_id = o.id
+      JOIN products p ON oi.product_id = p.id
+      WHERE o.payment_status = 'paid'
+    `).get();
+
+    const adminBenefits = directRevenueStats.directRevenue + earningsStats.totalCommissions;
+    const adminBenefitsMonth = directRevenueStats.directRevenueMonth + earningsStats.commissionsThisMonth;
 
     // Recent orders
     const recentOrders = db.prepare(`
@@ -101,13 +124,6 @@ router.get('/stats', (req, res) => {
       ORDER BY date DESC
     `).all();
 
-    // Alerts
-    const pendingSellers = db.prepare("SELECT COUNT(*) as count FROM seller_profiles WHERE status = 'pending'").get().count;
-    const pendingWithdrawals = db.prepare("SELECT COUNT(*) as count FROM withdrawal_requests WHERE status = 'pending'").get().count;
-    const pendingOrders2 = db.prepare("SELECT COUNT(*) as count FROM orders WHERE payment_status = 'pending'").get().count;
-    const lowStockProducts = db.prepare("SELECT COUNT(*) as count FROM products WHERE stock_count <= 5 AND stock_count > 0 AND is_active = 1").get().count;
-    const outOfStockProducts = db.prepare("SELECT COUNT(*) as count FROM products WHERE stock_count = 0 AND is_active = 1").get().count;
-
     // Top products
     const topProducts = db.prepare(`
       SELECT p.name, p.platform, COUNT(oi.id) as sales, SUM(oi.unit_price) as revenue
@@ -119,6 +135,21 @@ router.get('/stats', (req, res) => {
       ORDER BY sales DESC
       LIMIT 5
     `).all();
+
+    const totalOrders = orderStats.totalOrders;
+    const paidOrders = orderStats.paidOrders;
+    const pendingOrders = orderStats.pendingOrders;
+    const totalRevenue = orderStats.totalRevenue;
+    const totalProducts = productStats.totalProducts;
+    const totalCards = cardStats.totalCards;
+    const availableCards = cardStats.availableCards;
+    const soldCards = cardStats.soldCards;
+    const totalCommissions = earningsStats.totalCommissions;
+    const directRevenue = directRevenueStats.directRevenue;
+    const pendingSellers = alertStats.pendingSellers;
+    const pendingWithdrawals = alertStats.pendingWithdrawals;
+    const lowStockProducts = productStats.lowStockProducts;
+    const outOfStockProducts = productStats.outOfStockProducts;
 
     res.json({
       stats: {
@@ -139,7 +170,7 @@ router.get('/stats', (req, res) => {
       alerts: {
         pendingSellers,
         pendingWithdrawals,
-        pendingOrders: pendingOrders2,
+        pendingOrders,
         lowStockProducts,
         outOfStockProducts
       },
@@ -169,21 +200,29 @@ router.get('/users', (req, res) => {
 
     query += ' ORDER BY created_at DESC';
 
-    const total = db.prepare(query.replace('SELECT id, name, email, phone, role, created_at', 'SELECT COUNT(*) as total')).get(...params).total;
+    const countQuery = 'SELECT COUNT(*) as total FROM users WHERE 1=1' + (search ? ' AND (name LIKE ? OR email LIKE ? OR phone LIKE ?)' : '');
+    const total = db.prepare(countQuery).get(...(search ? [`%${search}%`, `%${search}%`, `%${search}%`] : [])).total;
+
     const offset = (parseInt(page) - 1) * parseInt(limit);
-    query += ` LIMIT ? OFFSET ?`;
-    params.push(parseInt(limit), offset);
 
-    const users = db.prepare(query).all(...params);
+    // Single query with LEFT JOIN — no N+1
+    let enrichQuery = `
+      SELECT u.id, u.name, u.email, u.phone, u.role, u.created_at,
+        COUNT(o.id) as total_orders,
+        COALESCE(SUM(CASE WHEN o.payment_status = 'paid' THEN o.total_amount ELSE 0 END), 0) as total_spent
+      FROM users u
+      LEFT JOIN orders o ON o.user_id = u.id
+      WHERE 1=1
+    `;
+    const enrichParams = [];
+    if (search) {
+      enrichQuery += ' AND (u.name LIKE ? OR u.email LIKE ? OR u.phone LIKE ?)';
+      enrichParams.push(`%${search}%`, `%${search}%`, `%${search}%`);
+    }
+    enrichQuery += ' GROUP BY u.id ORDER BY u.created_at DESC LIMIT ? OFFSET ?';
+    enrichParams.push(parseInt(limit), offset);
 
-    // Enrich with order counts
-    const enriched = users.map(user => {
-      const orderStats = db.prepare(`
-        SELECT COUNT(*) as total_orders, COALESCE(SUM(total_amount), 0) as total_spent
-        FROM orders WHERE user_id = ? AND payment_status = 'paid'
-      `).get(user.id);
-      return { ...user, ...orderStats };
-    });
+    const enriched = db.prepare(enrichQuery).all(...enrichParams);
 
     res.json({ users: enriched, total, page: parseInt(page), pages: Math.ceil(total / parseInt(limit)) });
   } catch (err) {

@@ -89,33 +89,40 @@ router.get('/my', authenticateToken, (req, res) => {
   try {
     const db = getDb();
     const orders = db.prepare(`
-      SELECT o.*,
-        (SELECT COUNT(*) FROM order_items WHERE order_id = o.id) as item_count
-      FROM orders o
-      WHERE o.user_id = ?
-      ORDER BY o.created_at DESC
+      SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC
     `).all(req.user.id);
 
-    // Enrich with items
+    if (orders.length === 0) return res.json({ orders: [] });
+
+    // Single query for all items across all orders — no N+1
+    const orderIds = orders.map(o => o.id);
+    const placeholders = orderIds.map(() => '?').join(',');
+    const allItems = db.prepare(`
+      SELECT oi.*, p.name as product_name, p.platform, p.denomination,
+        c.code as card_code, c.pin as card_pin, c.serial as card_serial
+      FROM order_items oi
+      JOIN products p ON oi.product_id = p.id
+      LEFT JOIN cards c ON oi.card_id = c.id
+      WHERE oi.order_id IN (${placeholders})
+    `).all(...orderIds);
+
+    // Group items by order_id
+    const itemsByOrder = {};
+    for (const item of allItems) {
+      if (!itemsByOrder[item.order_id]) itemsByOrder[item.order_id] = [];
+      itemsByOrder[item.order_id].push(item);
+    }
+
+    const { decrypt } = require('../services/encryption');
+
     const enriched = orders.map(order => {
-      const items = db.prepare(`
-        SELECT oi.*, p.name as product_name, p.platform, p.denomination,
-          c.code as card_code, c.pin as card_pin, c.serial as card_serial
-        FROM order_items oi
-        JOIN products p ON oi.product_id = p.id
-        LEFT JOIN cards c ON oi.card_id = c.id
-        WHERE oi.order_id = ?
-      `).all(order.id);
-
-      // Only show card codes if order is paid and delivered
-      const safeItems = items.map(item => ({
+      const items = (itemsByOrder[order.id] || []).map(item => ({
         ...item,
-        card_code: order.payment_status === 'paid' ? item.card_code : null,
-        card_pin: order.payment_status === 'paid' ? item.card_pin : null,
-        card_serial: order.payment_status === 'paid' ? item.card_serial : null
+        card_code: order.payment_status === 'paid' ? decrypt(item.card_code) : null,
+        card_pin: order.payment_status === 'paid' ? decrypt(item.card_pin) : null,
+        card_serial: order.payment_status === 'paid' ? decrypt(item.card_serial) : null
       }));
-
-      return { ...order, items: safeItems };
+      return { ...order, items, item_count: items.length };
     });
 
     res.json({ orders: enriched });
