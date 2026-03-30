@@ -711,7 +711,7 @@
                     promoBadge = `<div style="margin-top:4px;"><span class="seller-badge badge-pending">⏳ En attente: ${fmtPrice(promoRequested)}</span>
                       <button onclick="cancelPromoRequest(${p.id})" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:11px;margin-left:4px;" title="Annuler">✕</button></div>`;
                   } else if (promoStatus === 'approved') {
-                    promoBadge = `<div style="margin-top:4px;"><span class="seller-badge badge-approved">✓ Approuvé: ${fmtPrice(promoRequested)}</span></div>`;
+                    promoBadge = `<div style="margin-top:4px;display:flex;align-items:center;gap:6px;"><span class="seller-badge badge-approved">✓ Approuvé: ${fmtPrice(promoRequested)}</span><button onclick="cancelPromoRequest(${p.id})" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:11px;padding:0;" title="Annuler la promotion">✕ Annuler</button></div>`;
                   } else if (promoStatus === 'rejected') {
                     promoBadge = `<div style="margin-top:4px;"><span class="seller-badge badge-rejected">✕ Rejeté</span></div>`;
                   }
