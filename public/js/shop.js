@@ -13,7 +13,15 @@ function cartKey() {
 
 function loadCart() {
   try {
-    cart = JSON.parse(localStorage.getItem(cartKey()) || '[]');
+    const stored = JSON.parse(localStorage.getItem(cartKey()) || '[]');
+    // Migrate old format (quantity > 1) → individual items
+    cart = [];
+    for (const item of stored) {
+      const qty = item.quantity || 1;
+      for (let i = 0; i < qty; i++) {
+        cart.push({ ...item, quantity: 1 });
+      }
+    }
   } catch {
     cart = [];
   }
@@ -34,71 +42,73 @@ function addToCart(productId) {
     return;
   }
 
-  const existingItem = cart.find(item => item.id === productId);
-  const currentQty = existingItem ? existingItem.quantity : 0;
+  const unitsInCart = cart.filter(item => item.id === productId).length;
 
-  if (currentQty >= product.available_stock) {
+  if (unitsInCart >= product.available_stock) {
     showToast(`⚠️ Stock maximum atteint (${product.available_stock} disponible${product.available_stock > 1 ? 's' : ''}).`, 'warning');
     return;
   }
 
-  if (existingItem) {
-    existingItem.quantity++;
-  } else {
-    const effectivePrice = product.promo_price && product.promo_price > 0 ? product.promo_price : product.price;
-    cart.push({
-      id: product.id,
-      name: product.name,
-      platform: product.platform,
-      denomination: product.denomination,
-      price: effectivePrice,
-      original_price: product.promo_price && product.promo_price > 0 ? product.price : null,
-      category: product.category,
-      quantity: 1,
-      max_stock: product.available_stock
-    });
-  }
+  // Determine price: promo price for first N units (where N = promo_stock), then regular
+  const promoStock = product.promo_stock || 0;
+  const promoUnitsInCart = cart.filter(item => item.id === productId && item.original_price).length;
+  const usePromo = product.promo_price && product.promo_price > 0 && promoUnitsInCart < promoStock;
+
+  cart.push({
+    id: product.id,
+    name: product.name,
+    platform: product.platform,
+    denomination: product.denomination,
+    price: usePromo ? product.promo_price : product.price,
+    original_price: usePromo ? product.price : null,
+    category: product.category,
+    quantity: 1,
+    max_stock: product.available_stock
+  });
 
   saveCart();
   updateCartUI();
   showToast(`✅ "${product.name}" ajouté au panier!`, 'success');
-
-  // Auto open cart
   openCart();
 }
 
+// Remove one specific unit by index
+function removeUnit(index) {
+  cart.splice(index, 1);
+  saveCart();
+  updateCartUI();
+}
+
+// Remove all units of a product (trash button)
 function removeFromCart(productId) {
   cart = cart.filter(item => item.id !== productId);
   saveCart();
   updateCartUI();
 }
 
+// + adds a new unit, - removes last unit of that product
 function updateQuantity(productId, delta) {
-  const item = cart.find(i => i.id === productId);
-  if (!item) return;
-
-  item.quantity += delta;
-
-  if (item.quantity <= 0) {
-    removeFromCart(productId);
+  if (delta > 0) {
+    addToCart(productId);
     return;
   }
-
-  if (item.quantity > (item.max_stock || 99)) {
-    item.quantity = item.max_stock || 99;
-    showToast('Stock maximum atteint.', 'warning');
+  // Remove the last unit of this product
+  for (let i = cart.length - 1; i >= 0; i--) {
+    if (cart[i].id === productId) {
+      cart.splice(i, 1);
+      break;
+    }
   }
-
   saveCart();
   updateCartUI();
 }
 
 function getCartTotal() {
-  return cart.reduce((total, item) => total + item.price * item.quantity, 0);
+  return cart.reduce((total, item) => total + item.price, 0);
 }
 
 function getCartItemCount() {
-  return cart.reduce((total, item) => total + item.quantity, 0);
+  return cart.length;
 }
 
 // ============ CART UI ============
@@ -142,26 +152,45 @@ function updateCartUI() {
 
   if (cartFooter) cartFooter.style.display = 'block';
 
-  cartItems.innerHTML = cart.map(item => `
-    <div class="cart-item">
-      <div class="cart-item-icon bg-${item.category || 'other'}">
-        ${getCategoryIcon(item.category)}
-      </div>
-      <div class="cart-item-info">
-        <div class="cart-item-name">${esc(item.name)}</div>
-        <div class="cart-item-price">
-          ${item.original_price ? `<span style="text-decoration:line-through;color:#888;font-size:0.75rem;margin-right:4px;">${formatPrice(item.original_price)}</span>` : ''}
-          <span style="${item.original_price ? 'color:#ef4444;font-weight:700;' : ''}">${formatPrice(item.price)}</span>
+  // Group items by product for display, but keep individual pricing
+  const groups = {};
+  cart.forEach((item, index) => {
+    if (!groups[item.id]) groups[item.id] = { item, indices: [] };
+    groups[item.id].indices.push(index);
+  });
+
+  cartItems.innerHTML = Object.values(groups).map(({ item, indices }) => {
+    const count = indices.length;
+    const unitsHtml = indices.map((idx, i) => {
+      const unit = cart[idx];
+      const unitLabel = count > 1 ? ` <span style="color:#606080;font-size:0.75rem;">#${i + 1}</span>` : '';
+      return `
+        <div class="cart-item" style="${i > 0 ? 'border-top:1px solid rgba(255,255,255,0.04);' : ''}">
+          <div class="cart-item-icon bg-${unit.category || 'other'}" style="${i > 0 ? 'visibility:hidden;' : ''}">
+            ${getCategoryIcon(unit.category)}
+          </div>
+          <div class="cart-item-info">
+            <div class="cart-item-name">${esc(unit.name)}${unitLabel}</div>
+            <div class="cart-item-price">
+              ${unit.original_price ? `<span style="text-decoration:line-through;color:#888;font-size:0.75rem;margin-right:4px;">${formatPrice(unit.original_price)}</span>` : ''}
+              <span style="${unit.original_price ? 'color:#ef4444;font-weight:700;' : ''}">${formatPrice(unit.price)}</span>
+            </div>
+          </div>
+          <div class="cart-item-controls">
+            <button class="cart-item-remove" onclick="removeUnit(${idx})" title="Retirer">🗑</button>
+          </div>
+        </div>`;
+    }).join('');
+
+    return `
+      <div style="margin-bottom:4px;">
+        ${unitsHtml}
+        <div style="display:flex;justify-content:flex-end;gap:6px;padding:4px 0 8px;">
+          <button class="qty-btn" onclick="updateQuantity(${item.id}, -1)" title="Retirer un">−</button>
+          <button class="qty-btn" onclick="updateQuantity(${item.id}, 1)" title="Ajouter un">+</button>
         </div>
-      </div>
-      <div class="cart-item-controls">
-        <button class="qty-btn" onclick="updateQuantity(${item.id}, -1)">−</button>
-        <span class="qty-val">${item.quantity}</span>
-        <button class="qty-btn" onclick="updateQuantity(${item.id}, 1)">+</button>
-        <button class="cart-item-remove" onclick="removeFromCart(${item.id})" title="Supprimer">🗑</button>
-      </div>
-    </div>
-  `).join('');
+      </div>`;
+  }).join('');
 
   // Check if any item has a promo price (meaning actual total may differ per seller)
   const hasPromoItems = cart.some(item => item.original_price && item.quantity >= 1);

@@ -43,12 +43,15 @@ router.get('/', (req, res) => {
     const query = `
       SELECT p.*,
         (SELECT COUNT(*) FROM cards WHERE product_id = p.id AND status = 'available') as available_stock,
+        (SELECT COUNT(*) FROM cards c2
+          JOIN seller_product_promos spp ON spp.seller_id = c2.seller_id AND spp.product_id = p.id AND spp.status = 'approved'
+          WHERE c2.product_id = p.id AND c2.status = 'available') as promo_stock,
         sp.shop_name as seller_shop_name,
         sp.status as seller_status,
         COALESCE(
           (SELECT MIN(spp.promo_price)
            FROM seller_product_promos spp
-           JOIN cards c2 ON c2.seller_id = spp.seller_id AND c2.product_id = p.id AND c2.status = 'available'
+           JOIN cards c3 ON c3.seller_id = spp.seller_id AND c3.product_id = p.id AND c3.status = 'available'
            WHERE spp.product_id = p.id AND spp.status = 'approved'),
           NULLIF(p.promo_price, 0)
         ) as best_promo_price
