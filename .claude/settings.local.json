@@ -6,7 +6,8 @@
       "Bash(npm view:*)",
       "Bash(curl -s http://localhost:3000/)",
       "Bash(curl -s http://localhost:3000/login)",
-      "Bash(grep -n \"innerHTML\\\\|innerText\\\\|textContent\" /c/Users/LENOVO/Desktop/\"Claude code Vs\"/Site/public/js/*.js)"
+      "Bash(grep -n \"innerHTML\\\\|innerText\\\\|textContent\" /c/Users/LENOVO/Desktop/\"Claude code Vs\"/Site/public/js/*.js)",
+      "Bash(node -e \":*)"
     ]
   }
 }
