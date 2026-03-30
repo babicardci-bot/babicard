@@ -45,12 +45,14 @@ function addToCart(productId) {
   if (existingItem) {
     existingItem.quantity++;
   } else {
+    const effectivePrice = product.promo_price && product.promo_price > 0 ? product.promo_price : product.price;
     cart.push({
       id: product.id,
       name: product.name,
       platform: product.platform,
       denomination: product.denomination,
-      price: product.price,
+      price: effectivePrice,
+      original_price: product.promo_price && product.promo_price > 0 ? product.price : null,
       category: product.category,
       quantity: 1,
       max_stock: product.available_stock
@@ -147,7 +149,10 @@ function updateCartUI() {
       </div>
       <div class="cart-item-info">
         <div class="cart-item-name">${esc(item.name)}</div>
-        <div class="cart-item-price">${formatPrice(item.price)}</div>
+        <div class="cart-item-price">
+          ${item.original_price ? `<span style="text-decoration:line-through;color:#888;font-size:0.75rem;margin-right:4px;">${formatPrice(item.original_price)}</span>` : ''}
+          <span style="${item.original_price ? 'color:#ef4444;font-weight:700;' : ''}">${formatPrice(item.price)}</span>
+        </div>
       </div>
       <div class="cart-item-controls">
         <button class="qty-btn" onclick="updateQuantity(${item.id}, -1)">−</button>
