@@ -317,17 +317,19 @@ router.get('/products', (req, res) => {
 // POST /api/admin/products
 router.post('/products', (req, res) => {
   try {
-    const { name, description, category, image_url, price, denomination, platform, is_active = 1 } = req.body;
+    const { name, description, category, image_url, price, promo_price, denomination, platform, is_active = 1 } = req.body;
     const db = getDb();
 
     if (!name || !category || !price || !denomination || !platform) {
       return res.status(400).json({ error: 'Champs obligatoires manquants: name, category, price, denomination, platform.' });
     }
 
+    const promoVal = promo_price && parseInt(promo_price) > 0 && parseInt(promo_price) < parseInt(price) ? parseInt(promo_price) : null;
+
     const result = db.prepare(`
-      INSERT INTO products (name, description, category, image_url, price, denomination, platform, stock_count, is_active)
-      VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)
-    `).run(name, description || '', category, image_url || '', parseInt(price), denomination, platform, is_active ? 1 : 0);
+      INSERT INTO products (name, description, category, image_url, price, promo_price, denomination, platform, stock_count, is_active)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?)
+    `).run(name, description || '', category, image_url || '', parseInt(price), promoVal, denomination, platform, is_active ? 1 : 0);
 
     const product = db.prepare('SELECT * FROM products WHERE id = ?').get(result.lastInsertRowid);
     res.status(201).json({ message: 'Produit créé avec succès.', product });
@@ -340,7 +342,7 @@ router.post('/products', (req, res) => {
 // PUT /api/admin/products/:id
 router.put('/products/:id', (req, res) => {
   try {
-    const { name, description, category, image_url, price, denomination, platform, is_active } = req.body;
+    const { name, description, category, image_url, price, promo_price, denomination, platform, is_active } = req.body;
     const db = getDb();
 
     const product = db.prepare('SELECT * FROM products WHERE id = ?').get(req.params.id);
@@ -348,17 +350,23 @@ router.put('/products/:id', (req, res) => {
       return res.status(404).json({ error: 'Produit non trouvé.' });
     }
 
+    const newPrice = price ? parseInt(price) : product.price;
+    const promoVal = promo_price !== undefined
+      ? (parseInt(promo_price) > 0 && parseInt(promo_price) < newPrice ? parseInt(promo_price) : null)
+      : product.promo_price;
+
     db.prepare(`
       UPDATE products SET
         name = ?, description = ?, category = ?, image_url = ?,
-        price = ?, denomination = ?, platform = ?, is_active = ?
+        price = ?, promo_price = ?, denomination = ?, platform = ?, is_active = ?
       WHERE id = ?
     `).run(
       name || product.name,
       description !== undefined ? description : product.description,
       category || product.category,
       image_url !== undefined ? image_url : product.image_url,
-      price ? parseInt(price) : product.price,
+      newPrice,
+      promoVal,
       denomination || product.denomination,
       platform || product.platform,
       is_active !== undefined ? (is_active ? 1 : 0) : product.is_active,

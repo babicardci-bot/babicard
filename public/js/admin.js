@@ -429,6 +429,7 @@ async function editProduct(productId) {
     document.getElementById('pCategory').value = product.category;
     document.getElementById('pDenomination').value = product.denomination;
     document.getElementById('pPrice').value = product.price;
+    document.getElementById('pPromoPrice').value = product.promo_price || '';
     document.getElementById('pActive').value = product.is_active ? '1' : '0';
     document.getElementById('pDescription').value = product.description || '';
     resetProductImgZone(product.image_url || '');
@@ -452,6 +453,7 @@ async function saveProduct(e) {
     category: document.getElementById('pCategory').value,
     denomination: document.getElementById('pDenomination').value,
     price: document.getElementById('pPrice').value,
+    promo_price: document.getElementById('pPromoPrice').value || null,
     is_active: document.getElementById('pActive').value === '1' ? 1 : 0,
     description: document.getElementById('pDescription').value,
     image_url: uploadedProductImageUrl || ''

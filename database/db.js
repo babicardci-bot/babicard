@@ -281,6 +281,15 @@ function migrateDatabase(db) {
     }
   } catch(e) { console.error('Migration users email_verified/token_version:', e.message); }
 
+  // Add promo_price to products
+  try {
+    const prodCols = db.prepare("PRAGMA table_info(products)").all().map(c => c.name);
+    if (!prodCols.includes('promo_price')) {
+      db.prepare("ALTER TABLE products ADD COLUMN promo_price INTEGER DEFAULT NULL").run();
+      console.log('Migration: promo_price ajouté à products.');
+    }
+  } catch(e) { console.error('Migration products promo_price:', e.message); }
+
   // email_verification_tokens table
   try {
     db.exec(`

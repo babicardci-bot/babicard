@@ -42,8 +42,9 @@ router.post('/', authenticateToken, (req, res) => {
           throw Object.assign(new Error(`Stock insuffisant pour "${product.name}". Disponible: ${availableCards.count}, demandé: ${quantity}.`), { statusCode: 400 });
         }
 
-        total_amount += product.price * quantity;
-        validatedItems.push({ product, quantity });
+        const effectivePrice = product.promo_price && product.promo_price > 0 ? product.promo_price : product.price;
+        total_amount += effectivePrice * quantity;
+        validatedItems.push({ product, quantity, effectivePrice });
       }
 
       const orderResult = db.prepare(`
@@ -53,12 +54,12 @@ router.post('/', authenticateToken, (req, res) => {
 
       const newOrderId = orderResult.lastInsertRowid;
 
-      for (const { product, quantity } of validatedItems) {
+      for (const { product, quantity, effectivePrice } of validatedItems) {
         for (let i = 0; i < quantity; i++) {
           db.prepare(`
             INSERT INTO order_items (order_id, product_id, quantity, unit_price)
             VALUES (?, ?, 1, ?)
-          `).run(newOrderId, product.id, product.price);
+          `).run(newOrderId, product.id, effectivePrice);
         }
       }
 

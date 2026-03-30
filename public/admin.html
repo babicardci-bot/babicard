@@ -616,9 +616,15 @@
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label>Prix (FCFA) *</label>
+            <label>Prix normal (FCFA) *</label>
             <input type="number" id="pPrice" required min="100" placeholder="6500">
           </div>
+          <div class="form-group">
+            <label>Prix promo (FCFA) <span style="color:var(--text-muted);font-weight:400;">(optionnel)</span></label>
+            <input type="number" id="pPromoPrice" min="0" placeholder="Laisser vide = pas de promo">
+          </div>
+        </div>
+        <div class="form-row">
           <div class="form-group">
             <label>Actif</label>
             <select id="pActive">

@@ -183,6 +183,7 @@ function renderProducts(products) {
           <span class="product-badge ${inStock ? 'badge-instock' : 'badge-outofstock'}">
             ${inStock ? '✓ Disponible' : '✕ Rupture'}
           </span>
+          ${product.promo_price ? `<span class="badge-promo">🔥 PROMO</span>` : ''}
           ${product.image_url
             ? `<img src="${esc(product.image_url)}" alt="${esc(product.name)}" class="product-card-img-cover">`
             : `<span class="card-brand-icon">${icon}</span><span class="card-brand-name">${getCategoryLabel(product.category)}</span>`
@@ -195,7 +196,11 @@ function renderProducts(products) {
           ${product.seller_shop_name ? `<div class="product-seller">🏪 ${esc(product.seller_shop_name)}</div>` : '<div class="product-seller" style="color:var(--color-primary-light);font-size:0.7rem;">✓ Babicard.ci Officiel</div>'}
           <div class="product-footer">
             <div class="product-price">
-              ${formatPrice(product.price)}
+              ${product.promo_price
+                ? `<span style="text-decoration:line-through;color:var(--text-muted);font-size:0.8rem;font-weight:400;">${formatPrice(product.price)}</span>
+                   <span style="color:#ef4444;font-weight:700;">${formatPrice(product.promo_price)}</span>`
+                : formatPrice(product.price)
+              }
               <small>≈ ${product.denomination}</small>
             </div>
             <button
@@ -243,7 +248,11 @@ function openProductModal(productId) {
         </div>
         <div style="background:var(--bg-card);padding:12px;border-radius:8px;border:1px solid var(--border-color);">
           <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:1px">Prix</div>
-          <div style="font-size:1.1rem;font-weight:700;color:var(--color-primary-light)">${formatPrice(product.price)}</div>
+          ${product.promo_price
+            ? `<div><span style="text-decoration:line-through;color:var(--text-muted);font-size:0.85rem;">${formatPrice(product.price)}</span></div>
+               <div style="font-size:1.1rem;font-weight:700;color:#ef4444;">${formatPrice(product.promo_price)} 🔥</div>`
+            : `<div style="font-size:1.1rem;font-weight:700;color:var(--color-primary-light)">${formatPrice(product.price)}</div>`
+          }
         </div>
         <div style="background:var(--bg-card);padding:12px;border-radius:8px;border:1px solid var(--border-color);">
           <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:1px">Plateforme</div>

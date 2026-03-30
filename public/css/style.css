@@ -672,6 +672,20 @@ img { max-width: 100%; }
 }
 .badge-instock { background: rgba(34, 197, 94, 0.2); border: 1px solid #22c55e; color: #22c55e; }
 .badge-outofstock { background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #ef4444; }
+.badge-promo {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 20px;
+  letter-spacing: 1px;
+  z-index: 2;
+  text-transform: uppercase;
+}
 
 .product-platform {
   font-size: 0.72rem;
