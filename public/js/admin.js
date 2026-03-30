@@ -4,16 +4,6 @@
 
 const API = '/api';
 
-// Échappement HTML — protection XSS sur toutes les données dynamiques
-function esc(str) {
-  if (str == null) return '';
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-}
 
 const STATUS_LABELS = {
   paid: '💰 Payée',
@@ -45,9 +35,10 @@ window.addEventListener('DOMContentLoaded', async () => {
     });
     const data = await res.json();
 
-    if (!res.ok || data.user.role !== 'admin') {
-      showToast('Accès refusé. Admin requis.', 'error');
-      setTimeout(() => { window.location.href = '/'; }, 1500);
+    if (!res.ok || !data.user || data.user.role !== 'admin') {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/login?redirect=/admin';
       return;
     }
 
@@ -181,10 +172,6 @@ async function adminFetch(url, options = {}) {
     return;
   }
   return res;
-}
-
-function formatPrice(amount) {
-  return new Intl.NumberFormat('fr-FR').format(amount) + ' FCFA';
 }
 
 function formatDate(dateStr) {

@@ -8,23 +8,15 @@
   document.documentElement.setAttribute('data-theme', saved);
 })();
 
-// Échappement HTML — protection XSS
-function esc(str) {
-  if (str == null) return '';
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-}
 
 // ============ SLIDER ============
 let currentSlide = 0;
-let totalSlides = 5;
+let totalSlides = 0;
 let sliderInterval = null;
 
 function initSlider() {
+  totalSlides = document.querySelectorAll('.slide').length;
+  if (totalSlides === 0) return;
   clearInterval(sliderInterval);
   sliderInterval = setInterval(() => {
     changeSlide(1);
@@ -165,10 +157,6 @@ function getCategoryLabel(category) {
     other: 'Autre'
   };
   return labels[category] || category;
-}
-
-function formatPrice(amount) {
-  return new Intl.NumberFormat('fr-FR').format(amount) + ' FCFA';
 }
 
 function renderProducts(products) {

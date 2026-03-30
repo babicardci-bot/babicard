@@ -66,6 +66,16 @@ function formatPrice(amount) {
   return new Intl.NumberFormat('fr-FR').format(amount) + ' FCFA';
 }
 
+function escHtml(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 function getCategoryColor(category) {
   const colors = {
     apple: '#555555',
@@ -109,9 +119,9 @@ async function sendOrderConfirmationEmail(user, order, items) {
       codeSection = `
         <div style="background: #f8f9fa; border: 2px dashed #6C63FF; border-radius: 8px; padding: 16px; margin: 12px 0; text-align: center;">
           <p style="margin: 0 0 8px; font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 1px;">Code de la carte</p>
-          <p style="margin: 0; font-size: 20px; font-weight: bold; color: #1a1a2e; letter-spacing: 3px; font-family: 'Courier New', monospace;">${item.card_code}</p>
-          ${item.card_pin ? `<p style="margin: 8px 0 0; font-size: 14px; color: #555;">PIN: <strong>${item.card_pin}</strong></p>` : ''}
-          ${item.card_serial ? `<p style="margin: 4px 0 0; font-size: 12px; color: #888;">Série: ${item.card_serial}</p>` : ''}
+          <p style="margin: 0; font-size: 20px; font-weight: bold; color: #1a1a2e; letter-spacing: 3px; font-family: 'Courier New', monospace;">${escHtml(item.card_code)}</p>
+          ${item.card_pin ? `<p style="margin: 8px 0 0; font-size: 14px; color: #555;">PIN: <strong>${escHtml(item.card_pin)}</strong></p>` : ''}
+          ${item.card_serial ? `<p style="margin: 4px 0 0; font-size: 12px; color: #888;">Série: ${escHtml(item.card_serial)}</p>` : ''}
         </div>
       `;
     }
@@ -123,8 +133,8 @@ async function sendOrderConfirmationEmail(user, order, items) {
             ${icon}
           </div>
           <div>
-            <h3 style="margin: 0; font-size: 16px; color: #1a1a2e;">${item.product_name}</h3>
-            <p style="margin: 4px 0 0; font-size: 14px; color: #666;">${item.platform || ''} ${item.denomination ? '• ' + item.denomination : ''}</p>
+            <h3 style="margin: 0; font-size: 16px; color: #1a1a2e;">${escHtml(item.product_name)}</h3>
+            <p style="margin: 4px 0 0; font-size: 14px; color: #666;">${escHtml(item.platform || '')} ${item.denomination ? '• ' + escHtml(item.denomination) : ''}</p>
           </div>
           <div style="margin-left: auto; text-align: right;">
             <p style="margin: 0; font-size: 16px; font-weight: bold; color: #6C63FF;">${formatPrice(item.unit_price)}</p>
@@ -168,7 +178,7 @@ async function sendOrderConfirmationEmail(user, order, items) {
 
     <!-- Greeting -->
     <div style="background: white; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.08);">
-      <h2 style="margin: 0 0 12px; color: #1a1a2e; font-size: 20px;">Bonjour ${user.name} 👋</h2>
+      <h2 style="margin: 0 0 12px; color: #1a1a2e; font-size: 20px;">Bonjour ${escHtml(user.name)} 👋</h2>
       <p style="margin: 0; color: #555; line-height: 1.6;">
         ${hasCards
           ? `Merci pour votre achat ! Votre paiement de <strong>${formatPrice(order.total_amount)}</strong> a été confirmé. Retrouvez ci-dessous vos codes de cartes cadeaux.`
@@ -195,7 +205,7 @@ async function sendOrderConfirmationEmail(user, order, items) {
         </tr>
         <tr>
           <td style="padding: 8px 0; color: #666; font-size: 14px;">Référence paiement</td>
-          <td style="padding: 8px 0; color: #6C63FF; font-size: 13px; text-align: right; font-family: monospace;">${order.payment_ref || 'N/A'}</td>
+          <td style="padding: 8px 0; color: #6C63FF; font-size: 13px; text-align: right; font-family: monospace;">${escHtml(order.payment_ref || 'N/A')}</td>
         </tr>
         <tr style="border-top: 2px solid #f0f0f7;">
           <td style="padding: 12px 0 0; color: #1a1a2e; font-weight: bold; font-size: 16px;">Total payé</td>
@@ -475,7 +485,7 @@ async function sendPasswordResetEmail(user, resetLink) {
   </div>
   <div style="max-width:600px;margin:0 auto;padding:30px 20px;">
     <div style="background:white;border-radius:12px;padding:32px;box-shadow:0 2px 10px rgba(0,0,0,0.08);">
-      <h2 style="margin:0 0 16px;color:#1a1a2e;">Bonjour ${user.name} 👋</h2>
+      <h2 style="margin:0 0 16px;color:#1a1a2e;">Bonjour ${escHtml(user.name)} 👋</h2>
       <p style="color:#555;line-height:1.6;margin:0 0 24px;">Vous avez demandé la réinitialisation de votre mot de passe. Cliquez sur le bouton ci-dessous pour choisir un nouveau mot de passe.</p>
       <div style="text-align:center;margin:28px 0;">
         <a href="${resetLink}" style="background:linear-gradient(135deg,#6C63FF,#5a52d5);color:white;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:16px;display:inline-block;">🔒 Réinitialiser mon mot de passe</a>
@@ -526,7 +536,7 @@ async function sendWelcomeEmail(user) {
 
     <div style="background:white;border-radius:16px;padding:36px;box-shadow:0 4px 20px rgba(0,0,0,0.08);margin-bottom:20px;text-align:center;">
       <div style="font-size:56px;margin-bottom:16px;">🎉</div>
-      <h2 style="margin:0 0 12px;color:#1a1a2e;font-size:24px;">Bonjour ${user.name} !</h2>
+      <h2 style="margin:0 0 12px;color:#1a1a2e;font-size:24px;">Bonjour ${escHtml(user.name)} !</h2>
       <p style="color:#555;line-height:1.7;margin:0 0 24px;font-size:16px;">
         Votre compte <strong>Babicard.ci</strong> a été créé avec succès.<br>
         Découvrez notre sélection de cartes cadeaux numériques livrées instantanément par email.
@@ -607,7 +617,7 @@ async function sendSellerApprovalEmail(user, commissionRate) {
     <!-- Congrats card -->
     <div style="background:linear-gradient(135deg,#6C63FF,#4f46e5);border-radius:16px;padding:32px;text-align:center;margin-bottom:24px;color:white;">
       <div style="font-size:48px;margin-bottom:12px;">🎉</div>
-      <h2 style="margin:0 0 8px;font-size:24px;font-weight:800;">Félicitations, ${user.name} !</h2>
+      <h2 style="margin:0 0 8px;font-size:24px;font-weight:800;">Félicitations, ${escHtml(user.name)} !</h2>
       <p style="margin:0;font-size:16px;opacity:0.9;">Votre demande de vendeur a été <strong>approuvée</strong>.</p>
     </div>
 
@@ -690,7 +700,7 @@ async function sendSellerApprovalEmail(user, commissionRate) {
 async function sendDeliveryFailedEmail(user, order, failedItems) {
   const itemsHtml = failedItems.map(item => `
     <tr>
-      <td style="padding:10px 0;border-bottom:1px solid #f0f0f7;color:#1a1a2e;">${item.product_name}</td>
+      <td style="padding:10px 0;border-bottom:1px solid #f0f0f7;color:#1a1a2e;">${escHtml(item.product_name)}</td>
       <td style="padding:10px 0;border-bottom:1px solid #f0f0f7;color:#ef4444;text-align:right;">Rupture de stock</td>
     </tr>
   `).join('');
@@ -711,7 +721,7 @@ async function sendDeliveryFailedEmail(user, order, failedItems) {
       <h2 style="margin:0;color:#ef4444;font-size:22px;">Livraison incomplète</h2>
     </div>
     <div style="background:white;border-radius:12px;padding:28px;box-shadow:0 2px 10px rgba(0,0,0,0.08);">
-      <p style="color:#555;line-height:1.6;margin:0 0 20px;">Bonjour <strong>${user.name}</strong>,<br><br>
+      <p style="color:#555;line-height:1.6;margin:0 0 20px;">Bonjour <strong>${escHtml(user.name)}</strong>,<br><br>
       Votre paiement pour la commande <strong>#${order.id}</strong> a bien été reçu, mais certains articles sont temporairement en rupture de stock et n'ont pas pu être livrés :</p>
       <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
         ${itemsHtml}
@@ -765,7 +775,7 @@ async function sendSellerSaleNotificationEmail(seller, productName, saleAmount, 
       <h2 style="margin:0;color:#22c55e;font-size:22px;">Vente confirmée !</h2>
     </div>
     <div style="background:white;border-radius:12px;padding:28px;box-shadow:0 2px 10px rgba(0,0,0,0.08);">
-      <p style="color:#555;line-height:1.6;margin:0 0 20px;">Bonjour <strong>${seller.name}</strong>, votre carte <strong>${productName}</strong> vient d'être vendue.</p>
+      <p style="color:#555;line-height:1.6;margin:0 0 20px;">Bonjour <strong>${escHtml(seller.name)}</strong>, votre carte <strong>${escHtml(productName)}</strong> vient d'être vendue.</p>
       <table style="width:100%;border-collapse:collapse;">
         <tr style="border-bottom:1px solid #f0f0f7;">
           <td style="padding:10px 0;color:#666;">Montant vente</td>
@@ -815,7 +825,7 @@ async function sendEmailVerificationEmail(user, verifyLink) {
   </div>
   <div style="max-width:600px;margin:0 auto;padding:30px 20px;">
     <div style="background:white;border-radius:12px;padding:32px;box-shadow:0 2px 10px rgba(0,0,0,0.08);">
-      <h2 style="margin:0 0 16px;color:#1a1a2e;">Bonjour ${user.name} 👋</h2>
+      <h2 style="margin:0 0 16px;color:#1a1a2e;">Bonjour ${escHtml(user.name)} 👋</h2>
       <p style="color:#555;line-height:1.6;margin:0 0 24px;">Merci de vous être inscrit sur Babicard.ci ! Pour activer votre compte et commencer à acheter vos cartes cadeaux, cliquez sur le bouton ci-dessous.</p>
       <div style="text-align:center;margin:28px 0;">
         <a href="${verifyLink}" style="background:linear-gradient(135deg,#6C63FF,#5a52d5);color:white;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:16px;display:inline-block;">✅ Vérifier mon adresse email</a>

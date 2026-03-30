@@ -2,23 +2,18 @@
 // Babicard.ci — Shopping Cart & Checkout
 // =============================================
 
-// Échappement HTML — protection XSS
-function esc(str) {
-  if (str == null) return '';
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-}
 
 let cart = [];
 
 // ============ CART STORAGE ============
+function cartKey() {
+  const user = typeof getUser === 'function' ? getUser() : null;
+  return user ? `cart_${user.id}` : 'cart_guest';
+}
+
 function loadCart() {
   try {
-    cart = JSON.parse(localStorage.getItem('cart') || '[]');
+    cart = JSON.parse(localStorage.getItem(cartKey()) || '[]');
   } catch {
     cart = [];
   }
@@ -26,7 +21,7 @@ function loadCart() {
 }
 
 function saveCart() {
-  localStorage.setItem('cart', JSON.stringify(cart));
+  localStorage.setItem(cartKey(), JSON.stringify(cart));
 }
 
 // ============ CART OPERATIONS ============
@@ -112,10 +107,6 @@ function getCategoryIcon(category) {
     amazon: '📦', other: '🎁'
   };
   return icons[category] || '🎁';
-}
-
-function formatPrice(amount) {
-  return new Intl.NumberFormat('fr-FR').format(amount) + ' FCFA';
 }
 
 function updateCartUI() {

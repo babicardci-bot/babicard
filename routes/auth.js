@@ -139,7 +139,7 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    const token = generateToken(user.id);
+    const token = generateToken(user.id, user.token_version || 0);
     res.json({
       message: 'Connexion réussie!',
       token,
@@ -148,6 +148,18 @@ router.post('/login', async (req, res) => {
   } catch (err) {
     console.error('Erreur login:', err);
     res.status(500).json({ error: 'Erreur lors de la connexion.' });
+  }
+});
+
+// POST /api/auth/logout — invalide le token côté serveur
+router.post('/logout', authenticateToken, (req, res) => {
+  try {
+    const db = getDb();
+    db.prepare('UPDATE users SET token_version = token_version + 1 WHERE id = ?').run(req.user.id);
+    res.json({ message: 'Déconnexion réussie.' });
+  } catch (err) {
+    console.error('Erreur logout:', err);
+    res.status(500).json({ error: 'Erreur serveur.' });
   }
 });
 
@@ -219,7 +231,7 @@ router.post('/change-password', authenticateToken, async (req, res) => {
     }
 
     const new_hash = await bcrypt.hash(new_password, 12);
-    db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(new_hash, req.user.id);
+    db.prepare('UPDATE users SET password_hash = ?, token_version = token_version + 1 WHERE id = ?').run(new_hash, req.user.id);
     res.json({ message: 'Mot de passe modifié avec succès.' });
   } catch (err) {
     console.error('Erreur change-password:', err);

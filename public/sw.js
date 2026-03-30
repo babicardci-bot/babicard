@@ -1,9 +1,15 @@
-const CACHE_NAME = 'babicard-v1';
+const CACHE_NAME = 'babicard-v2';
 const STATIC_ASSETS = [
   '/',
+  '/login',
+  '/register',
+  '/dashboard',
   '/css/style.css',
   '/css/admin.css',
+  '/js/utils.js',
+  '/js/auth.js',
   '/js/main.js',
+  '/js/shop.js',
   '/manifest.json',
   '/favicon.ico'
 ];

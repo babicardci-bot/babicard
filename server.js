@@ -1,4 +1,11 @@
 require('dotenv').config();
+
+// Clé de chiffrement obligatoire — les codes de cartes doivent être chiffrés au repos
+if (!process.env.CARD_ENCRYPTION_KEY || process.env.CARD_ENCRYPTION_KEY.length !== 64) {
+  console.error('[FATAL] CARD_ENCRYPTION_KEY manquante ou invalide (doit faire 64 caractères hex). Arrêt du serveur.');
+  process.exit(1);
+}
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');

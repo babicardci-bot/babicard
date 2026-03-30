@@ -17,53 +17,60 @@ router.post('/', authenticateToken, (req, res) => {
       return res.status(400).json({ error: 'Méthode de paiement invalide. Choisissez wave ou orange_money.' });
     }
 
-    // Validate all items and calculate total
-    let total_amount = 0;
-    const validatedItems = [];
-
+    // Pre-validate products exist (outside transaction — read-only, non-critical)
+    const requestedItems = [];
     for (const item of items) {
       const product = db.prepare('SELECT * FROM products WHERE id = ? AND is_active = 1').get(item.product_id);
       if (!product) {
         return res.status(400).json({ error: `Produit ID ${item.product_id} non trouvé.` });
       }
-
-      const quantity = parseInt(item.quantity) || 1;
-      const availableCards = db.prepare(
-        'SELECT COUNT(*) as count FROM cards WHERE product_id = ? AND status = ?'
-      ).get(product.id, 'available');
-
-      if (availableCards.count < quantity) {
-        return res.status(400).json({
-          error: `Stock insuffisant pour "${product.name}". Disponible: ${availableCards.count}, demandé: ${quantity}.`
-        });
-      }
-
-      total_amount += product.price * quantity;
-      validatedItems.push({ product, quantity });
+      requestedItems.push({ product, quantity: parseInt(item.quantity) || 1 });
     }
 
-    // Create order in transaction
+    // Validate stock + create order atomically to prevent race conditions
+    let orderId;
     const createOrder = db.transaction(() => {
+      let total_amount = 0;
+      const validatedItems = [];
+
+      for (const { product, quantity } of requestedItems) {
+        const availableCards = db.prepare(
+          'SELECT COUNT(*) as count FROM cards WHERE product_id = ? AND status = ?'
+        ).get(product.id, 'available');
+
+        if (availableCards.count < quantity) {
+          throw Object.assign(new Error(`Stock insuffisant pour "${product.name}". Disponible: ${availableCards.count}, demandé: ${quantity}.`), { statusCode: 400 });
+        }
+
+        total_amount += product.price * quantity;
+        validatedItems.push({ product, quantity });
+      }
+
       const orderResult = db.prepare(`
         INSERT INTO orders (user_id, total_amount, payment_method, payment_status, delivery_status, delivery_email, delivery_phone)
         VALUES (?, ?, ?, 'pending', 'pending', ?, ?)
       `).run(req.user.id, total_amount, payment_method, delivery_email || '', delivery_phone || '');
 
-      const orderId = orderResult.lastInsertRowid;
+      const newOrderId = orderResult.lastInsertRowid;
 
       for (const { product, quantity } of validatedItems) {
         for (let i = 0; i < quantity; i++) {
           db.prepare(`
             INSERT INTO order_items (order_id, product_id, quantity, unit_price)
             VALUES (?, ?, 1, ?)
-          `).run(orderId, product.id, product.price);
+          `).run(newOrderId, product.id, product.price);
         }
       }
 
-      return orderId;
+      return newOrderId;
     });
 
-    const orderId = createOrder();
+    try {
+      orderId = createOrder();
+    } catch (txErr) {
+      if (txErr.statusCode === 400) return res.status(400).json({ error: txErr.message });
+      throw txErr;
+    }
 
     const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(orderId);
     const orderItems = db.prepare(`

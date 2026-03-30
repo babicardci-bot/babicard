@@ -437,11 +437,18 @@ router.get('/cards', (req, res) => {
 
     const cards = db.prepare(query).all(...params);
 
-    // Mask card codes for security (show only last 4 chars)
-    const maskedCards = cards.map(card => ({
-      ...card,
-      code: card.status === 'sold' ? `****${card.code.slice(-4)}` : card.code
-    }));
+    // Decrypt codes then mask — never expose ciphertext or plaintext in the list
+    const maskedCards = cards.map(card => {
+      const plain = decrypt(card.code);
+      const maskedCode = plain
+        ? (plain.length > 8 ? `${plain.slice(0, 4)}****${plain.slice(-4)}` : '****')
+        : '****';
+      const plainPin = card.pin ? decrypt(card.pin) : null;
+      const maskedPin = plainPin
+        ? (plainPin.length > 4 ? `${plainPin.slice(0, 2)}**` : '**')
+        : null;
+      return { ...card, code: maskedCode, pin: maskedPin };
+    });
 
     res.json({ cards: maskedCards, total, page: parseInt(page) });
   } catch (err) {
@@ -465,8 +472,8 @@ router.post('/cards/bulk', (req, res) => {
     }
 
     const insertCard = db.prepare(`
-      INSERT INTO cards (product_id, code, pin, serial, card_name, card_price, status)
-      VALUES (?, ?, ?, ?, ?, ?, 'available')
+      INSERT INTO cards (product_id, code, pin, serial, status)
+      VALUES (?, ?, ?, ?, 'available')
     `);
 
     const insertMany = db.transaction((cards) => {
@@ -479,9 +486,7 @@ router.post('/cards/bulk', (req, res) => {
             product_id,
             encrypt(card.code.trim()),
             card.pin ? encrypt(card.pin) : null,
-            card.serial ? encrypt(card.serial) : null,
-            card.card_name || null,
-            card.card_price ? parseFloat(card.card_price) : null
+            card.serial ? encrypt(card.serial) : null
           );
           inserted++;
         } catch (e) { skipped++; }

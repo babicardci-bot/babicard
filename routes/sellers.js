@@ -233,17 +233,17 @@ router.post('/cards/bulk', authenticateToken, requireSeller, (req, res) => {
     const cardCols = db.prepare("PRAGMA table_info(cards)").all().map(c => c.name);
     const hasSellerCol = cardCols.includes('seller_id');
     const insertCard = hasSellerCol
-      ? db.prepare(`INSERT INTO cards (product_id, seller_id, code, pin, serial, card_name, card_price, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'available')`)
-      : db.prepare(`INSERT INTO cards (product_id, code, pin, serial, card_name, card_price, status) VALUES (?, ?, ?, ?, ?, ?, 'available')`);
+      ? db.prepare(`INSERT INTO cards (product_id, seller_id, code, pin, serial, status) VALUES (?, ?, ?, ?, ?, 'available')`)
+      : db.prepare(`INSERT INTO cards (product_id, code, pin, serial, status) VALUES (?, ?, ?, ?, 'available')`);
     const insertMany = db.transaction((cards) => {
       let inserted = 0, skipped = 0;
       for (const card of cards) {
         if (!card.code || !card.code.trim()) { skipped++; continue; }
         try {
           if (hasSellerCol) {
-            insertCard.run(product_id, req.user.id, encrypt(card.code.trim()), card.pin ? encrypt(card.pin) : null, card.serial ? encrypt(card.serial) : null, card.card_name || null, card.card_price ? parseFloat(card.card_price) : null);
+            insertCard.run(product_id, req.user.id, encrypt(card.code.trim()), card.pin ? encrypt(card.pin) : null, card.serial ? encrypt(card.serial) : null);
           } else {
-            insertCard.run(product_id, encrypt(card.code.trim()), card.pin ? encrypt(card.pin) : null, card.serial ? encrypt(card.serial) : null, card.card_name || null, card.card_price ? parseFloat(card.card_price) : null);
+            insertCard.run(product_id, encrypt(card.code.trim()), card.pin ? encrypt(card.pin) : null, card.serial ? encrypt(card.serial) : null);
           }
           inserted++;
         }

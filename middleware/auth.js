@@ -18,10 +18,20 @@ async function authenticateToken(req, res, next) {
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     const db = getDb();
-    const user = await db.prepare('SELECT id, name, email, phone, role FROM users WHERE id = ?').get(decoded.userId);
+    const user = db.prepare('SELECT id, name, email, phone, role FROM users WHERE id = ?').get(decoded.userId);
 
     if (!user) {
       return res.status(401).json({ error: 'Utilisateur non trouvé.' });
+    }
+
+    // Reject token if user has logged out or changed password since it was issued
+    if (decoded.tokenVersion !== undefined) {
+      try {
+        const row = db.prepare('SELECT token_version FROM users WHERE id = ?').get(decoded.userId);
+        if (row && decoded.tokenVersion !== row.token_version) {
+          return res.status(401).json({ error: 'Session expirée. Veuillez vous reconnecter.' });
+        }
+      } catch (_) { /* colonne pas encore migrée — on accepte */ }
     }
 
     req.user = user;
@@ -50,8 +60,8 @@ function requireSeller(req, res, next) {
   next();
 }
 
-function generateToken(userId) {
-  return jwt.sign({ userId }, JWT_SECRET, { expiresIn: '24h' });
+function generateToken(userId, tokenVersion = 0) {
+  return jwt.sign({ userId, tokenVersion }, JWT_SECRET, { expiresIn: '24h' });
 }
 
 function logAdminAction(req, action, target = null, details = null) {

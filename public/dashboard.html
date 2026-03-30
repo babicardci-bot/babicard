@@ -129,7 +129,7 @@
               <div class="form-group">
                 <label>Nouveau mot de passe</label>
                 <div class="input-wrapper">
-                  <input type="password" id="newPassword" placeholder="Minimum 6 caractères">
+                  <input type="password" id="newPassword" placeholder="Minimum 8 caractères">
                 </div>
               </div>
               <div class="form-group">
@@ -183,6 +183,7 @@
 
   <div class="toast-container" id="toastContainer"></div>
 
+  <script src="/js/utils.js"></script>
   <script src="/js/auth.js"></script>
   <script>
     let currentUser = null;
@@ -514,7 +515,7 @@
       const confirm = document.getElementById('confirmPassword').value;
       if (!current || !newPwd || !confirm) return showToast('Veuillez remplir tous les champs.', 'error');
       if (newPwd !== confirm) return showToast('Les mots de passe ne correspondent pas.', 'error');
-      if (newPwd.length < 6) return showToast('Le nouveau mot de passe doit contenir au moins 6 caractères.', 'error');
+      if (newPwd.length < 8) return showToast('Le nouveau mot de passe doit contenir au moins 8 caractères.', 'error');
 
       const token = localStorage.getItem('token');
       const res = await fetch('/api/auth/change-password', {

@@ -179,19 +179,6 @@ function migrateDatabase(db) {
     }
   } catch(e) { console.error('Migration seller_profiles docs:', e.message); }
 
-  // Add name/price columns to cards if missing
-  try {
-    const cardCols = db.prepare("PRAGMA table_info(cards)").all().map(c => c.name);
-    if (!cardCols.includes('card_name')) {
-      db.prepare("ALTER TABLE cards ADD COLUMN card_name TEXT DEFAULT ''").run();
-      console.log('Migration: card_name ajouté à cards.');
-    }
-    if (!cardCols.includes('card_price')) {
-      db.prepare("ALTER TABLE cards ADD COLUMN card_price REAL DEFAULT 0").run();
-      console.log('Migration: card_price ajouté à cards.');
-    }
-  } catch(e) { console.error('Migration seller_profiles docs:', e.message); }
-
   // Add delivery_email/delivery_phone to orders if missing
   try {
     const orderCols = db.prepare("PRAGMA table_info(orders)").all().map(c => c.name);
@@ -281,14 +268,18 @@ function migrateDatabase(db) {
     }
   } catch(e) { console.error('Migration seller_profiles pin:', e.message); }
 
-  // Add email_verified to users (default 1 for existing users, new registrations will use 0)
+  // Add email_verified and token_version to users
   try {
     const userCols = db.prepare("PRAGMA table_info(users)").all().map(c => c.name);
     if (!userCols.includes('email_verified')) {
       db.prepare("ALTER TABLE users ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 1").run();
       console.log('Migration: email_verified ajouté à users.');
     }
-  } catch(e) { console.error('Migration users email_verified:', e.message); }
+    if (!userCols.includes('token_version')) {
+      db.prepare("ALTER TABLE users ADD COLUMN token_version INTEGER NOT NULL DEFAULT 0").run();
+      console.log('Migration: token_version ajouté à users.');
+    }
+  } catch(e) { console.error('Migration users email_verified/token_version:', e.message); }
 
   // email_verification_tokens table
   try {

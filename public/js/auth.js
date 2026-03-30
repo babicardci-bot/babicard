@@ -74,8 +74,13 @@ function isAdmin() {
 }
 
 function logout() {
+  const token = getToken();
+  const user = getUser();
+  // Invalide le token côté serveur (fire-and-forget)
+  if (token) fetch('/api/auth/logout', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } }).catch(() => {});
+  if (user) localStorage.removeItem(`cart_${user.id}`);
+  localStorage.removeItem('cart_guest');
   clearAuth();
-  localStorage.removeItem('cart');
   localStorage.removeItem('lastActivity');
   window.location.href = '/';
 }
@@ -92,8 +97,10 @@ function checkInactivity() {
   const last = parseInt(localStorage.getItem('lastActivity') || '0');
   if (!last) { updateActivity(); return; }
   if (Date.now() - last > INACTIVITY_TIMEOUT) {
+    const user = getUser();
+    if (user) localStorage.removeItem(`cart_${user.id}`);
+    localStorage.removeItem('cart_guest');
     clearAuth();
-    localStorage.removeItem('cart');
     localStorage.removeItem('lastActivity');
     const redirectTo = window.location.pathname.startsWith('/admin') ? '/login?redirect=/admin' : '/login';
     window.location.href = redirectTo;
