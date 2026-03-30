@@ -43,10 +43,10 @@ app.use(cors({
   credentials: true
 }));
 
-// Rate limiting global — 200 requêtes par 15 minutes par IP
+// Rate limiting global — 500 requêtes par 15 minutes par IP
 app.use(rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 200,
+  max: 500,
   message: { error: 'Trop de requêtes, réessayez dans 15 minutes.' },
   standardHeaders: true,
   legacyHeaders: false
