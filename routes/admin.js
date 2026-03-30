@@ -89,7 +89,7 @@ router.get('/stats', (req, res) => {
     const earningsStats = db.prepare(`
       SELECT
         COALESCE(SUM(commission_amount), 0) as totalCommissions,
-        COALESCE(SUM(CASE WHEN strftime('%Y-%m', se.created_at) = strftime('%Y-%m','now') THEN commission_amount ELSE 0 END), 0) as commissionsThisMonth
+        COALESCE(SUM(CASE WHEN strftime('%Y-%m', created_at) = strftime('%Y-%m','now') THEN commission_amount ELSE 0 END), 0) as commissionsThisMonth
       FROM seller_earnings
     `).get();
 
