@@ -51,10 +51,10 @@ async function processDelivery(orderId, forceRedeliver = false) {
   // Transaction unique : assignation des cartes + création des gains vendeur (atomique)
   const assignCardsAndEarnings = db.transaction(() => {
     for (const item of orderItems) {
-      // Check if card already assigned
+      // Skip only if card was already fully delivered (status = sold)
       if (item.card_id) {
         const existingCard = db.prepare('SELECT * FROM cards WHERE id = ?').get(item.card_id);
-        if (existingCard) {
+        if (existingCard && existingCard.status === 'sold') {
           results.cards_assigned.push({
             order_item_id: item.id,
             product_name: item.product_name,
