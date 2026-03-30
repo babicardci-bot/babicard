@@ -163,8 +163,25 @@ function updateCartUI() {
     </div>
   `).join('');
 
+  // Check if any item has a promo price (meaning actual total may differ per seller)
+  const hasPromoItems = cart.some(item => item.original_price && item.quantity >= 1);
+
   if (cartTotal) {
     cartTotal.textContent = formatPrice(total);
+  }
+
+  // Show/hide estimated price warning
+  let estimateNote = document.getElementById('cartEstimateNote');
+  if (hasPromoItems) {
+    if (!estimateNote) {
+      estimateNote = document.createElement('p');
+      estimateNote.id = 'cartEstimateNote';
+      estimateNote.style.cssText = 'font-size:0.72rem;color:#f97316;margin:6px 0 0;text-align:right;';
+      cartTotal?.parentElement?.appendChild(estimateNote);
+    }
+    estimateNote.textContent = '* Prix estimé — total exact confirmé à la commande';
+  } else if (estimateNote) {
+    estimateNote.remove();
   }
 
   // Show/hide phone input for Orange Money
