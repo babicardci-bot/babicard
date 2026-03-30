@@ -131,8 +131,8 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Email ou mot de passe incorrect.' });
     }
 
-    // Block unverified accounts (email_verified column may not exist on old DBs — treat NULL/undefined as verified)
-    if (user.email_verified === 0) {
+    // Block unverified accounts — NULL treated as unverified for new accounts, 1 = verified
+    if (user.email_verified != null && user.email_verified !== 1) {
       return res.status(403).json({
         error: 'Veuillez vérifier votre adresse email avant de vous connecter.',
         email_not_verified: true
@@ -175,6 +175,28 @@ router.put('/me', authenticateToken, (req, res) => {
   } catch (err) {
     console.error('Erreur update profile:', err);
     res.status(500).json({ error: 'Erreur lors de la mise à jour du profil.' });
+  }
+});
+
+// DELETE /api/auth/me — supprimer son compte
+router.delete('/me', authenticateToken, async (req, res) => {
+  try {
+    const { password } = req.body;
+    if (!password) return res.status(400).json({ error: 'Mot de passe requis pour confirmer la suppression.' });
+
+    const db = getDb();
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
+    const isValid = await bcrypt.compare(password, user.password_hash);
+    if (!isValid) return res.status(401).json({ error: 'Mot de passe incorrect.' });
+
+    // Ne pas supprimer un admin
+    if (user.role === 'admin') return res.status(403).json({ error: 'Un compte administrateur ne peut pas être supprimé.' });
+
+    db.prepare('DELETE FROM users WHERE id = ?').run(req.user.id);
+    res.json({ message: 'Compte supprimé avec succès.' });
+  } catch (err) {
+    console.error('Erreur delete account:', err);
+    res.status(500).json({ error: 'Erreur lors de la suppression du compte.' });
   }
 });
 

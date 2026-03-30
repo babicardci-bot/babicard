@@ -87,10 +87,27 @@ app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 // Serve static files
 app.use(express.static(path.join(__dirname, 'public')));
 
-// SEO files
+// SEO files — sitemap dynamique incluant les produits actifs
 app.get('/sitemap.xml', (req, res) => {
-  res.setHeader('Content-Type', 'application/xml; charset=utf-8');
-  res.sendFile(require('path').join(__dirname, 'public/sitemap.xml'));
+  try {
+    const { getDb } = require('./database/db');
+    const db = getDb();
+    const baseUrl = process.env.SITE_URL || 'https://www.babicard.ci';
+    const staticPages = ['', '/about', '/faq', '/cgu'];
+    const products = db.prepare("SELECT id FROM products WHERE is_active = 1").all();
+
+    const urls = [
+      ...staticPages.map(p => `<url><loc>${baseUrl}${p}</loc><changefreq>weekly</changefreq><priority>${p === '' ? '1.0' : '0.7'}</priority></url>`),
+      ...products.map(p => `<url><loc>${baseUrl}/?product=${p.id}</loc><changefreq>daily</changefreq><priority>0.8</priority></url>`)
+    ].join('\n');
+
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>`;
+    res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+    res.send(xml);
+  } catch(e) {
+    res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+    res.sendFile(require('path').join(__dirname, 'public/sitemap.xml'));
+  }
 });
 app.get('/robots.txt', (req, res) => {
   res.setHeader('Content-Type', 'text/plain; charset=utf-8');

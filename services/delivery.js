@@ -1,5 +1,5 @@
 const { getDb } = require('../database/db');
-const { sendOrderConfirmationEmail, sendLowStockEmail, sendDeliveryFailedEmail } = require('./email');
+const { sendOrderConfirmationEmail, sendLowStockEmail, sendDeliveryFailedEmail, sendSellerSaleNotificationEmail } = require('./email');
 const { sendCardDeliveredSMS, sendPaymentConfirmationSMS } = require('./sms');
 const { decrypt } = require('./encryption');
 
@@ -67,23 +67,23 @@ async function processDelivery(orderId, forceRedeliver = false) {
         }
       }
 
-      // Find an available card for this product
-      const availableCard = db.prepare(`
-        SELECT * FROM cards
-        WHERE product_id = ? AND status = 'available'
-        ORDER BY added_at ASC
-        LIMIT 1
-      `).get(item.product_id);
+      // Find AND lock an available card atomically — prevents race condition double-assignment
+      const updateResult = db.prepare(`
+        UPDATE cards SET status = 'sold', sold_at = CURRENT_TIMESTAMP, order_id = ?
+        WHERE id = (
+          SELECT id FROM cards
+          WHERE product_id = ? AND status = 'available'
+          ORDER BY added_at ASC
+          LIMIT 1
+        )
+      `).run(orderId, item.product_id);
+
+      const availableCard = updateResult.changes > 0
+        ? db.prepare('SELECT * FROM cards WHERE product_id = ? AND status = ? AND order_id = ? ORDER BY sold_at DESC LIMIT 1').get(item.product_id, 'sold', orderId)
+        : null;
 
       if (availableCard) {
-        // Mark card as sold
-        db.prepare(`
-          UPDATE cards SET
-            status = 'sold',
-            sold_at = CURRENT_TIMESTAMP,
-            order_id = ?
-          WHERE id = ?
-        `).run(orderId, availableCard.id);
+        // Card already marked as sold above
 
         // Link card to order item
         db.prepare('UPDATE order_items SET card_id = ? WHERE id = ?').run(availableCard.id, item.id);
@@ -123,6 +123,12 @@ async function processDelivery(orderId, forceRedeliver = false) {
             `).run(availableCard.seller_id, orderId, item.id, saleAmount, commissionAmount, netAmount);
 
             console.log(`[DELIVERY] Gains vendeur #${availableCard.seller_id}: +${netAmount} FCFA (commission: ${commissionAmount})`);
+
+            // Notify seller by email (non-blocking)
+            const sellerUser = db.prepare('SELECT id, name, email FROM users WHERE id = ?').get(availableCard.seller_id);
+            if (sellerUser && sellerUser.email) {
+              sendSellerSaleNotificationEmail(sellerUser, item.product_name, saleAmount, netAmount).catch(() => {});
+            }
           }
         }
       } else {

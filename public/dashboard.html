@@ -142,6 +142,12 @@
             </form>
           </div>
 
+          <div class="profile-section" style="border-top:1px solid var(--border-color);padding-top:20px;margin-top:8px;">
+            <h3 style="color:#ef4444;">Zone dangereuse</h3>
+            <p style="color:#888;font-size:13px;margin-bottom:12px;">La suppression de votre compte est irréversible.</p>
+            <button type="button" onclick="deleteAccount()" style="background:transparent;border:1px solid #ef4444;color:#ef4444;padding:8px 18px;border-radius:6px;cursor:pointer;font-size:13px;">🗑 Supprimer mon compte</button>
+          </div>
+
           <div class="profile-section">
             <h3>Statistiques</h3>
             <div class="profile-stats">
@@ -211,6 +217,28 @@
         window.location.href = '/login';
       }
     });
+
+    async function deleteAccount() {
+      const password = prompt('Entrez votre mot de passe pour confirmer la suppression de votre compte :');
+      if (!password) return;
+      if (!confirm('Êtes-vous sûr(e) ? Cette action est irréversible.')) return;
+      try {
+        const res = await authFetch('/auth/me', {
+          method: 'DELETE',
+          body: JSON.stringify({ password })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          window.location.href = '/?account_deleted=1';
+        } else {
+          alert(data.error || 'Erreur.');
+        }
+      } catch(e) {
+        alert('Erreur réseau.');
+      }
+    }
 
     async function saveProfile() {
       const name = document.getElementById('profileName').value.trim();

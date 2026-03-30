@@ -372,11 +372,28 @@ function applyLogo(logo) {
   if (!iconEl || !textEl) return;
 
   if (logo.type === 'image' && logo.image_url) {
-    iconEl.innerHTML = '<img src="' + logo.image_url + '" style="max-height:36px;vertical-align:middle;">';
+    // Validate URL before using in DOM
+    try {
+      const url = new URL(logo.image_url);
+      if (!['https:', 'http:'].includes(url.protocol)) throw new Error('Invalid protocol');
+      const img = document.createElement('img');
+      img.src = url.href;
+      img.style.cssText = 'max-height:36px;vertical-align:middle;';
+      iconEl.textContent = '';
+      iconEl.appendChild(img);
+    } catch(e) {
+      iconEl.textContent = '🎮';
+    }
     textEl.textContent = '';
   } else {
     iconEl.textContent = logo.emoji || '🎮';
-    textEl.innerHTML = (logo.text || 'Babicard') + '<span class="logo-accent">' + (logo.accent || '.ci') + '</span>';
+    textEl.textContent = '';
+    const mainText = document.createTextNode(logo.text || 'Babicard');
+    const accent = document.createElement('span');
+    accent.className = 'logo-accent';
+    accent.textContent = logo.accent || '.ci';
+    textEl.appendChild(mainText);
+    textEl.appendChild(accent);
   }
 }
 
@@ -394,24 +411,47 @@ function applySliders(sliders) {
 
   // Re-insert slides before arrows
   sliders.forEach((slide, idx) => {
-    const pricesHtml = (slide.prices || []).map(p => '<span class="price-tag">' + p + '</span>').join('');
     const div = document.createElement('div');
     div.className = 'slide' + (idx === 0 ? ' active' : '');
     div.dataset.slide = idx;
-    div.innerHTML =
-      '<div class="slide-bg" style="background:' + (slide.bg_gradient || 'linear-gradient(135deg,#1a1a2e,#16213e)') + ';' + (slide.image_url ? 'background-image:url(' + slide.image_url + ');background-size:cover;background-position:center;background-blend-mode:overlay;' : '') + '"></div>' +
-      '<div class="slide-content">' +
+
+    // Validate image URL — no CSS injection
+    let bgStyle = slide.bg_gradient || 'linear-gradient(135deg,#1a1a2e,#16213e)';
+    if (slide.image_url) {
+      try {
+        const u = new URL(slide.image_url);
+        if (['https:', 'http:', 'data:'].includes(u.protocol)) {
+          bgStyle += ';background-image:url(' + u.href.replace(/['"()]/g, '') + ');background-size:cover;background-position:center;background-blend-mode:overlay';
+        }
+      } catch(e) {}
+    }
+
+    // Validate icon_bg color — only allow safe CSS color values
+    const safeIconBg = /^#[0-9a-fA-F]{3,8}$|^rgb|^hsl/.test(slide.icon_bg || '') ? slide.icon_bg : '#333';
+
+    const slideBg = document.createElement('div');
+    slideBg.className = 'slide-bg';
+    slideBg.style.cssText = 'background:' + bgStyle;
+
+    const pricesHtml = (slide.prices || []).map(p => '<span class="price-tag">' + esc(p) + '</span>').join('');
+
+    const slideContent = document.createElement('div');
+    slideContent.className = 'slide-content';
+    slideContent.innerHTML =
       '<div class="slide-brand">' +
-      '<div class="brand-badge" style="background:' + (slide.icon_bg || '#333') + ';width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:2rem;">' + (slide.icon_emoji || '🎮') + '</div>' +
+      '<div class="brand-badge" style="background:' + safeIconBg + ';width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:2rem;">' + esc(slide.icon_emoji || '🎮') + '</div>' +
       '</div>' +
       '<div class="slide-text">' +
-      '<span class="slide-tag">' + (slide.tag || '') + '</span>' +
-      '<h1 class="slide-title">' + (slide.title || '') + '<br><span class="slide-title-accent">' + (slide.title_accent || '') + '</span></h1>' +
-      '<p class="slide-desc">' + (slide.description || '') + '</p>' +
+      '<span class="slide-tag">' + esc(slide.tag || '') + '</span>' +
+      '<h1 class="slide-title">' + esc(slide.title || '') + '<br><span class="slide-title-accent">' + esc(slide.title_accent || '') + '</span></h1>' +
+      '<p class="slide-desc">' + esc(slide.description || '') + '</p>' +
       '<div class="slide-prices">' + pricesHtml + '</div>' +
-      '<a href="#products" class="slide-cta">' + (slide.cta_text || 'Acheter →') + '</a>' +
+      '<a href="#products" class="slide-cta">' + esc(slide.cta_text || 'Acheter →') + '</a>' +
       '</div>' +
       '</div>';
+
+    div.appendChild(slideBg);
+    div.appendChild(slideContent);
     // Insert before arrows or append
     if (prevBtn) container.insertBefore(div, prevBtn);
     else container.appendChild(div);

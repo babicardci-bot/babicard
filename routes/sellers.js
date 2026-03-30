@@ -395,11 +395,15 @@ router.post('/withdraw', authenticateToken, requireSeller, async (req, res) => {
       const valid = await bcrypt.compare(String(withdrawal_pin), profile.withdrawal_pin);
       if (!valid) {
         const newAttempts = (profile.pin_attempts || 0) + 1;
-        const MAX_ATTEMPTS = 5;
+        const MAX_ATTEMPTS = 3;
         if (newAttempts >= MAX_ATTEMPTS) {
-          const lockedUntil = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+          // Délai exponentiel : 1h après 3 échecs, 6h après rechute, 24h après
+          const prevLock = profile.pin_locked_until ? new Date(profile.pin_locked_until) : null;
+          const lockMinutes = prevLock && prevLock > new Date(Date.now() - 60 * 60 * 1000) ? 360 :
+                              prevLock && prevLock > new Date(Date.now() - 6 * 60 * 60 * 1000) ? 1440 : 60;
+          const lockedUntil = new Date(Date.now() + lockMinutes * 60 * 1000).toISOString();
           db.prepare('UPDATE seller_profiles SET pin_attempts = 0, pin_locked_until = ? WHERE user_id = ?').run(lockedUntil, req.user.id);
-          return res.status(429).json({ error: 'Trop de tentatives incorrectes. Compte bloqué 15 minutes.' });
+          return res.status(429).json({ error: `Trop de tentatives incorrectes. Compte bloqué ${lockMinutes >= 1440 ? '24h' : lockMinutes >= 360 ? '6h' : '1h'}.` });
         }
         db.prepare('UPDATE seller_profiles SET pin_attempts = ? WHERE user_id = ?').run(newAttempts, req.user.id);
         return res.status(400).json({ error: `Code secret incorrect. ${MAX_ATTEMPTS - newAttempts} tentative(s) restante(s).` });

@@ -146,6 +146,9 @@ function initializeDatabase() {
     CREATE INDEX IF NOT EXISTS idx_orders_user ON orders(user_id);
     CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items(order_id);
     CREATE INDEX IF NOT EXISTS idx_seller_earnings_seller ON seller_earnings(seller_id);
+    CREATE INDEX IF NOT EXISTS idx_orders_payment_status ON orders(payment_status);
+    CREATE INDEX IF NOT EXISTS idx_seller_earnings_status ON seller_earnings(status);
+    CREATE INDEX IF NOT EXISTS idx_cards_seller_status ON cards(seller_id, status);
   `);
 
   migrateDatabase(db);

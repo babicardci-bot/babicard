@@ -287,15 +287,28 @@ router.delete('/users/:id', (req, res) => {
 router.get('/products', (req, res) => {
   try {
     const db = getDb();
+    const { page = 1, limit = 50, search, category } = req.query;
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+
+    let where = 'WHERE 1=1';
+    const params = [];
+    if (search) { where += ' AND (p.name LIKE ? OR p.platform LIKE ?)'; params.push(`%${search}%`, `%${search}%`); }
+    if (category) { where += ' AND p.category = ?'; params.push(category); }
+
+    const total = db.prepare(`SELECT COUNT(*) as count FROM products p ${where}`).get(...params).count;
+
     const products = db.prepare(`
       SELECT p.*,
         (SELECT COUNT(*) FROM cards WHERE product_id = p.id AND status = 'available') as available_cards,
         (SELECT COUNT(*) FROM cards WHERE product_id = p.id AND status = 'sold') as sold_cards,
         (SELECT COUNT(*) FROM cards WHERE product_id = p.id) as total_cards
       FROM products p
+      ${where}
       ORDER BY p.category, p.price
-    `).all();
-    res.json({ products });
+      LIMIT ? OFFSET ?
+    `).all(...params, parseInt(limit), offset);
+
+    res.json({ products, total, page: parseInt(page), pages: Math.ceil(total / parseInt(limit)) });
   } catch (err) {
     res.status(500).json({ error: 'Erreur lors du chargement des produits.' });
   }
