@@ -859,4 +859,40 @@ async function sendEmailVerificationEmail(user, verifyLink) {
   }
 }
 
-module.exports = { sendOrderConfirmationEmail, sendLowStockEmail, sendWithdrawalRequestEmail, sendWithdrawalStatusEmail, sendPasswordResetEmail, sendWelcomeEmail, sendSellerApprovalEmail, sendEmailVerificationEmail, sendDeliveryFailedEmail, sendSellerSaleNotificationEmail };
+async function sendBroadcastEmail(user, subject, htmlBody) {
+  const htmlContent = `
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background-color:#f0f0f7;">
+  <div style="background:linear-gradient(135deg,#0a0a1f 0%,#1a1a3e 50%,#0d0d2e 100%);padding:40px 20px;text-align:center;">
+    <div style="font-size:36px;margin-bottom:8px;">🎮</div>
+    <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:800;">Babicard.ci</h1>
+    <p style="margin:8px 0 0;color:#a78bfa;font-size:14px;letter-spacing:2px;text-transform:uppercase;">Vos Cartes Cadeaux Gaming</p>
+  </div>
+  <div style="max-width:600px;margin:0 auto;padding:30px 20px;">
+    <div style="background:white;border-radius:12px;padding:32px;box-shadow:0 2px 10px rgba(0,0,0,0.08);">
+      <p style="margin:0 0 16px;color:#555;font-size:15px;">Bonjour ${escHtml(user.name)} 👋</p>
+      <div style="color:#333;line-height:1.7;font-size:15px;">${htmlBody}</div>
+    </div>
+    <div style="background:linear-gradient(135deg,#1a1a3e,#0d0d2e);border-radius:12px;padding:20px;text-align:center;color:white;margin-top:20px;">
+      <p style="margin:0;font-size:13px;color:#a78bfa;">Vous recevez cet email car vous êtes inscrit sur Babicard.ci</p>
+      <p style="margin:6px 0 0;font-size:13px;">📧 <a href="mailto:${process.env.ADMIN_EMAIL || 'support@babicard.ci'}" style="color:#60a5fa;">${process.env.ADMIN_EMAIL || 'support@babicard.ci'}</a></p>
+    </div>
+  </div>
+  <div style="text-align:center;padding:20px;color:#999;font-size:12px;">
+    <p style="margin:0;">© ${new Date().getFullYear()} Babicard.ci — Abidjan, Côte d'Ivoire</p>
+  </div>
+</body>
+</html>`;
+
+  return sendEmail({
+    from: `"Babicard.ci 🎮" <${process.env.EMAIL_USER || 'noreply@babicard.ci'}>`,
+    to: user.email,
+    subject,
+    html: htmlContent,
+    text: `Bonjour ${user.name},\n\n${htmlBody.replace(/<[^>]+>/g, '')}\n\nBabicard.ci`
+  });
+}
+
+module.exports = { sendOrderConfirmationEmail, sendLowStockEmail, sendWithdrawalRequestEmail, sendWithdrawalStatusEmail, sendPasswordResetEmail, sendWelcomeEmail, sendSellerApprovalEmail, sendEmailVerificationEmail, sendDeliveryFailedEmail, sendSellerSaleNotificationEmail, sendBroadcastEmail };

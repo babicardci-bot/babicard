@@ -319,6 +319,26 @@
         <button class="btn-primary" onclick="saveAllAppearance()">💾 Tout sauvegarder</button>
       </div>
 
+      <!-- EMAIL BROADCAST -->
+      <div class="appearance-block" style="margin-bottom:24px;">
+        <h3 class="appearance-title">📧 Envoyer un email à tous les clients</h3>
+        <p style="color:#a0a0c0;font-size:0.85rem;margin-bottom:16px;">L'email sera envoyé à tous les clients ayant un compte vérifié.</p>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div>
+            <label style="font-size:0.85rem;color:#a0a0c0;display:block;margin-bottom:6px;">Sujet</label>
+            <input type="text" id="broadcastSubject" placeholder="Ex: Nouvelle offre spéciale 🎮" style="width:100%;padding:10px 14px;background:var(--admin-bg-secondary);border:1px solid var(--admin-border);border-radius:8px;color:var(--text-primary);font-size:0.9rem;">
+          </div>
+          <div>
+            <label style="font-size:0.85rem;color:#a0a0c0;display:block;margin-bottom:6px;">Message (HTML autorisé)</label>
+            <textarea id="broadcastBody" rows="6" placeholder="Ex: &lt;p&gt;Bonjour,&lt;/p&gt;&lt;p&gt;Profitez de &lt;strong&gt;20% de réduction&lt;/strong&gt; sur toutes les cartes Steam ce weekend !&lt;/p&gt;" style="width:100%;padding:10px 14px;background:var(--admin-bg-secondary);border:1px solid var(--admin-border);border-radius:8px;color:var(--text-primary);font-size:0.9rem;resize:vertical;font-family:inherit;"></textarea>
+          </div>
+          <div>
+            <button class="btn-primary" onclick="sendBroadcast()">📤 Envoyer à tous les clients</button>
+          </div>
+          <div id="broadcastResult" style="margin-top:4px;"></div>
+        </div>
+      </div>
+
       <!-- BACKUP BDD -->
       <div class="appearance-block" style="margin-bottom:24px;">
         <h3 class="appearance-title">🗄️ Sauvegarde base de données</h3>

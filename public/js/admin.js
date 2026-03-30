@@ -1421,6 +1421,37 @@ async function migrateEncryptCards() {
   }
 }
 
+// ============ BROADCAST EMAIL ============
+async function sendBroadcast() {
+  const subject = document.getElementById('broadcastSubject').value.trim();
+  const body = document.getElementById('broadcastBody').value.trim();
+  const resultEl = document.getElementById('broadcastResult');
+
+  if (!subject) { showToast('Sujet obligatoire.', 'error'); return; }
+  if (!body) { showToast('Message obligatoire.', 'error'); return; }
+
+  if (!confirm(`Envoyer cet email à TOUS les clients ?\n\nSujet : ${subject}`)) return;
+
+  resultEl.innerHTML = '<span style="color:#a0a0c0;font-size:0.85rem;">⏳ Envoi en cours...</span>';
+
+  try {
+    const res = await adminFetch('/admin/broadcast', {
+      method: 'POST',
+      body: JSON.stringify({ subject, body })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      resultEl.innerHTML = `<span style="color:#ef4444;font-size:0.85rem;">❌ ${data.error}</span>`;
+      return;
+    }
+    resultEl.innerHTML = `<span style="color:#22c55e;font-size:0.85rem;">✅ ${data.message}${data.failed > 0 ? ` (${data.failed} échec(s))` : ''}</span>`;
+    document.getElementById('broadcastSubject').value = '';
+    document.getElementById('broadcastBody').value = '';
+  } catch (e) {
+    resultEl.innerHTML = '<span style="color:#ef4444;font-size:0.85rem;">❌ Erreur réseau.</span>';
+  }
+}
+
 // ============ DATABASE BACKUP ============
 async function downloadBackup() {
   const resultEl = document.getElementById('backupResult');

@@ -4,7 +4,7 @@ const { getDb } = require('../database/db');
 const { authenticateToken, requireAdmin, logAdminAction } = require('../middleware/auth');
 const { processDelivery } = require('../services/delivery');
 const { encrypt, decrypt } = require('../services/encryption');
-const { sendWithdrawalStatusEmail, sendSellerApprovalEmail } = require('../services/email');
+const { sendWithdrawalStatusEmail, sendSellerApprovalEmail, sendBroadcastEmail } = require('../services/email');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -922,6 +922,38 @@ router.get('/backup', (req, res) => {
   } catch (err) {
     console.error('Erreur backup DB:', err);
     res.status(500).json({ error: 'Erreur lors du backup.' });
+  }
+});
+
+// POST /api/admin/broadcast — envoyer un email à tous les clients
+router.post('/broadcast', async (req, res) => {
+  try {
+    const { subject, body } = req.body;
+    if (!subject || !subject.trim()) return res.status(400).json({ error: 'Sujet obligatoire.' });
+    if (!body || !body.trim()) return res.status(400).json({ error: 'Message obligatoire.' });
+
+    const db = getDb();
+    const users = db.prepare("SELECT id, name, email FROM users WHERE email_verified = 1 OR email_verified IS NULL").all();
+
+    if (users.length === 0) return res.json({ message: 'Aucun utilisateur à contacter.', sent: 0, failed: 0 });
+
+    let sent = 0, failed = 0;
+    for (const user of users) {
+      try {
+        await sendBroadcastEmail(user, subject.trim(), body.trim());
+        sent++;
+      } catch (e) {
+        failed++;
+        console.error(`[BROADCAST] Échec envoi à ${user.email}:`, e.message);
+      }
+    }
+
+    logAdminAction(req, 'BROADCAST_EMAIL', null, { subject, sent, failed, total: users.length });
+    console.log(`[BROADCAST] ${sent}/${users.length} emails envoyés.`);
+    res.json({ message: `Email envoyé à ${sent} client(s).`, sent, failed, total: users.length });
+  } catch (err) {
+    console.error('Erreur broadcast:', err);
+    res.status(500).json({ error: 'Erreur lors de l\'envoi.' });
   }
 });
 
