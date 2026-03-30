@@ -123,6 +123,24 @@ router.post('/', authenticateToken, (req, res) => {
   }
 });
 
+// DELETE /api/orders/:id/cancel — Cancel a pending order and release reserved cards
+router.delete('/:id/cancel', authenticateToken, (req, res) => {
+  try {
+    const db = getDb();
+    const order = db.prepare('SELECT * FROM orders WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
+    if (!order) return res.status(404).json({ error: 'Commande non trouvée.' });
+    if (order.payment_status !== 'pending') {
+      return res.status(400).json({ error: 'Cette commande ne peut pas être annulée.' });
+    }
+    db.prepare("UPDATE cards SET status = 'available', order_id = NULL WHERE order_id = ? AND status = 'reserved'").run(order.id);
+    db.prepare("UPDATE orders SET payment_status = 'cancelled' WHERE id = ?").run(order.id);
+    res.json({ message: 'Commande annulée.' });
+  } catch (err) {
+    console.error('Erreur cancel order:', err);
+    res.status(500).json({ error: 'Erreur annulation.' });
+  }
+});
+
 // GET /api/orders/my - User's orders (protected)
 router.get('/my', authenticateToken, (req, res) => {
   try {

@@ -263,13 +263,11 @@ async function checkout(deliveryEmail, deliveryPhone) {
   }
 
   try {
-    // Prepare order items
     const items = cart.map(item => ({
       product_id: item.id,
       quantity: item.quantity
     }));
 
-    // Create order
     const orderRes = await authFetch('/orders', {
       method: 'POST',
       body: JSON.stringify({ items, payment_method: paymentMethod, delivery_email: deliveryEmail, delivery_phone: deliveryPhone })
@@ -282,65 +280,10 @@ async function checkout(deliveryEmail, deliveryPhone) {
 
     const orderData = await orderRes.json();
     const orderId = orderData.order.id;
+    const actualTotal = orderData.order.total_amount;
 
-    // Initiate payment
-    const paymentBody = { order_id: orderId };
-    if (paymentMethod === 'orange_money' && phone) {
-      paymentBody.phone = phone;
-    }
-
-    const paymentEndpoint = paymentMethod === 'wave' ? '/payment/wave/initiate' : '/payment/orange/initiate';
-    const paymentRes = await authFetch(paymentEndpoint, {
-      method: 'POST',
-      body: JSON.stringify(paymentBody)
-    });
-
-    if (!paymentRes || !paymentRes.ok) {
-      const err = await paymentRes?.json();
-      throw new Error(err?.error || 'Erreur lors de l\'initialisation du paiement');
-    }
-
-    const paymentData = await paymentRes.json();
-
-    if (paymentData.demo_mode) {
-      showToast('🧪 Mode démo: Simulation du paiement...', 'info');
-
-      // In demo mode, simulate payment directly
-      setTimeout(async () => {
-        try {
-          const simRes = await authFetch('/payment/simulate', {
-            method: 'POST',
-            body: JSON.stringify({ payment_ref: paymentData.payment_ref, success: true })
-          });
-          await simRes.json();
-
-          if (simRes.ok) {
-            // Clear cart
-            cart = [];
-            saveCart();
-            updateCartUI();
-            toggleCart();
-            showToast('✅ Paiement simulé! Codes envoyés par email.', 'success');
-            setTimeout(() => {
-              window.location.href = `/dashboard?order=${orderId}&status=success`;
-            }, 2000);
-          } else {
-            const errData = await simRes.json().catch(() => ({}));
-            showToast('Erreur paiement: ' + (errData.error || simRes.status), 'error');
-          }
-        } catch (e) {
-          showToast('Erreur simulation: ' + e.message, 'error');
-        }
-      }, 1500);
-    } else {
-      // Clear cart and redirect to payment
-      cart = [];
-      saveCart();
-      showToast('Redirection vers la page de paiement...', 'info');
-      setTimeout(() => {
-        window.location.href = paymentData.payment_url;
-      }, 800);
-    }
+    // Show order confirmation with real per-card prices before payment
+    showOrderConfirmModal(orderId, actualTotal, orderData.items || [], paymentMethod, phone);
 
   } catch (err) {
     showToast(err.message || 'Erreur lors du paiement', 'error');
@@ -350,6 +293,132 @@ async function checkout(deliveryEmail, deliveryPhone) {
       checkoutBtn.textContent = originalText;
     }
   }
+}
+
+// ---- ORDER CONFIRMATION MODAL ----
+function buildOrderConfirmModal() {
+  const overlay = document.createElement('div');
+  overlay.id = 'orderConfirmOverlay';
+  overlay.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:2000;align-items:center;justify-content:center;';
+  overlay.innerHTML = `
+    <div style="background:#13131f;border:1px solid rgba(108,99,255,0.3);border-radius:16px;padding:28px;max-width:460px;width:92%;max-height:85vh;overflow-y:auto;">
+      <h3 style="margin:0 0 16px;font-size:1.1rem;color:#f0f0ff;">🧾 Récapitulatif de votre commande</h3>
+      <div id="orderConfirmItems" style="margin-bottom:16px;"></div>
+      <div style="border-top:1px solid rgba(255,255,255,0.08);padding-top:14px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;">
+        <span style="color:#a0a0c0;font-size:0.9rem;">Total à payer</span>
+        <span id="orderConfirmTotal" style="font-size:1.4rem;font-weight:700;color:#22c55e;"></span>
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button id="orderConfirmPayBtn" style="flex:2;background:#6C63FF;color:white;border:none;border-radius:8px;padding:12px;font-size:0.95rem;font-weight:600;cursor:pointer;">💳 Confirmer et payer</button>
+        <button onclick="cancelPendingOrder()" style="flex:1;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#ef4444;border-radius:8px;padding:12px;cursor:pointer;font-size:0.9rem;">Annuler</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+}
+
+let _pendingOrderId = null, _pendingPaymentMethod = null, _pendingPhone = null;
+
+function showOrderConfirmModal(orderId, total, items, paymentMethod, phone) {
+  if (!document.getElementById('orderConfirmOverlay')) buildOrderConfirmModal();
+
+  _pendingOrderId = orderId;
+  _pendingPaymentMethod = paymentMethod;
+  _pendingPhone = phone;
+
+  // Group items by product name to show summary
+  const grouped = {};
+  for (const item of items) {
+    const key = item.product_name;
+    if (!grouped[key]) grouped[key] = { name: item.product_name, prices: [] };
+    grouped[key].prices.push(item.unit_price);
+  }
+
+  document.getElementById('orderConfirmItems').innerHTML = Object.values(grouped).map(g => {
+    if (g.prices.length === 1) {
+      return `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:0.9rem;">
+        <span style="color:#d0d0f0;">${esc(g.name)}</span>
+        <span style="font-weight:600;">${formatPrice(g.prices[0])}</span>
+      </div>`;
+    }
+    // Multiple cards — show each price
+    return g.prices.map((p, i) => `
+      <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:0.9rem;">
+        <span style="color:#d0d0f0;">${esc(g.name)} <span style="color:#a0a0c0;font-size:0.8rem;">#${i+1}</span></span>
+        <span style="font-weight:600;">${formatPrice(p)}</span>
+      </div>`).join('');
+  }).join('');
+
+  document.getElementById('orderConfirmTotal').textContent = formatPrice(total);
+  document.getElementById('orderConfirmPayBtn').onclick = proceedToPayment;
+
+  document.getElementById('orderConfirmOverlay').style.display = 'flex';
+}
+
+async function proceedToPayment() {
+  const orderId = _pendingOrderId;
+  const paymentMethod = _pendingPaymentMethod;
+  const phone = _pendingPhone;
+
+  const btn = document.getElementById('orderConfirmPayBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Traitement...'; }
+
+  document.getElementById('orderConfirmOverlay').style.display = 'none';
+
+  try {
+    const paymentBody = { order_id: orderId };
+    if (paymentMethod === 'orange_money' && phone) paymentBody.phone = phone;
+
+    const paymentEndpoint = paymentMethod === 'wave' ? '/payment/wave/initiate' : '/payment/orange/initiate';
+    const paymentRes = await authFetch(paymentEndpoint, {
+      method: 'POST',
+      body: JSON.stringify(paymentBody)
+    });
+
+    if (!paymentRes || !paymentRes.ok) {
+      const err = await paymentRes?.json();
+      throw new Error(err?.error || 'Erreur initialisation paiement');
+    }
+
+    const paymentData = await paymentRes.json();
+
+    if (paymentData.demo_mode) {
+      showToast('🧪 Mode démo: Simulation du paiement...', 'info');
+      setTimeout(async () => {
+        try {
+          const simRes = await authFetch('/payment/simulate', {
+            method: 'POST',
+            body: JSON.stringify({ payment_ref: paymentData.payment_ref, success: true })
+          });
+          if (simRes.ok) {
+            cart = []; saveCart(); updateCartUI(); toggleCart();
+            showToast('✅ Paiement simulé! Codes envoyés par email.', 'success');
+            setTimeout(() => { window.location.href = `/dashboard?order=${orderId}&status=success`; }, 2000);
+          } else {
+            showToast('Erreur paiement simulation', 'error');
+          }
+        } catch (e) { showToast('Erreur: ' + e.message, 'error'); }
+      }, 1500);
+    } else {
+      cart = []; saveCart();
+      showToast('Redirection vers la page de paiement...', 'info');
+      setTimeout(() => { window.location.href = paymentData.payment_url; }, 800);
+    }
+  } catch (err) {
+    showToast(err.message || 'Erreur paiement', 'error');
+    if (btn) { btn.disabled = false; btn.textContent = '💳 Confirmer et payer'; }
+  }
+}
+
+async function cancelPendingOrder() {
+  const orderId = _pendingOrderId;
+  document.getElementById('orderConfirmOverlay').style.display = 'none';
+  if (!orderId) return;
+  try {
+    await authFetch(`/orders/${orderId}/cancel`, { method: 'DELETE' });
+  } catch(e) { /* silent */ }
+  showToast('Commande annulée.', 'info');
+  _pendingOrderId = null;
 }
 
 // ============ TOAST ============
