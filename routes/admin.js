@@ -78,11 +78,12 @@ router.get('/stats', (req, res) => {
       FROM products
     `).get();
 
-    // 1 requête pour les alertes vendeurs/retraits
+    // 1 requête pour les alertes vendeurs/retraits/promos
     const alertStats = db.prepare(`
       SELECT
         (SELECT COUNT(*) FROM seller_profiles WHERE status = 'pending') as pendingSellers,
-        (SELECT COUNT(*) FROM withdrawal_requests WHERE status = 'pending') as pendingWithdrawals
+        (SELECT COUNT(*) FROM withdrawal_requests WHERE status = 'pending') as pendingWithdrawals,
+        (SELECT COUNT(*) FROM products WHERE promo_request_status = 'pending') as pendingPromoRequests
     `).get();
 
     // 1 requête pour les bénéfices
@@ -170,6 +171,7 @@ router.get('/stats', (req, res) => {
       alerts: {
         pendingSellers,
         pendingWithdrawals,
+        pendingPromoRequests: alertStats.pendingPromoRequests,
         pendingOrders,
         lowStockProducts,
         outOfStockProducts
@@ -930,6 +932,82 @@ router.get('/backup', (req, res) => {
   } catch (err) {
     console.error('Erreur backup DB:', err);
     res.status(500).json({ error: 'Erreur lors du backup.' });
+  }
+});
+
+// ===== PROMO REQUESTS =====
+
+// GET /api/admin/promo-requests — List products with pending/all promo requests
+router.get('/promo-requests', (req, res) => {
+  try {
+    const db = getDb();
+    const { status = 'pending' } = req.query;
+    let where = "WHERE p.promo_request_status IS NOT NULL";
+    const params = [];
+    if (status && status !== 'all') {
+      where += " AND p.promo_request_status = ?";
+      params.push(status);
+    }
+    const requests = db.prepare(`
+      SELECT p.id, p.name, p.platform, p.price, p.promo_price, p.denomination,
+             p.promo_price_requested, p.promo_request_status, p.promo_request_seller_id,
+             u.name as seller_name, sp.shop_name
+      FROM products p
+      LEFT JOIN users u ON p.promo_request_seller_id = u.id
+      LEFT JOIN seller_profiles sp ON sp.user_id = p.promo_request_seller_id
+      ${where}
+      ORDER BY p.id DESC
+    `).all(...params);
+    res.json({ requests });
+  } catch (err) {
+    console.error('Erreur promo-requests:', err);
+    res.status(500).json({ error: 'Erreur chargement demandes.' });
+  }
+});
+
+// PUT /api/admin/promo-requests/:id/approve — Approve promo request
+router.put('/promo-requests/:id/approve', (req, res) => {
+  try {
+    const db = getDb();
+    const product = db.prepare('SELECT * FROM products WHERE id = ?').get(req.params.id);
+    if (!product) return res.status(404).json({ error: 'Produit non trouvé.' });
+    if (product.promo_request_status !== 'pending') {
+      return res.status(400).json({ error: 'Aucune demande en attente pour ce produit.' });
+    }
+    db.prepare(`
+      UPDATE products SET
+        promo_price = promo_price_requested,
+        promo_request_status = 'approved'
+      WHERE id = ?
+    `).run(req.params.id);
+    logAdminAction(req, 'approve_promo_request', `product:${req.params.id}`, { promo_price: product.promo_price_requested });
+    res.json({ message: 'Prix promotionnel approuvé et activé.' });
+  } catch (err) {
+    console.error('Erreur approve promo:', err);
+    res.status(500).json({ error: 'Erreur approbation.' });
+  }
+});
+
+// PUT /api/admin/promo-requests/:id/reject — Reject promo request
+router.put('/promo-requests/:id/reject', (req, res) => {
+  try {
+    const db = getDb();
+    const product = db.prepare('SELECT * FROM products WHERE id = ?').get(req.params.id);
+    if (!product) return res.status(404).json({ error: 'Produit non trouvé.' });
+    if (product.promo_request_status !== 'pending') {
+      return res.status(400).json({ error: 'Aucune demande en attente pour ce produit.' });
+    }
+    db.prepare(`
+      UPDATE products SET
+        promo_price_requested = NULL,
+        promo_request_status = 'rejected'
+      WHERE id = ?
+    `).run(req.params.id);
+    logAdminAction(req, 'reject_promo_request', `product:${req.params.id}`, {});
+    res.json({ message: 'Demande de promotion rejetée.' });
+  } catch (err) {
+    console.error('Erreur reject promo:', err);
+    res.status(500).json({ error: 'Erreur rejet.' });
   }
 });
 

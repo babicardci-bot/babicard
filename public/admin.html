@@ -51,6 +51,10 @@
         <span class="menu-icon">🏪</span>
         <span>Vendeurs</span>
       </a>
+      <a href="#" class="menu-item" data-section="promo-requests" onclick="showSection('promo-requests', this)">
+        <span class="menu-icon">🔥</span>
+        <span>Promos vendeurs</span>
+      </a>
       <a href="#" class="menu-item" data-section="withdrawals" onclick="showSection('withdrawals', this)">
         <span class="menu-icon">💸</span>
         <span>Retraits</span>
@@ -289,6 +293,24 @@
         </div>
       </div>
       <div id="sellersTable">
+        <div class="loading-center"><div class="loading-spinner"></div></div>
+      </div>
+    </section>
+
+    <!-- ============= PROMO REQUESTS SECTION ============= -->
+    <section class="admin-section" id="section-promo-requests">
+      <div class="section-toolbar">
+        <h2>🔥 Demandes de Prix Promo</h2>
+        <div class="filter-inline">
+          <select id="promoReqStatusFilter" onchange="loadPromoRequests()" class="admin-select">
+            <option value="pending">En attente</option>
+            <option value="all">Toutes</option>
+            <option value="approved">Approuvées</option>
+            <option value="rejected">Rejetées</option>
+          </select>
+        </div>
+      </div>
+      <div id="promoRequestsTable">
         <div class="loading-center"><div class="loading-spinner"></div></div>
       </div>
     </section>

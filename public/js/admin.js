@@ -88,6 +88,7 @@ function showSection(name, el) {
     orders: 'Gestion des Commandes',
     users: 'Gestion des Utilisateurs',
     sellers: 'Gestion des Vendeurs',
+    'promo-requests': 'Demandes de Prix Promo',
     withdrawals: 'Demandes de Retrait',
     appearance: 'Apparence du site'
   };
@@ -101,6 +102,7 @@ function showSection(name, el) {
     case 'orders': loadAdminOrders(); break;
     case 'users': loadUsers(); break;
     case 'sellers': loadAdminSellers(); break;
+    case 'promo-requests': loadPromoRequests(); break;
     case 'withdrawals': loadAdminWithdrawals(); break;
     case 'appearance': loadAppearanceSettings(); break;
   }
@@ -207,6 +209,14 @@ async function loadDashboard() {
         <div class="alert-card-text">
           <span class="alert-card-count">${alerts.pendingWithdrawals}</span>
           <span class="alert-card-label">Retrait${alerts.pendingWithdrawals > 1 ? 's' : ''} en attente</span>
+        </div>
+      </div>`);
+    if (alerts.pendingPromoRequests > 0) alertItems.push(`
+      <div class="alert-card alert-orange" onclick="showSection('promo-requests')">
+        <div class="alert-card-icon">🔥</div>
+        <div class="alert-card-text">
+          <span class="alert-card-count">${alerts.pendingPromoRequests}</span>
+          <span class="alert-card-label">Demande${alerts.pendingPromoRequests > 1 ? 's' : ''} de promo en attente</span>
         </div>
       </div>`);
     if (alerts.pendingOrders > 0) alertItems.push(`
@@ -1267,6 +1277,88 @@ async function saveSellerStatus() {
   } catch(e) {
     showToast('Erreur réseau.', 'error');
   }
+}
+
+// ============ PROMO REQUESTS ============
+async function loadPromoRequests() {
+  const container = document.getElementById('promoRequestsTable');
+  if (!container) return;
+  container.innerHTML = '<div class="loading-center"><div class="loading-spinner"></div></div>';
+  try {
+    const status = document.getElementById('promoReqStatusFilter')?.value || 'pending';
+    const url = status === 'all' ? '/admin/promo-requests?status=all' : `/admin/promo-requests?status=${status}`;
+    const res = await adminFetch(url);
+    const data = await res.json();
+    const requests = data.requests || [];
+
+    if (requests.length === 0) {
+      container.innerHTML = '<div class="loading-row" style="text-align:center;padding:40px;color:#888">Aucune demande trouvée.</div>';
+      return;
+    }
+
+    const statusBadge = (s) => {
+      const map = { pending: '<span class="badge badge-warning">En attente</span>', approved: '<span class="badge badge-success">Approuvée</span>', rejected: '<span class="badge badge-danger">Rejetée</span>' };
+      return map[s] || s;
+    };
+
+    container.innerHTML = `
+      <div class="table-responsive">
+        <table class="admin-table">
+          <thead><tr>
+            <th>Produit</th>
+            <th>Vendeur</th>
+            <th>Prix actuel</th>
+            <th>Prix promo actif</th>
+            <th>Prix proposé</th>
+            <th>Statut</th>
+            <th>Actions</th>
+          </tr></thead>
+          <tbody>
+            ${requests.map(r => `
+              <tr>
+                <td><strong>${esc(r.name)}</strong><br><small style="color:#888">${esc(r.platform)} — ${esc(r.denomination)}</small></td>
+                <td>${esc(r.shop_name || r.seller_name || '—')}</td>
+                <td>${formatPrice(r.price)}</td>
+                <td>${r.promo_price ? `<span style="color:#f97316;font-weight:600;">${formatPrice(r.promo_price)}</span>` : '—'}</td>
+                <td><span style="color:#a78bfa;font-weight:700;">${formatPrice(r.promo_price_requested)}</span></td>
+                <td>${statusBadge(r.promo_request_status)}</td>
+                <td>
+                  ${r.promo_request_status === 'pending' ? `
+                    <button class="btn-sm btn-success" onclick="approvePromoRequest(${r.id})">✓ Approuver</button>
+                    <button class="btn-sm btn-danger" onclick="rejectPromoRequest(${r.id})" style="margin-left:4px;">✕ Rejeter</button>
+                  ` : '—'}
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  } catch(e) {
+    container.innerHTML = '<p style="color:#ef4444;padding:20px;">Erreur chargement des demandes.</p>';
+  }
+}
+
+async function approvePromoRequest(productId) {
+  if (!confirm('Approuver ce prix promotionnel et l\'activer immédiatement ?')) return;
+  try {
+    const res = await adminFetch(`/admin/promo-requests/${productId}/approve`, { method: 'PUT' });
+    const data = await res.json();
+    if (!res.ok) { showToast(data.error || 'Erreur', 'error'); return; }
+    showToast(data.message, 'success');
+    loadPromoRequests();
+  } catch(e) { showToast('Erreur réseau', 'error'); }
+}
+
+async function rejectPromoRequest(productId) {
+  if (!confirm('Rejeter cette demande de promotion ?')) return;
+  try {
+    const res = await adminFetch(`/admin/promo-requests/${productId}/reject`, { method: 'PUT' });
+    const data = await res.json();
+    if (!res.ok) { showToast(data.error || 'Erreur', 'error'); return; }
+    showToast(data.message, 'success');
+    loadPromoRequests();
+  } catch(e) { showToast('Erreur réseau', 'error'); }
 }
 
 // ============ WITHDRAWALS ============

@@ -697,31 +697,124 @@
 
         document.getElementById('sellerProductsTable').innerHTML = `
           <div class="info-box" style="margin-bottom:16px;">
-            ℹ️ Les produits sont créés par l'administrateur. Vous pouvez ajouter des codes à n'importe quel produit ci-dessous.
+            ℹ️ Les produits sont créés par l'administrateur. Vous pouvez ajouter des codes et proposer un prix promotionnel pour n'importe quel produit ci-dessous.
           </div>
           <div class="data-table-wrap">
             <table class="data-table">
-              <thead><tr><th>Produit</th><th>Plateforme</th><th>Prix</th><th>Dénomination</th><th>Mes codes dispo</th><th>Mes codes vendus</th><th>Actions</th></tr></thead>
+              <thead><tr><th>Produit</th><th>Plateforme</th><th>Prix</th><th>Prix promo actif</th><th>Mes codes dispo</th><th>Mes codes vendus</th><th>Actions</th></tr></thead>
               <tbody>
-                ${sellerProducts.map(p => `
+                ${sellerProducts.map(p => {
+                  const promoStatus = p.my_promo_status;
+                  const promoRequested = p.my_promo_requested;
+                  let promoBadge = '';
+                  if (promoStatus === 'pending') {
+                    promoBadge = `<div style="margin-top:4px;"><span class="seller-badge badge-pending">⏳ En attente: ${fmtPrice(promoRequested)}</span>
+                      <button onclick="cancelPromoRequest(${p.id})" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:11px;margin-left:4px;" title="Annuler">✕</button></div>`;
+                  } else if (promoStatus === 'approved') {
+                    promoBadge = `<div style="margin-top:4px;"><span class="seller-badge badge-approved">✓ Approuvé: ${fmtPrice(promoRequested)}</span></div>`;
+                  } else if (promoStatus === 'rejected') {
+                    promoBadge = `<div style="margin-top:4px;"><span class="seller-badge badge-rejected">✕ Rejeté</span></div>`;
+                  }
+                  return `
                   <tr>
                     <td><strong>${p.name}</strong></td>
                     <td>${p.platform}</td>
                     <td>${fmtPrice(p.price)}</td>
-                    <td>${p.denomination}</td>
+                    <td>${p.promo_price ? `<span style="color:#f97316;font-weight:600;">${fmtPrice(p.promo_price)}</span>` : '<span style="color:#606080;">—</span>'}${promoBadge}</td>
                     <td><span style="color:${p.my_available_cards > 0 ? '#22c55e' : '#a0a0c0'};font-weight:600;">${p.my_available_cards}</span></td>
                     <td>${p.my_sold_cards}</td>
-                    <td>
-                      <button class="btn-sm btn-primary" onclick="goToAddCards(${p.id})" title="Ajouter des codes">🃏 Ajouter codes</button>
+                    <td style="display:flex;gap:6px;flex-wrap:wrap;">
+                      <button class="btn-sm btn-primary" onclick="goToAddCards(${p.id})" title="Ajouter des codes">🃏 Codes</button>
+                      ${!promoStatus || promoStatus === 'rejected' ? `<button class="btn-sm" style="background:rgba(249,115,22,0.15);border:1px solid rgba(249,115,22,0.3);color:#f97316;" onclick="openPromoModal(${p.id},'${p.name.replace(/'/g,"\\'")}',${p.price})" title="Proposer un prix promo">🔥 Promo</button>` : ''}
                     </td>
-                  </tr>
-                `).join('')}
+                  </tr>`;
+                }).join('')}
               </tbody>
             </table>
           </div>
         `;
+        // Attach modal if not present
+        if (!document.getElementById('promoModal')) buildPromoModal();
       } catch(e) {
         document.getElementById('sellerProductsTable').innerHTML = '<p class="text-muted">Erreur chargement produits.</p>';
+      }
+    }
+
+    // ---- PROMO REQUESTS ----
+    let promoModalProductId = null;
+
+    function buildPromoModal() {
+      const overlay = document.createElement('div');
+      overlay.id = 'promoModal';
+      overlay.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center;';
+      overlay.innerHTML = `
+        <div style="background:#13131f;border:1px solid rgba(108,99,255,0.3);border-radius:16px;padding:28px;max-width:420px;width:90%;position:relative;">
+          <h3 style="margin:0 0 8px;font-size:1.1rem;">🔥 Proposer un prix promotionnel</h3>
+          <p id="promoModalProductName" style="color:#a0a0c0;font-size:0.85rem;margin:0 0 4px;"></p>
+          <p id="promoModalCurrentPrice" style="color:#a78bfa;font-size:0.9rem;margin:0 0 20px;"></p>
+          <div class="form-group">
+            <label style="font-size:0.85rem;color:#a0a0c0;display:block;margin-bottom:6px;">Prix promotionnel proposé (FCFA) *</label>
+            <input id="promoModalInput" type="number" min="100" step="50" class="form-control" placeholder="ex: 5500" style="width:100%;">
+            <small style="color:#606080;font-size:0.75rem;">Doit être inférieur au prix normal. L'admin doit valider avant activation.</small>
+          </div>
+          <div style="display:flex;gap:10px;margin-top:20px;">
+            <button class="btn-primary" style="flex:1;" onclick="submitPromoRequest()">Envoyer la demande</button>
+            <button onclick="closePromoModal()" style="flex:1;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#f0f0ff;border-radius:8px;padding:10px;cursor:pointer;">Annuler</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+      overlay.addEventListener('click', (e) => { if (e.target === overlay) closePromoModal(); });
+    }
+
+    function openPromoModal(productId, productName, currentPrice) {
+      promoModalProductId = productId;
+      if (!document.getElementById('promoModal')) buildPromoModal();
+      document.getElementById('promoModalProductName').textContent = productName;
+      document.getElementById('promoModalCurrentPrice').textContent = 'Prix actuel: ' + fmtPrice(currentPrice);
+      document.getElementById('promoModalInput').value = '';
+      document.getElementById('promoModalInput').max = currentPrice - 1;
+      const m = document.getElementById('promoModal');
+      m.style.display = 'flex';
+    }
+
+    function closePromoModal() {
+      const m = document.getElementById('promoModal');
+      if (m) m.style.display = 'none';
+    }
+
+    async function submitPromoRequest() {
+      const val = parseInt(document.getElementById('promoModalInput').value);
+      if (!val || val < 100) { showToast('Entrez un prix valide (min 100 FCFA)', 'error'); return; }
+      try {
+        const res = await fetch(`/api/sellers/products/${promoModalProductId}/request-promo`, {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + getToken(), 'Content-Type': 'application/json' },
+          body: JSON.stringify({ promo_price: val })
+        });
+        const data = await res.json();
+        if (!res.ok) { showToast(data.error || 'Erreur', 'error'); return; }
+        showToast(data.message, 'success');
+        closePromoModal();
+        loadProducts();
+      } catch(e) {
+        showToast('Erreur réseau', 'error');
+      }
+    }
+
+    async function cancelPromoRequest(productId) {
+      if (!confirm('Annuler votre demande de promotion ?')) return;
+      try {
+        const res = await fetch(`/api/sellers/products/${productId}/request-promo`, {
+          method: 'DELETE',
+          headers: { 'Authorization': 'Bearer ' + getToken() }
+        });
+        const data = await res.json();
+        if (!res.ok) { showToast(data.error || 'Erreur', 'error'); return; }
+        showToast(data.message, 'success');
+        loadProducts();
+      } catch(e) {
+        showToast('Erreur réseau', 'error');
       }
     }
 

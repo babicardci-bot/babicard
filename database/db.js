@@ -281,12 +281,24 @@ function migrateDatabase(db) {
     }
   } catch(e) { console.error('Migration users email_verified/token_version:', e.message); }
 
-  // Add promo_price to products
+  // Add promo_price and promo_request columns to products
   try {
     const prodCols = db.prepare("PRAGMA table_info(products)").all().map(c => c.name);
     if (!prodCols.includes('promo_price')) {
       db.prepare("ALTER TABLE products ADD COLUMN promo_price INTEGER DEFAULT NULL").run();
       console.log('Migration: promo_price ajouté à products.');
+    }
+    if (!prodCols.includes('promo_price_requested')) {
+      db.prepare("ALTER TABLE products ADD COLUMN promo_price_requested INTEGER DEFAULT NULL").run();
+      console.log('Migration: promo_price_requested ajouté à products.');
+    }
+    if (!prodCols.includes('promo_request_status')) {
+      db.prepare("ALTER TABLE products ADD COLUMN promo_request_status TEXT DEFAULT NULL").run();
+      console.log('Migration: promo_request_status ajouté à products.');
+    }
+    if (!prodCols.includes('promo_request_seller_id')) {
+      db.prepare("ALTER TABLE products ADD COLUMN promo_request_seller_id INTEGER DEFAULT NULL").run();
+      console.log('Migration: promo_request_seller_id ajouté à products.');
     }
   } catch(e) { console.error('Migration products promo_price:', e.message); }
 

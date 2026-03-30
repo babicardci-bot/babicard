@@ -56,10 +56,6 @@ router.post('/apply', authenticateToken, (req, res) => {
     if (!id_doc_url) {
       return res.status(400).json({ error: 'La pièce d\'identité (CNI ou passeport) est obligatoire.' });
     }
-    if (!address_doc_url) {
-      return res.status(400).json({ error: 'Le registre de commerce est obligatoire.' });
-    }
-
     const existing = db.prepare('SELECT id FROM seller_profiles WHERE user_id = ?').get(req.user.id);
     if (existing) {
       return res.status(409).json({ error: 'Vous avez déjà soumis une demande vendeur.' });
@@ -187,15 +183,18 @@ router.get('/products', authenticateToken, requireSeller, (req, res) => {
       ? `SELECT p.*,
           (SELECT COUNT(*) FROM cards WHERE product_id = p.id AND status = 'available') as available_cards,
           (SELECT COUNT(*) FROM cards WHERE product_id = p.id AND status = 'available' AND seller_id = ?) as my_available_cards,
-          (SELECT COUNT(*) FROM cards WHERE product_id = p.id AND status = 'sold' AND seller_id = ?) as my_sold_cards
+          (SELECT COUNT(*) FROM cards WHERE product_id = p.id AND status = 'sold' AND seller_id = ?) as my_sold_cards,
+          CASE WHEN p.promo_request_seller_id = ? THEN p.promo_price_requested ELSE NULL END as my_promo_requested,
+          CASE WHEN p.promo_request_seller_id = ? THEN p.promo_request_status ELSE NULL END as my_promo_status
          FROM products p WHERE p.seller_id IS NULL AND p.is_active = 1 ORDER BY p.name ASC`
       : `SELECT p.*,
           (SELECT COUNT(*) FROM cards WHERE product_id = p.id AND status = 'available') as available_cards,
-          0 as my_available_cards, 0 as my_sold_cards
+          0 as my_available_cards, 0 as my_sold_cards,
+          NULL as my_promo_requested, NULL as my_promo_status
          FROM products p WHERE p.seller_id IS NULL AND p.is_active = 1 ORDER BY p.name ASC`;
 
     const products = hasSellerCol
-      ? db.prepare(query).all(req.user.id, req.user.id)
+      ? db.prepare(query).all(req.user.id, req.user.id, req.user.id, req.user.id)
       : db.prepare(query).all();
 
     res.json({ products });
@@ -213,6 +212,62 @@ router.post('/products', authenticateToken, requireSeller, (req, res) => {
 // PUT /api/sellers/products/:id - Désactivé, seul l'admin peut modifier les produits
 router.put('/products/:id', authenticateToken, requireSeller, (req, res) => {
   return res.status(403).json({ error: 'La modification de produits est réservée à l\'administrateur.' });
+});
+
+// POST /api/sellers/products/:id/request-promo — Seller proposes a promo price
+router.post('/products/:id/request-promo', authenticateToken, requireSeller, (req, res) => {
+  try {
+    const { promo_price } = req.body;
+    const db = getDb();
+
+    const product = db.prepare('SELECT * FROM products WHERE id = ? AND seller_id IS NULL AND is_active = 1').get(req.params.id);
+    if (!product) return res.status(404).json({ error: 'Produit non trouvé.' });
+
+    // If cancelling (promo_price = 0 or null), clear the request
+    if (!promo_price || parseInt(promo_price) <= 0) {
+      db.prepare(`UPDATE products SET promo_price_requested = NULL, promo_request_status = NULL, promo_request_seller_id = NULL WHERE id = ?`).run(req.params.id);
+      return res.json({ message: 'Demande de promotion annulée.' });
+    }
+
+    const requested = parseInt(promo_price);
+    if (requested >= product.price) {
+      return res.status(400).json({ error: 'Le prix promo doit être inférieur au prix normal.' });
+    }
+    if (requested < 100) {
+      return res.status(400).json({ error: 'Le prix promo minimum est 100 FCFA.' });
+    }
+
+    // Only allow one pending request per product (from any seller)
+    if (product.promo_request_status === 'pending' && product.promo_request_seller_id !== req.user.id) {
+      return res.status(409).json({ error: 'Une demande de promotion est déjà en attente pour ce produit.' });
+    }
+
+    db.prepare(`
+      UPDATE products SET promo_price_requested = ?, promo_request_status = 'pending', promo_request_seller_id = ?
+      WHERE id = ?
+    `).run(requested, req.user.id, req.params.id);
+
+    res.json({ message: 'Demande de promotion soumise. L\'administrateur va examiner votre proposition.' });
+  } catch (err) {
+    console.error('Erreur request-promo:', err);
+    res.status(500).json({ error: 'Erreur lors de la soumission.' });
+  }
+});
+
+// DELETE /api/sellers/products/:id/request-promo — Cancel promo request
+router.delete('/products/:id/request-promo', authenticateToken, requireSeller, (req, res) => {
+  try {
+    const db = getDb();
+    const product = db.prepare('SELECT * FROM products WHERE id = ? AND seller_id IS NULL').get(req.params.id);
+    if (!product) return res.status(404).json({ error: 'Produit non trouvé.' });
+    if (product.promo_request_seller_id !== req.user.id) {
+      return res.status(403).json({ error: 'Vous ne pouvez pas annuler cette demande.' });
+    }
+    db.prepare(`UPDATE products SET promo_price_requested = NULL, promo_request_status = NULL, promo_request_seller_id = NULL WHERE id = ?`).run(req.params.id);
+    res.json({ message: 'Demande annulée.' });
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur.' });
+  }
 });
 
 
