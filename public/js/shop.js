@@ -382,16 +382,15 @@ function showOrderConfirmModal(orderId, total, items, paymentMethod, phone) {
 
   document.getElementById('orderConfirmItems').innerHTML = Object.values(grouped).map(g => {
     if (g.prices.length === 1) {
-      return `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:0.9rem;">
-        <span style="color:#d0d0f0;">${esc(g.name)}</span>
-        <span style="font-weight:600;">${formatPrice(g.prices[0])}</span>
+      return `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.08);font-size:0.9rem;">
+        <span style="color:#e0e0ff;">${esc(g.name)}</span>
+        <span style="font-weight:600;color:#ffffff;">${formatPrice(g.prices[0])}</span>
       </div>`;
     }
-    // Multiple cards — show each price
     return g.prices.map((p, i) => `
-      <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:0.9rem;">
-        <span style="color:#d0d0f0;">${esc(g.name)} <span style="color:#a0a0c0;font-size:0.8rem;">#${i+1}</span></span>
-        <span style="font-weight:600;">${formatPrice(p)}</span>
+      <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.08);font-size:0.9rem;">
+        <span style="color:#e0e0ff;">${esc(g.name)} <span style="color:#a0a0c0;font-size:0.8rem;">#${i+1}</span></span>
+        <span style="font-weight:600;color:#ffffff;">${formatPrice(p)}</span>
       </div>`).join('');
   }).join('');
 
