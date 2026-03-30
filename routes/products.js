@@ -44,8 +44,9 @@ router.get('/', (req, res) => {
       SELECT p.*,
         (SELECT COUNT(*) FROM cards WHERE product_id = p.id AND status = 'available') as available_stock,
         (SELECT COUNT(*) FROM cards c2
-          JOIN seller_product_promos spp ON spp.seller_id = c2.seller_id AND spp.product_id = p.id AND spp.status = 'approved'
-          WHERE c2.product_id = p.id AND c2.status = 'available') as promo_stock,
+          LEFT JOIN seller_product_promos spp2 ON spp2.seller_id = c2.seller_id AND spp2.product_id = p.id AND spp2.status = 'approved'
+          WHERE c2.product_id = p.id AND c2.status = 'available'
+          AND (spp2.id IS NOT NULL OR (c2.seller_id IS NULL AND p.promo_price > 0))) as promo_stock,
         sp.shop_name as seller_shop_name,
         sp.status as seller_status,
         COALESCE(

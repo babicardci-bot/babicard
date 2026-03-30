@@ -50,11 +50,10 @@ function addToCart(productId) {
   }
 
   // Determine price: promo price for first N units (where N = promo_stock), then regular
-  // When promo_stock=0 but admin set promo_price, it applies to ALL available cards
+  // promo_stock includes both seller promo cards and admin cards when product has promo_price
   const promoStock = product.promo_stock || 0;
   const promoUnitsInCart = cart.filter(item => item.id === productId && item.original_price).length;
-  const effectivePromoStock = promoStock > 0 ? promoStock : (product.promo_price > 0 ? (product.available_stock || 999) : 0);
-  const usePromo = product.promo_price && product.promo_price > 0 && promoUnitsInCart < effectivePromoStock;
+  const usePromo = product.promo_price && product.promo_price > 0 && promoUnitsInCart < promoStock;
 
   cart.push({
     id: product.id,
