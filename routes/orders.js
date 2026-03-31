@@ -27,6 +27,14 @@ router.post('/', authenticateToken, (req, res) => {
       requestedItems.push({ product, quantity: parseInt(item.quantity) || 1 });
     }
 
+    // Check user doesn't already have a pending order
+    const existingPending = db.prepare(
+      "SELECT id FROM orders WHERE user_id = ? AND payment_status = 'pending' LIMIT 1"
+    ).get(req.user.id);
+    if (existingPending) {
+      return res.status(400).json({ error: 'Vous avez déjà une commande en attente de paiement. Payez-la ou annulez-la avant d\'en créer une nouvelle.' });
+    }
+
     // Reserve cards + create order atomically to prevent race conditions
     let orderId;
     const createOrder = db.transaction(() => {

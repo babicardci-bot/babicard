@@ -99,6 +99,10 @@ router.post('/wave/callback', express.raw({ type: 'application/json' }), async (
     }
 
     if (status === 'succeeded' || status === 'paid' || status === 'complete') {
+      // Idempotency: skip if already paid
+      if (order.payment_status === 'paid') {
+        return res.json({ received: true, skipped: 'already_paid' });
+      }
       // Mark as paid
       db.prepare(`
         UPDATE orders SET payment_status = 'paid', paid_at = CURRENT_TIMESTAMP
@@ -108,6 +112,9 @@ router.post('/wave/callback', express.raw({ type: 'application/json' }), async (
       // Process delivery
       await processDelivery(order.id);
     } else if (status === 'failed' || status === 'cancelled') {
+      if (order.payment_status !== 'pending') {
+        return res.json({ received: true, skipped: 'not_pending' });
+      }
       db.prepare(`UPDATE orders SET payment_status = 'failed' WHERE id = ?`).run(order.id);
       db.prepare(`UPDATE cards SET status = 'available', order_id = NULL WHERE order_id = ? AND status = 'reserved'`).run(order.id);
     }
@@ -227,6 +234,10 @@ router.post('/orange/callback', async (req, res) => {
     }
 
     if (status === '00' || status === 'SUCCESS' || status === 'paid') {
+      // Idempotency: skip if already paid
+      if (order.payment_status === 'paid') {
+        return res.json({ received: true, skipped: 'already_paid' });
+      }
       db.prepare(`
         UPDATE orders SET payment_status = 'paid', paid_at = CURRENT_TIMESTAMP
         WHERE id = ?
@@ -234,6 +245,9 @@ router.post('/orange/callback', async (req, res) => {
 
       await processDelivery(order.id);
     } else {
+      if (order.payment_status !== 'pending') {
+        return res.json({ received: true, skipped: 'not_pending' });
+      }
       db.prepare(`UPDATE orders SET payment_status = 'failed' WHERE id = ?`).run(order.id);
       db.prepare(`UPDATE cards SET status = 'available', order_id = NULL WHERE order_id = ? AND status = 'reserved'`).run(order.id);
     }

@@ -1011,13 +1011,23 @@ router.post('/broadcast', async (req, res) => {
     if (users.length === 0) return res.json({ message: 'Aucun utilisateur à contacter.', sent: 0, failed: 0 });
 
     let sent = 0, failed = 0;
-    for (const user of users) {
-      try {
-        await sendBroadcastEmail(user, subject.trim(), body.trim());
-        sent++;
-      } catch (e) {
-        failed++;
-        console.error(`[BROADCAST] Échec envoi à ${user.email}:`, e.message);
+    const BATCH_SIZE = 20;
+    const BATCH_DELAY_MS = 2000;
+
+    for (let i = 0; i < users.length; i += BATCH_SIZE) {
+      const batch = users.slice(i, i + BATCH_SIZE);
+      await Promise.allSettled(batch.map(async user => {
+        try {
+          await sendBroadcastEmail(user, subject.trim(), body.trim());
+          sent++;
+        } catch (e) {
+          failed++;
+          console.error(`[BROADCAST] Échec envoi à ${user.email}:`, e.message);
+        }
+      }));
+      // Pause entre les batches pour éviter de saturer le serveur SMTP
+      if (i + BATCH_SIZE < users.length) {
+        await new Promise(resolve => setTimeout(resolve, BATCH_DELAY_MS));
       }
     }
 
