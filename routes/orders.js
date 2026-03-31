@@ -254,6 +254,7 @@ router.post('/:id/refund', authenticateToken, (req, res) => {
     if (!order) return res.status(404).json({ error: 'Commande non trouvée.' });
     if (order.payment_status !== 'paid') return res.status(400).json({ error: 'Seules les commandes payées peuvent être remboursées.' });
     if (order.delivery_status === 'refunded') return res.status(400).json({ error: 'Cette commande a déjà été remboursée.' });
+    if (order.delivery_status === 'delivered') return res.status(400).json({ error: 'Remboursement impossible : les codes ont déjà été livrés et sont considérés comme utilisés.' });
 
     // Max 48h after payment
     const paidAt = new Date(order.paid_at || order.created_at);

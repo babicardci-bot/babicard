@@ -505,7 +505,7 @@
           ` : ''}
           <div class="order-card-footer" style="display:flex;justify-content:space-between;align-items:center;">
             <span class="view-details">Voir les détails →</span>
-            ${order.payment_status === 'paid' && order.delivery_status !== 'refunded' ? `
+            ${order.payment_status === 'paid' && order.delivery_status === 'failed' ? `
               <button onclick="event.stopPropagation();requestRefund(${order.id})" style="background:transparent;border:1px solid #7c3aed;color:#7c3aed;padding:4px 12px;border-radius:6px;font-size:12px;cursor:pointer;">↩️ Remboursement</button>
             ` : ''}
           </div>
