@@ -64,7 +64,6 @@ router.post('/wave/initiate', authenticateToken, async (req, res) => {
     // Demo mode: auto-process payment directly (no separate /simulate call needed)
     db.prepare("UPDATE orders SET payment_status = 'paid', paid_at = CURRENT_TIMESTAMP WHERE id = ?").run(order_id);
     const deliveryResult = await processDelivery(order_id);
-    const successUrl = `${process.env.SITE_URL || 'http://localhost:3000'}/dashboard?order=${order_id}&status=success`;
 
     res.json({
       payment_url: successUrl,
@@ -208,10 +207,10 @@ router.post('/orange/initiate', authenticateToken, async (req, res) => {
     // Demo mode: auto-process payment directly
     db.prepare("UPDATE orders SET payment_status = 'paid', paid_at = CURRENT_TIMESTAMP WHERE id = ?").run(order_id);
     const deliveryResult = await processDelivery(order_id);
-    const successUrl = `${process.env.SITE_URL || 'http://localhost:3000'}/dashboard?order=${order_id}&status=success`;
+    const omSuccessUrl = `${process.env.SITE_URL || 'http://localhost:3000'}/dashboard?order=${order_id}&status=success`;
 
     res.json({
-      payment_url: successUrl,
+      payment_url: omSuccessUrl,
       payment_ref: paymentRef,
       order_id,
       demo_mode: true,
