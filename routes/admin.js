@@ -25,18 +25,33 @@ const productImgDir = persistentBase
   ? path.join(persistentBase, 'uploads/products')
   : path.join(__dirname, '../public/uploads/products');
 if (!fs.existsSync(productImgDir)) fs.mkdirSync(productImgDir, { recursive: true });
+// Validate image magic bytes to prevent MIME spoofing
+function validateImageMagicBytes(buffer) {
+  if (buffer.length < 4) return false;
+  // JPEG: FF D8 FF
+  if (buffer[0] === 0xFF && buffer[1] === 0xD8 && buffer[2] === 0xFF) return 'jpeg';
+  // PNG: 89 50 4E 47
+  if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47) return 'png';
+  // WebP: 52 49 46 46 ... 57 45 42 50
+  if (buffer[0] === 0x52 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x46) return 'webp';
+  return false;
+}
+
 const productImgUpload = multer({
   storage: multer.diskStorage({
     destination: (req, file, cb) => cb(null, productImgDir),
     filename: (req, file, cb) => {
-      const ext = path.extname(file.originalname).toLowerCase();
-      cb(null, `product_${Date.now()}${ext}`);
+      // Use UUID-based filename, ignore original extension to prevent path traversal
+      const { v4: uuidv4 } = require('uuid');
+      const mimeToExt = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp' };
+      const ext = mimeToExt[file.mimetype] || '.jpg';
+      cb(null, `product_${uuidv4()}${ext}`);
     }
   }),
-  limits: { fileSize: 5 * 1024 * 1024 },
+  limits: { fileSize: 2 * 1024 * 1024 }, // 2MB max
   fileFilter: (req, file, cb) => {
-    if (/^image\/(jpeg|png|webp|gif)$/.test(file.mimetype)) cb(null, true);
-    else cb(new Error('Image uniquement (JPG, PNG, WebP)'));
+    if (/^image\/(jpeg|png|webp)$/.test(file.mimetype)) cb(null, true);
+    else cb(new Error('Image uniquement (JPG, PNG, WebP). Max 2MB.'));
   }
 });
 
@@ -48,6 +63,13 @@ router.post('/products/upload-image', (req, res) => {
   productImgUpload.single('image')(req, res, (err) => {
     if (err) return res.status(400).json({ error: err.message });
     if (!req.file) return res.status(400).json({ error: 'Aucun fichier reçu.' });
+    // Verify magic bytes to prevent MIME spoofing
+    const buffer = fs.readFileSync(req.file.path);
+    const type = validateImageMagicBytes(buffer);
+    if (!type) {
+      fs.unlinkSync(req.file.path);
+      return res.status(400).json({ error: 'Fichier invalide. Le contenu ne correspond pas à une image réelle.' });
+    }
     res.json({ url: `/uploads/products/${req.file.filename}` });
   });
 });

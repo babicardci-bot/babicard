@@ -3,7 +3,7 @@ const router = express.Router();
 const axios = require('axios');
 const { v4: uuidv4 } = require('uuid');
 const { getDb } = require('../database/db');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, requireAdmin } = require('../middleware/auth');
 const { processDelivery } = require('../services/delivery');
 
 // ===== WAVE CI =====
@@ -61,15 +61,18 @@ router.post('/wave/initiate', authenticateToken, async (req, res) => {
       }
     }
 
-    // Demo mode: simulate payment flow
-    const demoPaymentUrl = `${process.env.SITE_URL || 'http://localhost:3000'}/payment-demo.html?ref=${paymentRef}&order=${order_id}&method=wave&amount=${order.total_amount}`;
+    // Demo mode: auto-process payment directly (no separate /simulate call needed)
+    db.prepare("UPDATE orders SET payment_status = 'paid', paid_at = CURRENT_TIMESTAMP WHERE id = ?").run(order_id);
+    const deliveryResult = await processDelivery(order_id);
+    const successUrl = `${process.env.SITE_URL || 'http://localhost:3000'}/dashboard?order=${order_id}&status=success`;
 
     res.json({
-      payment_url: demoPaymentUrl,
+      payment_url: successUrl,
       payment_ref: paymentRef,
       order_id,
       demo_mode: true,
-      message: 'Mode démonstration: aucune clé Wave configurée.'
+      delivery: deliveryResult,
+      message: 'Mode démonstration: paiement auto-approuvé (aucune clé Wave configurée).'
     });
   } catch (err) {
     console.error('Erreur Wave initiate:', err);
@@ -202,15 +205,18 @@ router.post('/orange/initiate', authenticateToken, async (req, res) => {
       }
     }
 
-    // Demo mode
-    const demoPaymentUrl = `${process.env.SITE_URL || 'http://localhost:3000'}/payment-demo.html?ref=${paymentRef}&order=${order_id}&method=orange&amount=${order.total_amount}&phone=${paymentPhone}`;
+    // Demo mode: auto-process payment directly
+    db.prepare("UPDATE orders SET payment_status = 'paid', paid_at = CURRENT_TIMESTAMP WHERE id = ?").run(order_id);
+    const deliveryResult = await processDelivery(order_id);
+    const successUrl = `${process.env.SITE_URL || 'http://localhost:3000'}/dashboard?order=${order_id}&status=success`;
 
     res.json({
-      payment_url: demoPaymentUrl,
+      payment_url: successUrl,
       payment_ref: paymentRef,
       order_id,
       demo_mode: true,
-      message: 'Mode démonstration: aucune clé Orange Money configurée.'
+      delivery: deliveryResult,
+      message: 'Mode démonstration: paiement auto-approuvé (aucune clé Orange Money configurée).'
     });
   } catch (err) {
     console.error('Erreur Orange initiate:', err);
@@ -259,12 +265,8 @@ router.post('/orange/callback', async (req, res) => {
   }
 });
 
-// POST /api/payment/simulate - Demo payment simulation (for testing)
-router.post('/simulate', authenticateToken, async (req, res) => {
-  // TODO: re-enable when real payment API is integrated
-  // if (process.env.NODE_ENV === 'production') {
-  //   return res.status(404).json({ error: 'Not found.' });
-  // }
+// POST /api/payment/simulate - Demo payment simulation (admin only until real API integrated)
+router.post('/simulate', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { payment_ref, success = true } = req.body;
     const db = getDb();
@@ -272,10 +274,6 @@ router.post('/simulate', authenticateToken, async (req, res) => {
     const order = db.prepare('SELECT * FROM orders WHERE payment_ref = ?').get(payment_ref);
     if (!order) {
       return res.status(404).json({ error: 'Commande non trouvée.' });
-    }
-
-    if (order.user_id !== req.user.id && req.user.role !== 'admin') {
-      return res.status(403).json({ error: 'Accès refusé.' });
     }
 
     if (success) {

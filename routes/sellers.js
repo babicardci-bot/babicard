@@ -21,13 +21,16 @@ const docUpload = multer({
       cb(null, dir);
     },
     filename: (req, file, cb) => {
-      const ext = path.extname(file.originalname).toLowerCase();
-      cb(null, `seller_doc_${Date.now()}_${Math.random().toString(36).slice(2)}${ext}`);
+      // UUID-based filename to prevent path traversal
+      const { v4: uuidv4 } = require('uuid');
+      const mimeToExt = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp', 'application/pdf': '.pdf' };
+      const ext = mimeToExt[file.mimetype] || '.jpg';
+      cb(null, `seller_doc_${uuidv4()}${ext}`);
     }
   }),
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
-    if (/image\/(jpeg|png|webp)|application\/pdf/.test(file.mimetype)) cb(null, true);
+    if (/^(image\/(jpeg|png|webp)|application\/pdf)$/.test(file.mimetype)) cb(null, true);
     else cb(new Error('Format non accepté. JPG, PNG, WEBP ou PDF uniquement.'));
   }
 });

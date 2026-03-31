@@ -202,7 +202,7 @@ router.put('/me', authenticateToken, (req, res) => {
   }
 });
 
-// DELETE /api/auth/me — supprimer son compte
+// DELETE /api/auth/me — supprimer son compte (RGPD)
 router.delete('/me', authenticateToken, async (req, res) => {
   try {
     const { password } = req.body;
@@ -210,14 +210,33 @@ router.delete('/me', authenticateToken, async (req, res) => {
 
     const db = getDb();
     const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
+    if (!user) return res.status(404).json({ error: 'Compte introuvable.' });
+
     const isValid = await bcrypt.compare(password, user.password_hash);
     if (!isValid) return res.status(401).json({ error: 'Mot de passe incorrect.' });
 
-    // Ne pas supprimer un admin
     if (user.role === 'admin') return res.status(403).json({ error: 'Un compte administrateur ne peut pas être supprimé.' });
 
-    db.prepare('DELETE FROM users WHERE id = ?').run(req.user.id);
-    res.json({ message: 'Compte supprimé avec succès.' });
+    // Check no pending orders
+    const pendingOrder = db.prepare("SELECT id FROM orders WHERE user_id = ? AND payment_status = 'pending'").get(req.user.id);
+    if (pendingOrder) return res.status(400).json({ error: 'Annulez vos commandes en attente avant de supprimer votre compte.' });
+
+    const deleteAccount = db.transaction(() => {
+      // Release any reserved cards
+      db.prepare("UPDATE cards SET status = 'available', order_id = NULL WHERE order_id IN (SELECT id FROM orders WHERE user_id = ?) AND status = 'reserved'").run(req.user.id);
+      // Anonymize orders (keep for accounting, remove personal data)
+      db.prepare("UPDATE orders SET delivery_email = '', delivery_phone = '' WHERE user_id = ?").run(req.user.id);
+      // Delete tokens
+      db.prepare('DELETE FROM password_reset_tokens WHERE user_id = ?').run(req.user.id);
+      db.prepare('DELETE FROM email_verification_tokens WHERE user_id = ?').run(req.user.id);
+      // Delete seller profile if exists
+      db.prepare('DELETE FROM seller_profiles WHERE user_id = ?').run(req.user.id);
+      // Delete the user account
+      db.prepare('DELETE FROM users WHERE id = ?').run(req.user.id);
+    });
+
+    deleteAccount();
+    res.json({ message: 'Compte supprimé avec succès. Vos données personnelles ont été effacées.' });
   } catch (err) {
     console.error('Erreur delete account:', err);
     res.status(500).json({ error: 'Erreur lors de la suppression du compte.' });
