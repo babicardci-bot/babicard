@@ -78,41 +78,37 @@ function escHtml(str) {
 
 function getCategoryColor(category) {
   const colors = {
-    apple: '#555555',
+    apple:       '#2a2a2a',
     playstation: '#003087',
-    xbox: '#107C10',
-    google: '#4285F4',
-    steam: '#1b2838',
-    netflix: '#E50914',
-    amazon: '#FF9900',
-    default: '#6C63FF'
+    xbox:        '#107C10',
+    google:      '#4285F4',
+    steam:       '#1b2838',
+    netflix:     '#E50914',
+    amazon:      '#FF9900',
+    other:       '#6C63FF'
   };
-  return colors[category] || colors.default;
+  return colors[category] || colors.other;
 }
 
-function getCategoryIcon(platform) {
+function getCategoryIcon(category) {
   const icons = {
-    'iTunes': '🍎',
-    'App Store': '🍎',
-    'PlayStation': '🎮',
-    'PSN': '🎮',
-    'Xbox': '🟢',
-    'Google Play': '🎯',
-    'Steam': '🖥️',
-    'Netflix': '🎬',
-    'Amazon': '📦'
+    apple: '🍎',
+    playstation: '🎮',
+    xbox: '🟢',
+    google: '🎯',
+    steam: '🖥️',
+    netflix: '🎬',
+    amazon: '📦',
+    other: '🎁'
   };
-  for (const [key, icon] of Object.entries(icons)) {
-    if (platform && platform.includes(key)) return icon;
-  }
-  return '🎁';
+  return icons[category] || '🎁';
 }
 
 async function sendOrderConfirmationEmail(user, order, items) {
 
   const itemsHtml = items.map(item => {
-    const icon = getCategoryIcon(item.platform);
-    const color = getCategoryColor(item.category || 'default');
+    const icon = getCategoryIcon(item.category || 'other');
+    const color = getCategoryColor(item.category || 'other');
     let codeSection = '';
 
     if (item.card_code) {
