@@ -299,7 +299,7 @@ async function sendLowStockEmail(seller, productName, remainingStock) {
       <h3 style="margin:0 0 12px;color:#1a1a2e;">Action requise</h3>
       <p style="color:#555;line-height:1.6;margin:0 0 20px;">Pour éviter une rupture de stock et continuer à vendre, veuillez ajouter de nouveaux codes dès que possible depuis votre tableau de bord vendeur.</p>
       <div style="text-align:center;">
-        <a href="${process.env.BASE_URL || 'http://localhost:3000'}/seller" style="background:linear-gradient(135deg,#6C63FF,#5a52d5);color:white;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:15px;display:inline-block;">📦 Ajouter des codes</a>
+        <a href="${process.env.SITE_URL || 'https://babicard.ci'}/seller" style="background:linear-gradient(135deg,#6C63FF,#5a52d5);color:white;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:15px;display:inline-block;">📦 Ajouter des codes</a>
       </div>
     </div>
     <div style="background:linear-gradient(135deg,#1a1a3e,#0d0d2e);border-radius:12px;padding:20px;text-align:center;color:white;margin-top:20px;">
@@ -317,7 +317,7 @@ async function sendLowStockEmail(seller, productName, remainingStock) {
     to: seller.email,
     subject: `⚠️ [Babicard.ci] Stock faible — ${productName} (${remainingStock} code${remainingStock > 1 ? 's' : ''} restant${remainingStock > 1 ? 's' : ''})`,
     html: htmlContent,
-    text: `Babicard.ci - Alerte stock faible\n\nBonjour ${seller.name},\n\nIl ne reste que ${remainingStock} code(s) pour "${productName}".\n\nConnectez-vous pour en ajouter: ${process.env.BASE_URL || 'http://localhost:3000'}/seller`
+    text: `Babicard.ci - Alerte stock faible\n\nBonjour ${seller.name},\n\nIl ne reste que ${remainingStock} code(s) pour "${productName}".\n\nConnectez-vous pour en ajouter: ${process.env.SITE_URL || 'https://babicard.ci'}/seller`
   };
 
   try {
@@ -367,7 +367,7 @@ async function sendWithdrawalStatusEmail(seller, shopName, amount, status, admin
       </div>` : ''}
       ${isRejected ? `
       <div style="text-align:center;margin-top:24px;">
-        <a href="${process.env.BASE_URL || 'http://localhost:3000'}/seller" style="background:linear-gradient(135deg,#6C63FF,#5a52d5);color:white;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:14px;display:inline-block;">Faire une nouvelle demande</a>
+        <a href="${process.env.SITE_URL || 'https://babicard.ci'}/seller" style="background:linear-gradient(135deg,#6C63FF,#5a52d5);color:white;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:14px;display:inline-block;">Faire une nouvelle demande</a>
       </div>` : ''}
     </div>
     <div style="background:linear-gradient(135deg,#1a1a3e,#0d0d2e);border-radius:12px;padding:20px;text-align:center;color:white;margin-top:20px;">
@@ -441,7 +441,7 @@ async function sendWithdrawalRequestEmail(seller, shopName, amount, paymentMetho
         </tr>
       </table>
       <div style="text-align:center;margin-top:28px;">
-        <a href="${process.env.SITE_URL || 'http://localhost:3000'}/admin#withdrawals" style="background:linear-gradient(135deg,#6C63FF,#5a52d5);color:white;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:15px;display:inline-block;">⚙️ Traiter la demande</a>
+        <a href="${process.env.SITE_URL || 'https://babicard.ci'}/admin#withdrawals" style="background:linear-gradient(135deg,#6C63FF,#5a52d5);color:white;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:15px;display:inline-block;">⚙️ Traiter la demande</a>
       </div>
     </div>
   </div>
@@ -456,7 +456,7 @@ async function sendWithdrawalRequestEmail(seller, shopName, amount, paymentMetho
     to: adminEmail,
     subject: `💸 [Babicard.ci] Demande de retrait — ${shopName} — ${new Intl.NumberFormat('fr-FR').format(amount)} FCFA`,
     html: htmlContent,
-    text: `Nouvelle demande de retrait\n\nVendeur: ${seller.name} (${seller.email})\nBoutique: ${shopName}\nMontant: ${amount} FCFA\nMéthode: ${methodLabel}\nNuméro: ${paymentNumber}\n\nConnectez-vous pour traiter: ${process.env.BASE_URL || 'http://localhost:3000'}/admin`
+    text: `Nouvelle demande de retrait\n\nVendeur: ${seller.name} (${seller.email})\nBoutique: ${shopName}\nMontant: ${amount} FCFA\nMéthode: ${methodLabel}\nNuméro: ${paymentNumber}\n\nConnectez-vous pour traiter: ${process.env.SITE_URL || 'https://babicard.ci'}/admin`
   };
 
   try {
