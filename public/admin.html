@@ -59,6 +59,10 @@
         <span class="menu-icon">💸</span>
         <span>Retraits</span>
       </a>
+      <a href="#" class="menu-item" data-section="refunds" onclick="showSection('refunds', this)">
+        <span class="menu-icon">↩️</span>
+        <span>Remboursements</span>
+      </a>
       <a href="#" class="menu-item" data-section="appearance" onclick="showSection('appearance', this)">
         <span class="menu-icon">🎨</span>
         <span>Apparence</span>
@@ -330,6 +334,17 @@
         </div>
       </div>
       <div id="withdrawalsTable">
+        <div class="loading-center"><div class="loading-spinner"></div></div>
+      </div>
+    </section>
+
+    <!-- ===== SECTION REMBOURSEMENTS ===== -->
+    <section class="admin-section" id="section-refunds">
+      <div class="section-toolbar">
+        <h2>↩️ Demandes de remboursement</h2>
+        <button class="btn-secondary" onclick="loadRefunds()">🔄 Actualiser</button>
+      </div>
+      <div id="refundsTable">
         <div class="loading-center"><div class="loading-spinner"></div></div>
       </div>
     </section>

@@ -361,6 +361,38 @@ function migrateDatabase(db) {
     }
   } catch(e) { console.error('Migration users marketing_emails:', e.message); }
 
+  // 2FA columns
+  try {
+    const userCols2 = db.prepare("PRAGMA table_info(users)").all().map(c => c.name);
+    if (!userCols2.includes('two_fa_secret')) {
+      db.prepare("ALTER TABLE users ADD COLUMN two_fa_secret TEXT").run();
+      console.log('Migration: two_fa_secret ajouté à users.');
+    }
+    if (!userCols2.includes('two_fa_enabled')) {
+      db.prepare("ALTER TABLE users ADD COLUMN two_fa_enabled INTEGER NOT NULL DEFAULT 0").run();
+      console.log('Migration: two_fa_enabled ajouté à users.');
+    }
+  } catch(e) { console.error('Migration users 2fa:', e.message); }
+
+  // Refund requests table
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS refund_requests (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        order_id INTEGER NOT NULL UNIQUE,
+        user_id INTEGER NOT NULL,
+        reason TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','approved','rejected')),
+        admin_note TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        processed_at DATETIME,
+        FOREIGN KEY (order_id) REFERENCES orders(id),
+        FOREIGN KEY (user_id) REFERENCES users(id)
+      );
+    `);
+    console.log('Migration: refund_requests table OK.');
+  } catch(e) { console.error('Migration refund_requests:', e.message); }
+
   console.log('Migration vérifiée.');
 }
 

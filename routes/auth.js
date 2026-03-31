@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
+const speakeasy = require('speakeasy');
+const QRCode = require('qrcode');
 const { getDb } = require('../database/db');
 const { authenticateToken, generateToken } = require('../middleware/auth');
 const { sendPasswordResetEmail, sendWelcomeEmail, sendEmailVerificationEmail } = require('../services/email');
@@ -115,7 +117,7 @@ router.post('/resend-verification', async (req, res) => {
 // POST /api/auth/login
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, two_fa_code } = req.body;
     if (!email || !password) {
       return res.status(400).json({ error: 'Email et mot de passe sont obligatoires.' });
     }
@@ -137,6 +139,22 @@ router.post('/login', async (req, res) => {
         error: 'Veuillez vérifier votre adresse email avant de vous connecter.',
         email_not_verified: true
       });
+    }
+
+    // 2FA check — required for admin and seller accounts if enabled
+    if (user.two_fa_enabled) {
+      if (!two_fa_code) {
+        return res.status(200).json({ two_fa_required: true, message: 'Code 2FA requis.' });
+      }
+      const validOtp = speakeasy.totp.verify({
+        secret: user.two_fa_secret,
+        encoding: 'base32',
+        token: String(two_fa_code),
+        window: 1
+      });
+      if (!validOtp) {
+        return res.status(401).json({ error: 'Code 2FA invalide. Réessayez.' });
+      }
     }
 
     const token = generateToken(user.id, user.token_version || 0);
@@ -325,6 +343,87 @@ router.post('/reset-password', async (req, res) => {
   } catch (err) {
     console.error('Erreur reset-password:', err);
     res.status(500).json({ error: 'Erreur serveur.' });
+  }
+});
+
+// POST /api/auth/2fa/setup — Generate 2FA secret and QR code
+router.post('/2fa/setup', authenticateToken, async (req, res) => {
+  try {
+    const db = getDb();
+    const user = db.prepare('SELECT id, email, two_fa_enabled FROM users WHERE id = ?').get(req.user.id);
+    if (user.two_fa_enabled) return res.status(400).json({ error: '2FA déjà activé.' });
+
+    const secret = speakeasy.generateSecret({
+      name: `Babicard.ci (${user.email})`,
+      issuer: 'Babicard.ci',
+      length: 20
+    });
+
+    // Store secret temporarily (not yet enabled until verified)
+    db.prepare('UPDATE users SET two_fa_secret = ? WHERE id = ?').run(secret.base32, req.user.id);
+
+    const qrCodeUrl = await QRCode.toDataURL(secret.otpauth_url);
+    res.json({ qr_code: qrCodeUrl, secret: secret.base32, message: 'Scannez le QR code avec Google Authenticator puis confirmez avec un code.' });
+  } catch (err) {
+    console.error('Erreur 2FA setup:', err);
+    res.status(500).json({ error: 'Erreur configuration 2FA.' });
+  }
+});
+
+// POST /api/auth/2fa/enable — Verify code and enable 2FA
+router.post('/2fa/enable', authenticateToken, (req, res) => {
+  try {
+    const { code } = req.body;
+    if (!code) return res.status(400).json({ error: 'Code requis.' });
+
+    const db = getDb();
+    const user = db.prepare('SELECT two_fa_secret, two_fa_enabled FROM users WHERE id = ?').get(req.user.id);
+    if (!user.two_fa_secret) return res.status(400).json({ error: 'Lancez d\'abord la configuration 2FA.' });
+    if (user.two_fa_enabled) return res.status(400).json({ error: '2FA déjà activé.' });
+
+    const valid = speakeasy.totp.verify({
+      secret: user.two_fa_secret,
+      encoding: 'base32',
+      token: String(code),
+      window: 1
+    });
+
+    if (!valid) return res.status(400).json({ error: 'Code invalide. Réessayez.' });
+
+    db.prepare('UPDATE users SET two_fa_enabled = 1 WHERE id = ?').run(req.user.id);
+    res.json({ message: '2FA activé avec succès. Votre compte est maintenant sécurisé.' });
+  } catch (err) {
+    console.error('Erreur 2FA enable:', err);
+    res.status(500).json({ error: 'Erreur activation 2FA.' });
+  }
+});
+
+// POST /api/auth/2fa/disable — Disable 2FA (requires password + 2FA code)
+router.post('/2fa/disable', authenticateToken, async (req, res) => {
+  try {
+    const { password, code } = req.body;
+    if (!password || !code) return res.status(400).json({ error: 'Mot de passe et code 2FA requis.' });
+
+    const db = getDb();
+    const user = db.prepare('SELECT password_hash, two_fa_secret, two_fa_enabled FROM users WHERE id = ?').get(req.user.id);
+    if (!user.two_fa_enabled) return res.status(400).json({ error: '2FA non activé.' });
+
+    const validPwd = await bcrypt.compare(password, user.password_hash);
+    if (!validPwd) return res.status(401).json({ error: 'Mot de passe incorrect.' });
+
+    const validCode = speakeasy.totp.verify({
+      secret: user.two_fa_secret,
+      encoding: 'base32',
+      token: String(code),
+      window: 1
+    });
+    if (!validCode) return res.status(400).json({ error: 'Code 2FA invalide.' });
+
+    db.prepare('UPDATE users SET two_fa_enabled = 0, two_fa_secret = NULL WHERE id = ?').run(req.user.id);
+    res.json({ message: '2FA désactivé.' });
+  } catch (err) {
+    console.error('Erreur 2FA disable:', err);
+    res.status(500).json({ error: 'Erreur désactivation 2FA.' });
   }
 });
 

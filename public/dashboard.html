@@ -142,6 +142,23 @@
             </form>
           </div>
 
+          <!-- 2FA Section -->
+          <div class="profile-section" style="border-top:1px solid var(--border-color);padding-top:20px;margin-top:8px;">
+            <h3>🔐 Double authentification (2FA)</h3>
+            <p style="color:#888;font-size:13px;margin-bottom:12px;">Protégez votre compte avec Google Authenticator ou une app similaire.</p>
+            <div id="twoFaStatus" style="margin-bottom:12px;"></div>
+            <div id="twoFaSetupArea" style="display:none;">
+              <img id="twoFaQrCode" src="" alt="QR Code 2FA" style="width:200px;height:200px;border:2px solid var(--border-color);border-radius:8px;display:block;margin-bottom:12px;">
+              <p style="font-size:12px;color:#888;margin-bottom:8px;">Scannez ce QR code avec Google Authenticator, puis entrez le code à 6 chiffres :</p>
+              <div style="display:flex;gap:8px;align-items:center;">
+                <input type="text" id="twoFaVerifyCode" placeholder="000000" maxlength="6" style="width:120px;padding:8px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg-card);color:var(--text-primary);font-size:18px;letter-spacing:4px;text-align:center;">
+                <button onclick="enable2FA()" class="btn-primary" style="padding:8px 16px;">✅ Activer</button>
+                <button onclick="cancel2FASetup()" class="btn-secondary" style="padding:8px 16px;">Annuler</button>
+              </div>
+            </div>
+            <div id="twoFaActions"></div>
+          </div>
+
           <div class="profile-section" style="border-top:1px solid var(--border-color);padding-top:20px;margin-top:8px;">
             <h3 style="color:#ef4444;">Zone dangereuse</h3>
             <p style="color:#888;font-size:13px;margin-bottom:12px;">La suppression de votre compte est irréversible.</p>
@@ -218,6 +235,91 @@
         window.location.href = '/login';
       }
     });
+
+    // ===== REMBOURSEMENT =====
+    async function requestRefund(orderId) {
+      const reason = prompt('Raison de votre demande de remboursement (min 10 caractères) :');
+      if (!reason || reason.trim().length < 10) {
+        alert('Veuillez indiquer une raison d\'au moins 10 caractères.');
+        return;
+      }
+      try {
+        const res = await authFetch(`/orders/${orderId}/refund`, {
+          method: 'POST',
+          body: JSON.stringify({ reason: reason.trim() })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          alert('✅ ' + data.message);
+        } else {
+          alert('❌ ' + (data.error || 'Erreur.'));
+        }
+      } catch(e) { alert('Erreur réseau.'); }
+    }
+
+    // ===== 2FA =====
+    async function load2FAStatus() {
+      try {
+        const res = await authFetch('/auth/me');
+        const data = await res.json();
+        const enabled = data.user?.two_fa_enabled;
+        const statusEl = document.getElementById('twoFaStatus');
+        const actionsEl = document.getElementById('twoFaActions');
+        if (enabled) {
+          statusEl.innerHTML = '<span style="color:#22c55e;font-weight:bold;">✅ 2FA activé</span> — Votre compte est protégé.';
+          actionsEl.innerHTML = `<button onclick="disable2FA()" style="background:transparent;border:1px solid #ef4444;color:#ef4444;padding:8px 18px;border-radius:6px;cursor:pointer;font-size:13px;margin-top:8px;">🔓 Désactiver le 2FA</button>`;
+        } else {
+          statusEl.innerHTML = '<span style="color:#f59e0b;font-weight:bold;">⚠️ 2FA non activé</span> — Votre compte est moins sécurisé.';
+          actionsEl.innerHTML = `<button onclick="setup2FA()" class="btn-primary" style="margin-top:8px;padding:8px 18px;">🔐 Activer le 2FA</button>`;
+        }
+      } catch(e) {}
+    }
+
+    async function setup2FA() {
+      try {
+        const res = await authFetch('/auth/2fa/setup', { method: 'POST' });
+        const data = await res.json();
+        if (!res.ok) { alert(data.error); return; }
+        document.getElementById('twoFaQrCode').src = data.qr_code;
+        document.getElementById('twoFaSetupArea').style.display = 'block';
+        document.getElementById('twoFaActions').style.display = 'none';
+        document.getElementById('twoFaVerifyCode').value = '';
+        document.getElementById('twoFaVerifyCode').focus();
+      } catch(e) { alert('Erreur réseau.'); }
+    }
+
+    async function enable2FA() {
+      const code = document.getElementById('twoFaVerifyCode').value.trim();
+      if (!code || code.length !== 6) { alert('Entrez le code à 6 chiffres.'); return; }
+      try {
+        const res = await authFetch('/auth/2fa/enable', { method: 'POST', body: JSON.stringify({ code }) });
+        const data = await res.json();
+        if (res.ok) {
+          alert('✅ ' + data.message);
+          document.getElementById('twoFaSetupArea').style.display = 'none';
+          document.getElementById('twoFaActions').style.display = '';
+          load2FAStatus();
+        } else { alert('❌ ' + data.error); }
+      } catch(e) { alert('Erreur réseau.'); }
+    }
+
+    function cancel2FASetup() {
+      document.getElementById('twoFaSetupArea').style.display = 'none';
+      document.getElementById('twoFaActions').style.display = '';
+    }
+
+    async function disable2FA() {
+      const password = prompt('Mot de passe :');
+      if (!password) return;
+      const code = prompt('Code 2FA actuel :');
+      if (!code) return;
+      try {
+        const res = await authFetch('/auth/2fa/disable', { method: 'POST', body: JSON.stringify({ password, code }) });
+        const data = await res.json();
+        if (res.ok) { alert('✅ ' + data.message); load2FAStatus(); }
+        else { alert('❌ ' + data.error); }
+      } catch(e) { alert('Erreur réseau.'); }
+    }
 
     async function deleteAccount() {
       const password = prompt('Entrez votre mot de passe pour confirmer la suppression de votre compte :');
@@ -319,6 +421,7 @@
       document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
       document.getElementById(`tab-${tabName}`).classList.remove('hidden');
       if (el) el.classList.add('active');
+      if (tabName === 'profile') load2FAStatus();
       return false;
     }
 
@@ -366,7 +469,8 @@
       const delivStatus = {
         delivered: '<span class="status-badge status-delivered">📬 Livrée</span>',
         pending: '<span class="status-badge status-pending">⏳ En attente</span>',
-        failed: '<span class="status-badge status-failed">⚠️ Erreur</span>'
+        failed: '<span class="status-badge status-failed">⚠️ Erreur</span>',
+        refunded: '<span class="status-badge" style="background:#7c3aed22;color:#7c3aed;">↩️ Remboursée</span>'
       };
       const payMethod = order.payment_method === 'wave' ? '🌊 Wave CI' : '🟠 Orange Money';
 
@@ -399,8 +503,11 @@
               `).join('')}
             </div>
           ` : ''}
-          <div class="order-card-footer">
+          <div class="order-card-footer" style="display:flex;justify-content:space-between;align-items:center;">
             <span class="view-details">Voir les détails →</span>
+            ${order.payment_status === 'paid' && order.delivery_status !== 'refunded' ? `
+              <button onclick="event.stopPropagation();requestRefund(${order.id})" style="background:transparent;border:1px solid #7c3aed;color:#7c3aed;padding:4px 12px;border-radius:6px;font-size:12px;cursor:pointer;">↩️ Remboursement</button>
+            ` : ''}
           </div>
         </div>
       `;

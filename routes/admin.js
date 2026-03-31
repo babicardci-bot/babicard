@@ -1072,4 +1072,106 @@ router.post('/broadcast', async (req, res) => {
   }
 });
 
+// GET /api/admin/refunds — List all refund requests
+router.get('/refunds', (req, res) => {
+  try {
+    const db = getDb();
+    const refunds = db.prepare(`
+      SELECT rr.*, u.name as user_name, u.email as user_email,
+        o.total_amount, o.payment_method, o.created_at as order_date
+      FROM refund_requests rr
+      JOIN users u ON rr.user_id = u.id
+      JOIN orders o ON rr.order_id = o.id
+      ORDER BY rr.created_at DESC
+    `).all();
+    res.json({ refunds });
+  } catch (err) {
+    console.error('Erreur get refunds:', err);
+    res.status(500).json({ error: 'Erreur.' });
+  }
+});
+
+// PUT /api/admin/refunds/:id/approve — Approve refund
+router.put('/refunds/:id/approve', async (req, res) => {
+  try {
+    const { admin_note } = req.body;
+    const db = getDb();
+    const refund = db.prepare('SELECT * FROM refund_requests WHERE id = ?').get(req.params.id);
+    if (!refund) return res.status(404).json({ error: 'Demande non trouvée.' });
+    if (refund.status !== 'pending') return res.status(400).json({ error: 'Demande déjà traitée.' });
+
+    const processRefund = db.transaction(() => {
+      // Mark order cards as disputed
+      db.prepare("UPDATE cards SET status = 'disputed' WHERE order_id = ? AND status = 'sold'").run(refund.order_id);
+      // Mark order as refunded
+      db.prepare("UPDATE orders SET delivery_status = 'refunded', payment_status = 'refunded' WHERE id = ?").run(refund.order_id);
+      // Reverse seller earnings for this order
+      db.prepare("UPDATE seller_earnings SET status = 'reversed' WHERE order_id = ?").run(refund.order_id);
+      // Update refund request
+      db.prepare("UPDATE refund_requests SET status = 'approved', admin_note = ?, processed_at = CURRENT_TIMESTAMP WHERE id = ?").run(admin_note || null, refund.id);
+    });
+    processRefund();
+
+    // Notify user by email
+    const user = db.prepare('SELECT name, email FROM users WHERE id = ?').get(refund.user_id);
+    const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(refund.order_id);
+    if (user && user.email) {
+      const nodemailer = require('nodemailer');
+      const transporter = nodemailer.createTransport({
+        host: process.env.EMAIL_HOST, port: parseInt(process.env.EMAIL_PORT || '465'),
+        secure: true, auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
+      });
+      transporter.sendMail({
+        from: `"Babicard.ci" <${process.env.EMAIL_USER}>`,
+        to: user.email,
+        subject: `✅ Remboursement approuvé — Commande #${refund.order_id}`,
+        html: `<p>Bonjour ${user.name},</p><p>Votre demande de remboursement pour la commande <strong>#${refund.order_id}</strong> (${new Intl.NumberFormat('fr-FR').format(order.total_amount)} FCFA) a été <strong>approuvée</strong>.</p>${admin_note ? `<p>Note: ${admin_note}</p>` : ''}<p>Le remboursement sera effectué via votre méthode de paiement initiale sous 3-5 jours ouvrables.</p><p>Babicard.ci</p>`
+      }).catch(() => {});
+    }
+
+    logAdminAction(req, 'APPROVE_REFUND', `order#${refund.order_id}`, { refund_id: refund.id });
+    res.json({ message: 'Remboursement approuvé.' });
+  } catch (err) {
+    console.error('Erreur approve refund:', err);
+    res.status(500).json({ error: 'Erreur.' });
+  }
+});
+
+// PUT /api/admin/refunds/:id/reject — Reject refund
+router.put('/refunds/:id/reject', async (req, res) => {
+  try {
+    const { admin_note } = req.body;
+    if (!admin_note) return res.status(400).json({ error: 'Veuillez indiquer la raison du refus.' });
+
+    const db = getDb();
+    const refund = db.prepare('SELECT * FROM refund_requests WHERE id = ?').get(req.params.id);
+    if (!refund) return res.status(404).json({ error: 'Demande non trouvée.' });
+    if (refund.status !== 'pending') return res.status(400).json({ error: 'Demande déjà traitée.' });
+
+    db.prepare("UPDATE refund_requests SET status = 'rejected', admin_note = ?, processed_at = CURRENT_TIMESTAMP WHERE id = ?").run(admin_note, refund.id);
+
+    // Notify user
+    const user = db.prepare('SELECT name, email FROM users WHERE id = ?').get(refund.user_id);
+    if (user && user.email) {
+      const nodemailer = require('nodemailer');
+      const transporter = nodemailer.createTransport({
+        host: process.env.EMAIL_HOST, port: parseInt(process.env.EMAIL_PORT || '465'),
+        secure: true, auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
+      });
+      transporter.sendMail({
+        from: `"Babicard.ci" <${process.env.EMAIL_USER}>`,
+        to: user.email,
+        subject: `❌ Remboursement refusé — Commande #${refund.order_id}`,
+        html: `<p>Bonjour ${user.name},</p><p>Votre demande de remboursement pour la commande <strong>#${refund.order_id}</strong> a été <strong>refusée</strong>.</p><p>Raison: ${admin_note}</p><p>Contactez-nous: ${process.env.ADMIN_EMAIL || 'support@babicard.ci'}</p>`
+      }).catch(() => {});
+    }
+
+    logAdminAction(req, 'REJECT_REFUND', `order#${refund.order_id}`, { refund_id: refund.id });
+    res.json({ message: 'Remboursement refusé.' });
+  } catch (err) {
+    console.error('Erreur reject refund:', err);
+    res.status(500).json({ error: 'Erreur.' });
+  }
+});
+
 module.exports = router;

@@ -241,4 +241,53 @@ router.get('/:id', authenticateToken, (req, res) => {
   }
 });
 
+// POST /api/orders/:id/refund — Request a refund
+router.post('/:id/refund', authenticateToken, (req, res) => {
+  try {
+    const { reason } = req.body;
+    if (!reason || reason.trim().length < 10) {
+      return res.status(400).json({ error: 'Veuillez indiquer la raison du remboursement (min 10 caractères).' });
+    }
+
+    const db = getDb();
+    const order = db.prepare('SELECT * FROM orders WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
+    if (!order) return res.status(404).json({ error: 'Commande non trouvée.' });
+    if (order.payment_status !== 'paid') return res.status(400).json({ error: 'Seules les commandes payées peuvent être remboursées.' });
+    if (order.delivery_status === 'refunded') return res.status(400).json({ error: 'Cette commande a déjà été remboursée.' });
+
+    // Max 48h after payment
+    const paidAt = new Date(order.paid_at || order.created_at);
+    const hoursElapsed = (Date.now() - paidAt.getTime()) / (1000 * 60 * 60);
+    if (hoursElapsed > 48) {
+      return res.status(400).json({ error: 'Le délai de remboursement est de 48h après le paiement.' });
+    }
+
+    // Check no existing request
+    const existing = db.prepare('SELECT id, status FROM refund_requests WHERE order_id = ?').get(order.id);
+    if (existing) {
+      return res.status(400).json({ error: `Demande de remboursement déjà soumise (statut: ${existing.status}).` });
+    }
+
+    db.prepare('INSERT INTO refund_requests (order_id, user_id, reason) VALUES (?, ?, ?)').run(order.id, req.user.id, reason.trim());
+    res.status(201).json({ message: 'Demande de remboursement soumise. L\'équipe vous contactera sous 24h.' });
+  } catch (err) {
+    console.error('Erreur refund request:', err);
+    res.status(500).json({ error: 'Erreur lors de la demande de remboursement.' });
+  }
+});
+
+// GET /api/orders/:id/refund — Get refund status for an order
+router.get('/:id/refund', authenticateToken, (req, res) => {
+  try {
+    const db = getDb();
+    const order = db.prepare('SELECT id FROM orders WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
+    if (!order) return res.status(404).json({ error: 'Commande non trouvée.' });
+
+    const refund = db.prepare('SELECT * FROM refund_requests WHERE order_id = ?').get(order.id);
+    res.json({ refund: refund || null });
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur.' });
+  }
+});
+
 module.exports = router;

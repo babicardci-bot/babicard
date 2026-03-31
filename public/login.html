@@ -69,6 +69,14 @@
           </div>
         </div>
 
+        <!-- 2FA field — hidden by default, shown when server requires it -->
+        <div class="form-group" id="twoFaGroup" style="display:none;">
+          <label for="twoFaCode">🔐 Code 2FA (Google Authenticator)</label>
+          <div class="input-wrapper">
+            <input type="text" id="twoFaCode" name="two_fa_code" placeholder="000000" maxlength="6" autocomplete="one-time-code" inputmode="numeric" style="letter-spacing:6px;font-size:20px;text-align:center;">
+          </div>
+        </div>
+
         <div style="text-align:right;margin-top:-8px;margin-bottom:4px;">
           <a href="/forgot-password" style="font-size:13px;color:var(--primary);text-decoration:none;">Mot de passe oublié ?</a>
         </div>
@@ -112,15 +120,29 @@
 
       const email = document.getElementById('email').value;
       const password = document.getElementById('password').value;
+      const twoFaCode = document.getElementById('twoFaCode').value.trim();
 
       try {
+        const body = { email, password };
+        if (twoFaCode) body.two_fa_code = twoFaCode;
+
         const response = await fetch('/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password })
+          body: JSON.stringify(body)
         });
 
         const data = await response.json();
+
+        // 2FA required — show the code field
+        if (response.ok && data.two_fa_required) {
+          document.getElementById('twoFaGroup').style.display = 'block';
+          document.getElementById('twoFaCode').focus();
+          alertBox.textContent = '🔐 Entrez le code de votre application 2FA.';
+          alertBox.classList.remove('hidden', 'alert-error');
+          alertBox.classList.add('alert-success');
+          return;
+        }
 
         if (!response.ok) {
           if (data.email_not_verified) {

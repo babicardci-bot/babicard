@@ -104,6 +104,7 @@ function showSection(name, el) {
     case 'sellers': loadAdminSellers(); break;
     case 'promo-requests': loadPromoRequests(); break;
     case 'withdrawals': loadAdminWithdrawals(); break;
+    case 'refunds': loadRefunds(); break;
     case 'appearance': loadAppearanceSettings(); break;
   }
 
@@ -1971,6 +1972,70 @@ function addNewSlide() {
 async function saveAllAppearance() {
   await saveLogo();
   await saveSliders();
+}
+
+// ===== REMBOURSEMENTS =====
+async function loadRefunds() {
+  const container = document.getElementById('refundsTable');
+  if (!container) return;
+  container.innerHTML = '<div class="loading-center"><div class="loading-spinner"></div></div>';
+  try {
+    const res = await authFetch('/admin/refunds');
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    const { refunds } = data;
+    if (!refunds.length) {
+      container.innerHTML = '<div class="empty-state"><p>Aucune demande de remboursement.</p></div>';
+      return;
+    }
+    const statusLabel = { pending: '⏳ En attente', approved: '✅ Approuvé', rejected: '❌ Refusé' };
+    const statusColor = { pending: '#f59e0b', approved: '#22c55e', rejected: '#ef4444' };
+    container.innerHTML = `<table class="admin-table">
+      <thead><tr><th>ID</th><th>Commande</th><th>Client</th><th>Montant</th><th>Raison</th><th>Statut</th><th>Date</th><th>Actions</th></tr></thead>
+      <tbody>${refunds.map(r => `
+        <tr>
+          <td>#${r.id}</td>
+          <td>#${r.order_id}</td>
+          <td><strong>${esc(r.user_name)}</strong><br><small>${esc(r.user_email)}</small></td>
+          <td>${fmtPrice(r.total_amount)}</td>
+          <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;" title="${esc(r.reason)}">${esc(r.reason)}</td>
+          <td><span style="color:${statusColor[r.status]};font-weight:bold;">${statusLabel[r.status] || r.status}</span>${r.admin_note ? `<br><small style="color:#888;">${esc(r.admin_note)}</small>` : ''}</td>
+          <td>${new Date(r.created_at).toLocaleDateString('fr-FR')}</td>
+          <td>${r.status === 'pending' ? `
+            <button class="btn-primary" style="font-size:12px;padding:6px 10px;margin-bottom:4px;" onclick="approveRefund(${r.id})">✅ Approuver</button>
+            <button class="btn-danger" style="font-size:12px;padding:6px 10px;" onclick="rejectRefund(${r.id})">❌ Refuser</button>
+          ` : '—'}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+  } catch (err) {
+    container.innerHTML = `<div class="error-state"><p>Erreur: ${err.message}</p></div>`;
+  }
+}
+
+async function approveRefund(id) {
+  const note = prompt('Note pour le client (optionnel):') || '';
+  if (!confirm('Confirmer l\'approbation du remboursement ?')) return;
+  try {
+    const res = await authFetch(`/admin/refunds/${id}/approve`, { method: 'PUT', body: JSON.stringify({ admin_note: note }) });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    showToast('Remboursement approuvé.', 'success');
+    loadRefunds();
+  } catch (err) { showToast('Erreur: ' + err.message, 'error'); }
+}
+
+async function rejectRefund(id) {
+  const note = prompt('Raison du refus (obligatoire):');
+  if (!note || !note.trim()) return;
+  if (!confirm('Confirmer le refus du remboursement ?')) return;
+  try {
+    const res = await authFetch(`/admin/refunds/${id}/reject`, { method: 'PUT', body: JSON.stringify({ admin_note: note }) });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    showToast('Remboursement refusé.', 'success');
+    loadRefunds();
+  } catch (err) { showToast('Erreur: ' + err.message, 'error'); }
 }
 
 // Register Service Worker for PWA
