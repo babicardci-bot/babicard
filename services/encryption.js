@@ -5,11 +5,14 @@ const PREFIX = 'ENC:';
 
 function getKey() {
   const key = process.env.CARD_ENCRYPTION_KEY;
-  if (!key) return null;
+  if (!key) {
+    console.error('[ENCRYPTION] FATAL: CARD_ENCRYPTION_KEY non configurée. Le serveur ne peut pas démarrer sans clé de chiffrement.');
+    process.exit(1);
+  }
   // Doit être 64 caractères hex (= 32 octets)
   if (key.length !== 64) {
-    console.error('[ENCRYPTION] CARD_ENCRYPTION_KEY doit faire 64 caractères hex.');
-    return null;
+    console.error('[ENCRYPTION] FATAL: CARD_ENCRYPTION_KEY doit faire exactement 64 caractères hex (32 octets).');
+    process.exit(1);
   }
   return Buffer.from(key, 'hex');
 }

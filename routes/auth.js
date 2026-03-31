@@ -131,8 +131,8 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Email ou mot de passe incorrect.' });
     }
 
-    // Block unverified accounts — NULL treated as unverified for new accounts, 1 = verified
-    if (user.email_verified != null && user.email_verified !== 1) {
+    // Block unverified accounts — only allow login if explicitly verified (= 1)
+    if (user.email_verified !== 1) {
       return res.status(403).json({
         error: 'Veuillez vérifier votre adresse email avant de vous connecter.',
         email_not_verified: true
@@ -306,6 +306,35 @@ router.post('/reset-password', async (req, res) => {
   } catch (err) {
     console.error('Erreur reset-password:', err);
     res.status(500).json({ error: 'Erreur serveur.' });
+  }
+});
+
+// GET /api/auth/unsubscribe — Unsubscribe from marketing emails (no auth required)
+router.get('/unsubscribe', (req, res) => {
+  try {
+    const { token, uid } = req.query;
+    if (!token || !uid) return res.status(400).send('Lien invalide.');
+
+    const db = getDb();
+    const user = db.prepare('SELECT id, email FROM users WHERE id = ?').get(parseInt(uid));
+    if (!user) return res.status(404).send('Compte introuvable.');
+
+    const expected = crypto.createHmac('sha256', process.env.JWT_SECRET || 'secret')
+      .update(`unsub:${user.id}:${user.email}`)
+      .digest('hex');
+
+    if (token !== expected) return res.status(400).send('Lien invalide ou expiré.');
+
+    db.prepare('UPDATE users SET marketing_emails = 0 WHERE id = ?').run(user.id);
+    res.send(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Désinscription</title></head>
+<body style="font-family:sans-serif;text-align:center;padding:60px;background:#f0f0f7;">
+<h2 style="color:#6C63FF;">✓ Désinscription confirmée</h2>
+<p>Vous ne recevrez plus d'emails marketing de Babicard.ci.</p>
+<p><a href="${process.env.SITE_URL || 'https://babicard.ci'}" style="color:#6C63FF;">Retour au site</a></p>
+</body></html>`);
+  } catch (err) {
+    console.error('Erreur unsubscribe:', err);
+    res.status(500).send('Erreur serveur.');
   }
 });
 

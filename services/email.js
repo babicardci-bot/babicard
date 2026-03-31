@@ -856,6 +856,12 @@ async function sendEmailVerificationEmail(user, verifyLink) {
 }
 
 async function sendBroadcastEmail(user, subject, htmlBody) {
+  const crypto = require('crypto');
+  const unsubscribeToken = crypto.createHmac('sha256', process.env.JWT_SECRET || 'secret')
+    .update(`unsub:${user.id}:${user.email}`)
+    .digest('hex');
+  const unsubscribeUrl = `${process.env.SITE_URL || 'https://babicard.ci'}/api/auth/unsubscribe?token=${unsubscribeToken}&uid=${user.id}`;
+
   const htmlContent = `
 <!DOCTYPE html>
 <html lang="fr">
@@ -878,6 +884,7 @@ async function sendBroadcastEmail(user, subject, htmlBody) {
   </div>
   <div style="text-align:center;padding:20px;color:#999;font-size:12px;">
     <p style="margin:0;">© ${new Date().getFullYear()} Babicard.ci — Abidjan, Côte d'Ivoire</p>
+    <p style="margin:6px 0 0;"><a href="${unsubscribeUrl}" style="color:#aaa;font-size:11px;">Se désinscrire des emails marketing</a></p>
   </div>
 </body>
 </html>`;

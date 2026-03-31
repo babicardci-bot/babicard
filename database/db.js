@@ -353,6 +353,14 @@ function migrateDatabase(db) {
     `);
   } catch(e) { console.error('Migration admin_logs:', e.message); }
 
+  try {
+    const userCols = db.prepare("PRAGMA table_info(users)").all().map(c => c.name);
+    if (!userCols.includes('marketing_emails')) {
+      db.prepare("ALTER TABLE users ADD COLUMN marketing_emails INTEGER NOT NULL DEFAULT 1").run();
+      console.log('Migration: marketing_emails ajouté à users.');
+    }
+  } catch(e) { console.error('Migration users marketing_emails:', e.message); }
+
   console.log('Migration vérifiée.');
 }
 
@@ -372,12 +380,14 @@ function seedDefaultData(db) {
       process.exit(1);
     }
     const hash = bcrypt.hashSync(adminPassword, 10);
-    db.prepare(`INSERT OR IGNORE INTO users (name, email, phone, password_hash, role) VALUES (?, ?, ?, ?, ?)`).run('Administrateur', 'babicardci@gmail.com', '+2250708598080', hash, 'admin');
+    db.prepare(`INSERT OR IGNORE INTO users (name, email, phone, password_hash, role, email_verified) VALUES (?, ?, ?, ?, ?, 1)`).run('Administrateur', 'babicardci@gmail.com', '+2250708598080', hash, 'admin');
     console.log('Admin créé: babicardci@gmail.com');
   } else if (adminExists.role !== 'admin') {
     db.prepare('UPDATE users SET role = ? WHERE email = ?').run('admin', 'babicardci@gmail.com');
     console.log('Admin: rôle corrigé → admin');
   }
+  // Ensure admin account is always email_verified
+  db.prepare('UPDATE users SET email_verified = 1 WHERE email = ? AND (email_verified IS NULL OR email_verified != 1)').run('babicardci@gmail.com');
 
   const productCount = db.prepare('SELECT COUNT(*) as count FROM products WHERE seller_id IS NULL').get();
   if (!productCount || productCount.count === 0) {

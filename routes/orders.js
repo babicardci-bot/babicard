@@ -13,6 +13,10 @@ router.post('/', authenticateToken, (req, res) => {
       return res.status(400).json({ error: 'Le panier est vide.' });
     }
 
+    if (items.length > 50) {
+      return res.status(400).json({ error: 'Maximum 50 articles par commande.' });
+    }
+
     if (!payment_method || !['wave', 'orange_money'].includes(payment_method)) {
       return res.status(400).json({ error: 'Méthode de paiement invalide. Choisissez wave ou orange_money.' });
     }
@@ -85,6 +89,11 @@ router.post('/', authenticateToken, (req, res) => {
           total_amount += cardRow.effective_price;
           itemsToInsert.push({ productId: product.id, cardId: cardRow.id, effectivePrice: cardRow.effective_price });
         }
+      }
+
+      // Safety check: max order amount 5,000,000 FCFA
+      if (total_amount > 5_000_000) {
+        throw Object.assign(new Error('Commande trop importante. Montant maximum: 5 000 000 FCFA.'), { statusCode: 400 });
       }
 
       const orderResult = db.prepare(`

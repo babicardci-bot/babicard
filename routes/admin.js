@@ -1,10 +1,20 @@
 const express = require('express');
 const router = express.Router();
+const rateLimit = require('express-rate-limit');
 const { getDb } = require('../database/db');
 const { authenticateToken, requireAdmin, logAdminAction } = require('../middleware/auth');
 const { processDelivery } = require('../services/delivery');
 const { encrypt, decrypt } = require('../services/encryption');
 const { sendWithdrawalStatusEmail, sendSellerApprovalEmail, sendBroadcastEmail } = require('../services/email');
+
+// Rate limiter for card reveal — max 30 reveals per 10 minutes per IP
+const revealLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 30,
+  message: { error: 'Trop de révélations de codes. Réessayez dans 10 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -646,7 +656,7 @@ router.get('/orders/:id', (req, res) => {
 });
 
 // GET /api/admin/cards/:id/reveal — voir le vrai code d'une carte (loggé)
-router.get('/cards/:id/reveal', (req, res) => {
+router.get('/cards/:id/reveal', revealLimiter, (req, res) => {
   try {
     const db = getDb();
     const card = db.prepare('SELECT id, code, pin, serial FROM cards WHERE id = ?').get(req.params.id);
@@ -1006,7 +1016,7 @@ router.post('/broadcast', async (req, res) => {
     if (!body || !body.trim()) return res.status(400).json({ error: 'Message obligatoire.' });
 
     const db = getDb();
-    const users = db.prepare("SELECT id, name, email FROM users WHERE email_verified = 1 OR email_verified IS NULL").all();
+    const users = db.prepare("SELECT id, name, email FROM users WHERE email_verified = 1 AND (marketing_emails IS NULL OR marketing_emails = 1)").all();
 
     if (users.length === 0) return res.json({ message: 'Aucun utilisateur à contacter.', sent: 0, failed: 0 });
 

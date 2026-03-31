@@ -220,6 +220,21 @@ async function processDelivery(orderId, forceRedeliver = false) {
   try {
     results.email = await sendOrderConfirmationEmail(user, order, itemsForNotification);
     console.log(`[DELIVERY] Email ${results.email.success ? 'envoyé' : 'échoué'} à ${user.email}`);
+    if (!results.email.success) {
+      // Alert admin that delivery email failed — user won't receive their codes
+      const adminEmail = process.env.ADMIN_EMAIL || 'support@babicard.ci';
+      const nodemailer = require('nodemailer');
+      const transporter = nodemailer.createTransport({
+        host: process.env.EMAIL_HOST, port: parseInt(process.env.EMAIL_PORT || '465'),
+        secure: true, auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
+      });
+      transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to: adminEmail,
+        subject: `[ALERTE] Email livraison échoué — Commande #${orderId}`,
+        text: `L'email de livraison pour la commande #${orderId} (${user.email}) a échoué.\nErreur: ${results.email.error}\nAction requise: renvoyer les codes manuellement.`
+      }).catch(() => {});
+    }
   } catch (emailErr) {
     console.error('[DELIVERY] Erreur email:', emailErr);
     results.email = { success: false, error: emailErr.message };
