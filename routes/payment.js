@@ -39,50 +39,34 @@ router.post('/djamo/initiate', authenticateToken, async (req, res) => {
 
     db.prepare('UPDATE orders SET payment_ref = ? WHERE id = ?').run(externalId, order_id);
 
-    // Call Djamo API if credentials are configured
-    if (DJAMO_ACCESS_TOKEN && DJAMO_ACCESS_TOKEN !== 'your_djamo_access_token') {
-      try {
-        const chargeRes = await axios.post(
-          `${DJAMO_API_URL}/v1/charges`,
-          {
-            amount: order.total_amount,
-            currency: 'XOF',
-            description: `Commande Babicard #${order_id}`,
-            externalId,
-            onCompletedRedirectionUrl: successUrl,
-            onCanceledRedirectionUrl: cancelUrl
-          },
-          { headers: djamoHeaders() }
-        );
+    // Appel API Djamo
+    try {
+      const chargeRes = await axios.post(
+        `${DJAMO_API_URL}/v1/charges`,
+        {
+          amount: order.total_amount,
+          currency: 'XOF',
+          description: `Commande Babicard #${order_id}`,
+          externalId,
+          onCompletedRedirectionUrl: successUrl,
+          onCanceledRedirectionUrl: cancelUrl
+        },
+        { headers: djamoHeaders() }
+      );
 
-        const charge = chargeRes.data?.data || chargeRes.data;
-        const chargeId  = charge?.id;
-        const paymentUrl = charge?.paymentUrl;
+      const charge = chargeRes.data?.data || chargeRes.data;
+      const chargeId  = charge?.id;
+      const paymentUrl = charge?.paymentUrl;
 
-        if (!paymentUrl) throw new Error('paymentUrl absent de la réponse Djamo');
+      if (!paymentUrl) throw new Error('paymentUrl absent de la réponse Djamo');
 
-        // Store chargeId for webhook matching
-        db.prepare('UPDATE orders SET payment_ref = ? WHERE id = ?').run(chargeId || externalId, order_id);
+      db.prepare('UPDATE orders SET payment_ref = ? WHERE id = ?').run(chargeId || externalId, order_id);
 
-        return res.json({ payment_url: paymentUrl, payment_ref: chargeId || externalId, order_id });
-      } catch (djamoErr) {
-        console.error('Erreur Djamo API:', djamoErr.response?.data || djamoErr.message);
-        return res.status(502).json({ error: 'Erreur lors de l\'initialisation du paiement Djamo. Réessayez.' });
-      }
+      return res.json({ payment_url: paymentUrl, payment_ref: chargeId || externalId, order_id });
+    } catch (djamoErr) {
+      console.error('Erreur Djamo API:', djamoErr.response?.data || djamoErr.message);
+      return res.status(502).json({ error: 'Erreur lors de l\'initialisation du paiement. Réessayez.' });
     }
-
-    // Demo mode — no Djamo credentials configured
-    db.prepare("UPDATE orders SET payment_status = 'paid', paid_at = CURRENT_TIMESTAMP WHERE id = ?").run(order_id);
-    const deliveryResult = await processDelivery(order_id);
-
-    res.json({
-      payment_url: successUrl,
-      payment_ref: externalId,
-      order_id,
-      demo_mode: true,
-      delivery: deliveryResult,
-      message: 'Mode démonstration : paiement auto-approuvé (aucune clé Djamo configurée).'
-    });
   } catch (err) {
     console.error('Erreur Djamo initiate:', err);
     res.status(500).json({ error: 'Erreur lors de l\'initialisation du paiement.' });
