@@ -922,7 +922,7 @@ async function loadAdminOrders() {
                   <strong>${esc(o.user_name)}</strong>
                   <div style="font-size:0.72rem;color:var(--text-muted)">${esc(o.user_email)}</div>
                 </td>
-                <td>${o.payment_method === 'wave' ? '🌊 Wave' : '🟠 Orange'}</td>
+                <td>💳 Djamo</td>
                 <td><strong style="color:#a78bfa">${formatPrice(o.total_amount)}</strong></td>
                 <td><span class="badge badge-${o.payment_status}">${statusLabel(o.payment_status)}</span></td>
                 <td><span class="badge badge-${o.delivery_status}">${statusLabel(o.delivery_status)}</span></td>
@@ -931,6 +931,7 @@ async function loadAdminOrders() {
                   <div class="td-actions">
                     <button class="btn-view" onclick="viewOrderDetail(${o.id})">👁 Voir</button>
                     ${o.payment_status === 'paid' ? `<button class="btn-edit" onclick="redeliverOrder(${o.id})">📬 Reliv.</button>` : ''}
+                    ${o.payment_status === 'pending' ? `<button class="btn-delete" onclick="cancelOrder(${o.id})" style="background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid rgba(239,68,68,0.3)">✕ Annuler</button>` : ''}
                   </div>
                 </td>
               </tr>
@@ -1023,6 +1024,21 @@ async function revealCard(cardId) {
     if (pinEl && data.pin) pinEl.innerHTML = `PIN: <strong>${data.pin}</strong>`;
   } catch(e) {
     showToast('Erreur réseau.', 'error');
+  }
+}
+
+async function cancelOrder(orderId) {
+  if (!confirm(`Annuler la commande #${orderId} ? Les cartes réservées seront libérées.`)) return;
+
+  try {
+    const res = await adminFetch(`/admin/orders/${orderId}/cancel`, { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+
+    showToast(`✅ Commande #${orderId} annulée.`, 'success');
+    loadAdminOrders();
+  } catch (err) {
+    showToast(err.message || 'Erreur annulation', 'error');
   }
 }
 

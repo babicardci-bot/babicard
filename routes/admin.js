@@ -698,6 +698,27 @@ router.get('/cards/:id/reveal', revealLimiter, (req, res) => {
   }
 });
 
+// POST /api/admin/orders/:id/cancel - Cancel a pending order
+router.post('/orders/:id/cancel', (req, res) => {
+  try {
+    const db = getDb();
+    const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(req.params.id);
+    if (!order) return res.status(404).json({ error: 'Commande non trouvée.' });
+    if (order.payment_status !== 'pending') {
+      return res.status(400).json({ error: 'Seules les commandes en attente peuvent être annulées.' });
+    }
+
+    db.prepare("UPDATE orders SET payment_status = 'cancelled', delivery_status = 'cancelled' WHERE id = ?").run(order.id);
+    db.prepare("UPDATE cards SET status = 'available', order_id = NULL WHERE order_id = ? AND status = 'reserved'").run(order.id);
+
+    logAdminAction(req, 'cancel_order', `order:${order.id}`);
+    res.json({ message: 'Commande annulée avec succès.' });
+  } catch (err) {
+    console.error('Erreur cancel order:', err);
+    res.status(500).json({ error: 'Erreur lors de l\'annulation.' });
+  }
+});
+
 // POST /api/admin/orders/:id/redeliver - Manually trigger delivery
 router.post('/orders/:id/redeliver', async (req, res) => {
   try {
