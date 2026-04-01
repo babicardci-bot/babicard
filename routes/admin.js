@@ -522,8 +522,10 @@ router.post('/cards/bulk', (req, res) => {
     const platform = (product.platform || '').toLowerCase();
     const isPSN = platform.includes('psn') || platform.includes('playstation');
     const isItunes = platform.includes('itunes') || platform.includes('app store') || platform.includes('apple');
+    const isXbox = platform.includes('xbox');
     const psnRegex = /^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/i;
     const itunesRegex = /^[A-Z0-9]{16}$/i;
+    const xboxRegex = /^\d{25}$/;
 
     function normalizePSNCode(raw) {
       const clean = raw.replace(/[-\s]/g, '').toUpperCase();
@@ -534,6 +536,12 @@ router.post('/cards/bulk', (req, res) => {
     function normalizeItunesCode(raw) {
       const clean = raw.replace(/[\s-]/g, '').toUpperCase();
       if (clean.length !== 16) return null;
+      return clean;
+    }
+
+    function normalizeXboxCode(raw) {
+      const clean = raw.replace(/[\s-]/g, '');
+      if (clean.length !== 25 || !/^\d{25}$/.test(clean)) return null;
       return clean;
     }
 
@@ -561,6 +569,14 @@ router.post('/cards/bulk', (req, res) => {
             continue;
           }
           code = normalized;
+        } else if (isXbox) {
+          const normalized = normalizeXboxCode(code);
+          if (!normalized || !xboxRegex.test(normalized)) {
+            invalidCodes.push(code);
+            skipped++;
+            continue;
+          }
+          code = normalized;
         }
 
         try {
@@ -582,7 +598,7 @@ router.post('/cards/bulk', (req, res) => {
     const stockCount = db.prepare('SELECT COUNT(*) as count FROM cards WHERE product_id = ? AND status = ?').get(product_id, 'available').count;
     db.prepare('UPDATE products SET stock_count = ? WHERE id = ?').run(stockCount, product_id);
 
-    const formatHint = isPSN ? 'format attendu: XXXX-XXXX-XXXX' : isItunes ? 'format attendu: 16 chiffres sans espace' : '';
+    const formatHint = isPSN ? 'format attendu: XXXX-XXXX-XXXX' : isItunes ? 'format attendu: 16 caractères sans espace' : isXbox ? 'format attendu: 25 chiffres numériques' : '';
     const msg = result.invalidCodes && result.invalidCodes.length > 0
       ? `${result.inserted} carte(s) ajoutée(s). ${result.skipped} ignorée(s) dont ${result.invalidCodes.length} code(s) invalide(s) (${formatHint}).`
       : `${result.inserted} carte(s) ajoutée(s) avec succès. ${result.skipped} ignorée(s).`;
