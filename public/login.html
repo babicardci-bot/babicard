@@ -69,11 +69,14 @@
           </div>
         </div>
 
-        <!-- 2FA field — hidden by default, shown when server requires it -->
-        <div class="form-group" id="twoFaGroup" style="display:none;">
-          <label for="twoFaCode">🔐 Code 2FA (Google Authenticator)</label>
+        <!-- OTP email field — hidden by default -->
+        <div class="form-group" id="otpGroup" style="display:none;">
+          <label for="otpCode" id="otpLabel">📧 Code envoyé par email</label>
           <div class="input-wrapper">
-            <input type="text" id="twoFaCode" name="two_fa_code" placeholder="000000" maxlength="6" autocomplete="one-time-code" inputmode="numeric" style="letter-spacing:6px;font-size:20px;text-align:center;">
+            <input type="text" id="otpCode" placeholder="000000" maxlength="6" autocomplete="one-time-code" inputmode="numeric" style="letter-spacing:8px;font-size:22px;text-align:center;font-weight:700;">
+          </div>
+          <div style="text-align:center;margin-top:8px;">
+            <a href="#" id="resendOtpBtn" onclick="resendOTP(event)" style="font-size:12px;color:var(--primary);text-decoration:none;">↺ Renvoyer le code</a>
           </div>
         </div>
 
@@ -106,8 +109,13 @@
       input.type = input.type === 'password' ? 'text' : 'password';
     }
 
+    let _otpEmail = null;
+    let _otpPending = false;
+
     async function handleLogin(e) {
       e.preventDefault();
+      if (_otpPending) { await verifyOTP(); return; }
+
       const btn = document.getElementById('loginBtn');
       const btnText = btn.querySelector('.btn-text');
       const btnLoader = btn.querySelector('.btn-loader');
@@ -120,35 +128,28 @@
 
       const email = document.getElementById('email').value;
       const password = document.getElementById('password').value;
-      const twoFaCode = document.getElementById('twoFaCode').value.trim();
 
       try {
-        const body = { email, password };
-        if (twoFaCode) body.two_fa_code = twoFaCode;
-
         const response = await fetch('/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body)
+          body: JSON.stringify({ email, password })
         });
 
         const data = await response.json();
 
-        // 2FA setup mandatory — redirect to setup page
-        if (response.ok && data.two_fa_setup_required) {
-          localStorage.setItem('temp_token', data.temp_token);
-          localStorage.setItem('user', JSON.stringify(data.user));
-          window.location.href = '/2fa-setup';
-          return;
-        }
-
-        // 2FA required — show the code field
-        if (response.ok && data.two_fa_required) {
-          document.getElementById('twoFaGroup').style.display = 'block';
-          document.getElementById('twoFaCode').focus();
-          alertBox.textContent = '🔐 Entrez le code de votre application 2FA.';
-          alertBox.classList.remove('hidden', 'alert-error');
-          alertBox.classList.add('alert-success');
+        // OTP email requis
+        if (response.ok && data.email_otp_required) {
+          _otpEmail = email;
+          _otpPending = true;
+          document.getElementById('email').closest('.form-group').style.display = 'none';
+          document.getElementById('password').closest('.form-group').style.display = 'none';
+          document.querySelector('[href="/forgot-password"]').parentElement.style.display = 'none';
+          document.getElementById('otpGroup').style.display = 'block';
+          document.getElementById('otpLabel').textContent = `📧 ${data.message}`;
+          document.getElementById('otpCode').focus();
+          btnText.textContent = 'Vérifier le code →';
+          alertBox.classList.add('hidden');
           return;
         }
 
@@ -163,17 +164,7 @@
           return;
         }
 
-        // Save token
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('user', JSON.stringify(data.user));
-
-        // Redirect based on role
-        const redirect = new URLSearchParams(window.location.search).get('redirect');
-        if (data.user.role === 'admin') {
-          window.location.href = redirect || '/admin';
-        } else {
-          window.location.href = redirect || '/dashboard';
-        }
+        finishLogin(data);
       } catch (err) {
         alertBox.textContent = err.message;
         alertBox.classList.remove('hidden');
@@ -182,6 +173,89 @@
         btnText.classList.remove('hidden');
         btnLoader.classList.add('hidden');
         btn.disabled = false;
+      }
+    }
+
+    async function verifyOTP() {
+      const btn = document.getElementById('loginBtn');
+      const btnText = btn.querySelector('.btn-text');
+      const btnLoader = btn.querySelector('.btn-loader');
+      const alertBox = document.getElementById('alertBox');
+      const code = document.getElementById('otpCode').value.trim();
+
+      if (!code || code.length < 6) {
+        alertBox.textContent = 'Entrez le code à 6 chiffres reçu par email.';
+        alertBox.classList.remove('hidden'); alertBox.classList.add('alert-error');
+        return;
+      }
+
+      alertBox.classList.add('hidden');
+      btnText.classList.add('hidden');
+      btnLoader.classList.remove('hidden');
+      btn.disabled = true;
+
+      try {
+        const response = await fetch('/api/auth/verify-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: _otpEmail, otp_code: code })
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+          alertBox.textContent = data.error || 'Code incorrect.';
+          alertBox.classList.remove('hidden'); alertBox.classList.add('alert-error');
+          document.getElementById('otpCode').value = '';
+          document.getElementById('otpCode').focus();
+          if (data.error && data.error.includes('reconnecter')) {
+            setTimeout(() => window.location.reload(), 2000);
+          }
+          return;
+        }
+        finishLogin(data);
+      } catch (err) {
+        alertBox.textContent = 'Erreur réseau.';
+        alertBox.classList.remove('hidden'); alertBox.classList.add('alert-error');
+      } finally {
+        btnText.classList.remove('hidden');
+        btnLoader.classList.add('hidden');
+        btn.disabled = false;
+      }
+    }
+
+    async function resendOTP(e) {
+      e.preventDefault();
+      if (!_otpEmail) return;
+      // Récupérer le password depuis le champ (même si caché)
+      const password = document.getElementById('password').value;
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: _otpEmail, password })
+      });
+      const data = await res.json();
+      const alertBox = document.getElementById('alertBox');
+      if (res.ok && data.email_otp_required) {
+        alertBox.textContent = '✅ Nouveau code envoyé !';
+        alertBox.classList.remove('hidden', 'alert-error'); alertBox.classList.add('alert-success');
+        document.getElementById('otpCode').value = '';
+        document.getElementById('otpCode').focus();
+      } else {
+        alertBox.textContent = 'Impossible de renvoyer. Rechargez la page.';
+        alertBox.classList.remove('hidden'); alertBox.classList.add('alert-error');
+      }
+    }
+
+    function finishLogin(data) {
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      const redirect = new URLSearchParams(window.location.search).get('redirect');
+      if (data.user.role === 'admin') {
+        window.location.href = redirect || '/admin';
+      } else if (data.user.role === 'seller') {
+        window.location.href = redirect || '/seller';
+      } else {
+        window.location.href = redirect || '/dashboard';
       }
     }
 

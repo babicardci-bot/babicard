@@ -898,4 +898,33 @@ async function sendBroadcastEmail(user, subject, htmlBody) {
   });
 }
 
-module.exports = { sendOrderConfirmationEmail, sendLowStockEmail, sendWithdrawalRequestEmail, sendWithdrawalStatusEmail, sendPasswordResetEmail, sendWelcomeEmail, sendSellerApprovalEmail, sendEmailVerificationEmail, sendDeliveryFailedEmail, sendSellerSaleNotificationEmail, sendBroadcastEmail };
+async function sendLoginOTPEmail(user, code) {
+  const siteUrl = process.env.SITE_URL || 'https://babicard.ci';
+  return sendEmail({
+    to: user.email,
+    subject: `${code} — Votre code de connexion Babicard.ci`,
+    html: `
+    <div style="font-family:Inter,Arial,sans-serif;background:#0d0d1a;padding:40px 0;min-height:100vh;">
+      <div style="max-width:480px;margin:0 auto;background:#13131f;border-radius:16px;overflow:hidden;border:1px solid rgba(108,99,255,0.2);">
+        <div style="background:linear-gradient(135deg,#6C63FF,#a78bfa);padding:32px;text-align:center;">
+          <div style="font-size:2rem;margin-bottom:8px;">🔐</div>
+          <h1 style="color:#fff;margin:0;font-size:1.4rem;font-weight:700;">Code de connexion</h1>
+          <p style="color:rgba(255,255,255,0.8);margin:8px 0 0;font-size:0.9rem;">Babicard.ci</p>
+        </div>
+        <div style="padding:32px;text-align:center;">
+          <p style="color:#a0a0c0;font-size:0.9rem;margin:0 0 24px;">Bonjour <strong style="color:#f0f0ff;">${escHtml(user.name)}</strong>, voici votre code de connexion :</p>
+          <div style="background:#1e1e30;border:2px solid #6C63FF;border-radius:12px;padding:24px;margin:0 auto 24px;display:inline-block;min-width:200px;">
+            <div style="font-size:2.5rem;font-weight:800;letter-spacing:12px;color:#a78bfa;font-family:monospace;">${code}</div>
+          </div>
+          <p style="color:#ef4444;font-size:0.85rem;margin:0 0 8px;">⏰ Ce code expire dans <strong>10 minutes</strong>.</p>
+          <p style="color:#a0a0c0;font-size:0.8rem;margin:0;">Si vous n'avez pas demandé ce code, ignorez cet email.</p>
+        </div>
+        <div style="padding:16px 32px;border-top:1px solid rgba(255,255,255,0.06);text-align:center;">
+          <p style="color:#606080;font-size:0.75rem;margin:0;">Babicard.ci — <a href="${siteUrl}" style="color:#6C63FF;text-decoration:none;">${siteUrl}</a></p>
+        </div>
+      </div>
+    </div>`
+  });
+}
+
+module.exports = { sendOrderConfirmationEmail, sendLowStockEmail, sendWithdrawalRequestEmail, sendWithdrawalStatusEmail, sendPasswordResetEmail, sendWelcomeEmail, sendSellerApprovalEmail, sendEmailVerificationEmail, sendDeliveryFailedEmail, sendSellerSaleNotificationEmail, sendBroadcastEmail, sendLoginOTPEmail };

@@ -6,7 +6,7 @@ const speakeasy = require('speakeasy');
 const QRCode = require('qrcode');
 const { getDb } = require('../database/db');
 const { authenticateToken, generateToken } = require('../middleware/auth');
-const { sendPasswordResetEmail, sendWelcomeEmail, sendEmailVerificationEmail } = require('../services/email');
+const { sendPasswordResetEmail, sendWelcomeEmail, sendEmailVerificationEmail, sendLoginOTPEmail } = require('../services/email');
 
 // POST /api/auth/register
 router.post('/register', async (req, res) => {
@@ -141,32 +141,21 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // 2FA mandatory for admin and seller — force setup if not yet configured
-    if (['admin', 'seller'].includes(user.role) && !user.two_fa_enabled) {
-      // Issue a temporary one-time token so the setup page can call /2fa/setup
-      const tempToken = generateToken(user.id, user.token_version || 0);
+    // Email OTP obligatoire pour admin et vendeurs
+    if (['admin', 'seller'].includes(user.role)) {
+      const db2 = getDb();
+      // Supprimer les anciens OTP non utilisés
+      db2.prepare('DELETE FROM email_otp_tokens WHERE user_id = ? AND used = 0').run(user.id);
+      // Générer un code à 6 chiffres
+      const otpCode = String(Math.floor(100000 + Math.random() * 900000));
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+      db2.prepare('INSERT INTO email_otp_tokens (user_id, code, expires_at) VALUES (?, ?, ?)').run(user.id, otpCode, expiresAt);
+      // Envoyer par email (non bloquant)
+      sendLoginOTPEmail(user, otpCode).catch(err => console.error('[OTP] Erreur envoi email:', err));
       return res.status(200).json({
-        two_fa_setup_required: true,
-        message: 'La double authentification est obligatoire pour votre compte. Configurez-la maintenant.',
-        temp_token: tempToken,
-        user: { id: user.id, name: user.name, email: user.email, role: user.role }
+        email_otp_required: true,
+        message: `Code envoyé à ${user.email.replace(/(.{2}).+(@.+)/, '$1***$2')}. Valide 10 minutes.`
       });
-    }
-
-    // 2FA check — verify TOTP code if 2FA is enabled
-    if (user.two_fa_enabled) {
-      if (!two_fa_code) {
-        return res.status(200).json({ two_fa_required: true, message: 'Code 2FA requis.' });
-      }
-      const validOtp = speakeasy.totp.verify({
-        secret: user.two_fa_secret,
-        encoding: 'base32',
-        token: String(two_fa_code),
-        window: 1
-      });
-      if (!validOtp) {
-        return res.status(401).json({ error: 'Code 2FA invalide. Réessayez.' });
-      }
     }
 
     const token = generateToken(user.id, user.token_version || 0);
@@ -178,6 +167,53 @@ router.post('/login', async (req, res) => {
   } catch (err) {
     console.error('Erreur login:', err);
     res.status(500).json({ error: 'Erreur lors de la connexion.' });
+  }
+});
+
+// POST /api/auth/verify-otp — Vérifie le code OTP envoyé par email
+router.post('/verify-otp', async (req, res) => {
+  try {
+    const { email, otp_code } = req.body;
+    if (!email || !otp_code) return res.status(400).json({ error: 'Email et code requis.' });
+
+    const db = getDb();
+    const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email.toLowerCase().trim());
+    if (!user) return res.status(401).json({ error: 'Code invalide ou expiré.' });
+
+    const record = db.prepare(
+      'SELECT * FROM email_otp_tokens WHERE user_id = ? AND used = 0 ORDER BY created_at DESC LIMIT 1'
+    ).get(user.id);
+
+    if (!record) return res.status(401).json({ error: 'Code invalide ou expiré. Reconnectez-vous.' });
+
+    // Max 5 tentatives
+    if (record.attempts >= 5) {
+      db.prepare('UPDATE email_otp_tokens SET used = 1 WHERE id = ?').run(record.id);
+      return res.status(429).json({ error: 'Trop de tentatives. Veuillez vous reconnecter.' });
+    }
+
+    if (new Date(record.expires_at) < new Date()) {
+      db.prepare('UPDATE email_otp_tokens SET used = 1 WHERE id = ?').run(record.id);
+      return res.status(401).json({ error: 'Code expiré. Veuillez vous reconnecter.' });
+    }
+
+    if (record.code !== String(otp_code).trim()) {
+      db.prepare('UPDATE email_otp_tokens SET attempts = attempts + 1 WHERE id = ?').run(record.id);
+      const remaining = 4 - record.attempts;
+      return res.status(401).json({ error: `Code incorrect. ${remaining} tentative(s) restante(s).` });
+    }
+
+    // Code valide — invalider et émettre JWT
+    db.prepare('UPDATE email_otp_tokens SET used = 1 WHERE id = ?').run(record.id);
+    const token = generateToken(user.id, user.token_version || 0);
+    res.json({
+      message: 'Connexion réussie!',
+      token,
+      user: { id: user.id, name: user.name, email: user.email, phone: user.phone, role: user.role, created_at: user.created_at }
+    });
+  } catch (err) {
+    console.error('Erreur verify-otp:', err);
+    res.status(500).json({ error: 'Erreur serveur.' });
   }
 });
 

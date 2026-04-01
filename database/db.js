@@ -396,6 +396,23 @@ function migrateDatabase(db) {
     console.log('Migration: refund_requests table OK.');
   } catch(e) { console.error('Migration refund_requests:', e.message); }
 
+  // Email OTP tokens table (remplace TOTP 2FA)
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS email_otp_tokens (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        code TEXT NOT NULL,
+        expires_at DATETIME NOT NULL,
+        used INTEGER NOT NULL DEFAULT 0,
+        attempts INTEGER NOT NULL DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_email_otp_user ON email_otp_tokens(user_id, used);
+    `);
+  } catch(e) { console.error('Migration email_otp_tokens:', e.message); }
+
   console.log('Migration vérifiée.');
 }
 
