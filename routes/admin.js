@@ -518,15 +518,23 @@ router.post('/cards/bulk', (req, res) => {
       VALUES (?, ?, ?, ?, 'available')
     `);
 
-    // Normalize and validate PSN code format if product is PSN
-    const isPSN = product.platform && product.platform.toLowerCase().includes('psn');
+    // Normalize and validate code format based on platform
+    const platform = (product.platform || '').toLowerCase();
+    const isPSN = platform.includes('psn') || platform.includes('playstation');
+    const isItunes = platform.includes('itunes') || platform.includes('app store') || platform.includes('apple');
     const psnRegex = /^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/i;
+    const itunesRegex = /^[A-Z0-9]{16}$/i;
 
     function normalizePSNCode(raw) {
-      // Remove all dashes/spaces, uppercase
       const clean = raw.replace(/[-\s]/g, '').toUpperCase();
       if (clean.length !== 12) return null;
       return `${clean.slice(0,4)}-${clean.slice(4,8)}-${clean.slice(8,12)}`;
+    }
+
+    function normalizeItunesCode(raw) {
+      const clean = raw.replace(/[\s-]/g, '').toUpperCase();
+      if (clean.length !== 16) return null;
+      return clean;
     }
 
     const insertMany = db.transaction((cards) => {
@@ -536,6 +544,7 @@ router.post('/cards/bulk', (req, res) => {
       for (const card of cards) {
         if (!card.code || !card.code.trim()) { skipped++; continue; }
         let code = card.code.trim();
+
         if (isPSN) {
           const normalized = normalizePSNCode(code);
           if (!normalized || !psnRegex.test(normalized)) {
@@ -544,7 +553,16 @@ router.post('/cards/bulk', (req, res) => {
             continue;
           }
           code = normalized;
+        } else if (isItunes) {
+          const normalized = normalizeItunesCode(code);
+          if (!normalized || !itunesRegex.test(normalized)) {
+            invalidCodes.push(code);
+            skipped++;
+            continue;
+          }
+          code = normalized;
         }
+
         try {
           insertCard.run(
             product_id,
@@ -564,8 +582,9 @@ router.post('/cards/bulk', (req, res) => {
     const stockCount = db.prepare('SELECT COUNT(*) as count FROM cards WHERE product_id = ? AND status = ?').get(product_id, 'available').count;
     db.prepare('UPDATE products SET stock_count = ? WHERE id = ?').run(stockCount, product_id);
 
+    const formatHint = isPSN ? 'format attendu: XXXX-XXXX-XXXX' : isItunes ? 'format attendu: 16 chiffres sans espace' : '';
     const msg = result.invalidCodes && result.invalidCodes.length > 0
-      ? `${result.inserted} carte(s) ajoutée(s). ${result.skipped} ignorée(s) dont ${result.invalidCodes.length} code(s) PSN invalide(s) (format attendu: XXXX-XXXX-XXXX).`
+      ? `${result.inserted} carte(s) ajoutée(s). ${result.skipped} ignorée(s) dont ${result.invalidCodes.length} code(s) invalide(s) (${formatHint}).`
       : `${result.inserted} carte(s) ajoutée(s) avec succès. ${result.skipped} ignorée(s).`;
 
     res.status(201).json({
