@@ -408,22 +408,10 @@ async function proceedToPayment() {
     const paymentData = await paymentRes.json();
 
     if (paymentData.demo_mode) {
-      showToast('🧪 Mode démo: Simulation du paiement...', 'info');
-      setTimeout(async () => {
-        try {
-          const simRes = await authFetch('/payment/simulate', {
-            method: 'POST',
-            body: JSON.stringify({ payment_ref: paymentData.payment_ref, success: true })
-          });
-          if (simRes.ok) {
-            cart = []; saveCart(); updateCartUI(); toggleCart();
-            showToast('✅ Paiement simulé! Codes envoyés par email.', 'success');
-            setTimeout(() => { window.location.href = `/dashboard?order=${orderId}&status=success`; }, 2000);
-          } else {
-            showToast('Erreur paiement simulation', 'error');
-          }
-        } catch (e) { showToast('Erreur: ' + e.message, 'error'); }
-      }, 1500);
+      // Codes already delivered in initiate route — just redirect
+      cart = []; saveCart(); updateCartUI();
+      showToast('✅ Paiement confirmé ! Codes envoyés par email.', 'success');
+      setTimeout(() => { window.location.href = `/dashboard?order=${orderId}&status=success`; }, 1500);
     } else {
       cart = []; saveCart();
       showToast('Redirection vers la page de paiement...', 'info');
