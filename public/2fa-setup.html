@@ -190,7 +190,7 @@
         localStorage.removeItem('temp_token');
 
         setTimeout(() => {
-          window.location.href = user.role === 'admin' ? '/admin' : '/seller-dashboard';
+          window.location.href = user.role === 'admin' ? '/admin' : '/seller';
         }, 1200);
       } catch (e) {
         showAlert('Erreur de connexion.', 'error');
