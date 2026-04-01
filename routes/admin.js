@@ -526,12 +526,14 @@ router.post('/cards/bulk', (req, res) => {
     const isNetflix = platform.includes('netflix');
     const isGooglePlay = platform.includes('google play') || platform.includes('google');
     const isSteam = platform.includes('steam');
+    const isAmazon = platform.includes('amazon');
     const psnRegex = /^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/i;
     const itunesRegex = /^[A-Z0-9]{16}$/i;
     const xboxRegex = /^\d{25}$/;
     const netflixRegex = /^[A-Z0-9]{11}$/i;
     const googlePlayRegex = /^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/i;
     const steamRegex = /^[A-Z0-9]{15}$/i;
+    const amazonRegex = /^[A-Z0-9]{14,15}$/i;
 
     function normalizePSNCode(raw) {
       const clean = raw.replace(/[-\s]/g, '').toUpperCase();
@@ -566,6 +568,12 @@ router.post('/cards/bulk', (req, res) => {
     function normalizeSteamCode(raw) {
       const clean = raw.replace(/[\s-]/g, '').toUpperCase();
       if (clean.length !== 15) return null;
+      return clean;
+    }
+
+    function normalizeAmazonCode(raw) {
+      const clean = raw.replace(/[\s-]/g, '').toUpperCase();
+      if (clean.length < 14 || clean.length > 15) return null;
       return clean;
     }
 
@@ -625,6 +633,14 @@ router.post('/cards/bulk', (req, res) => {
             continue;
           }
           code = normalized;
+        } else if (isAmazon) {
+          const normalized = normalizeAmazonCode(code);
+          if (!normalized || !amazonRegex.test(normalized)) {
+            invalidCodes.push(code);
+            skipped++;
+            continue;
+          }
+          code = normalized;
         }
 
         try {
@@ -646,7 +662,7 @@ router.post('/cards/bulk', (req, res) => {
     const stockCount = db.prepare('SELECT COUNT(*) as count FROM cards WHERE product_id = ? AND status = ?').get(product_id, 'available').count;
     db.prepare('UPDATE products SET stock_count = ? WHERE id = ?').run(stockCount, product_id);
 
-    const formatHint = isPSN ? 'format attendu: XXXX-XXXX-XXXX' : isItunes ? 'format attendu: 16 caractères sans espace' : isXbox ? 'format attendu: 25 chiffres numériques' : isNetflix ? 'format attendu: 11 caractères' : isGooglePlay ? 'format attendu: XXXX-XXXX-XXXX-XXXX' : isSteam ? 'format attendu: 15 caractères alphanumériques' : '';
+    const formatHint = isPSN ? 'format attendu: XXXX-XXXX-XXXX' : isItunes ? 'format attendu: 16 caractères sans espace' : isXbox ? 'format attendu: 25 chiffres numériques' : isNetflix ? 'format attendu: 11 caractères' : isGooglePlay ? 'format attendu: XXXX-XXXX-XXXX-XXXX' : isSteam ? 'format attendu: 15 caractères alphanumériques' : isAmazon ? 'format attendu: 14 ou 15 caractères alphanumériques' : '';
     const msg = result.invalidCodes && result.invalidCodes.length > 0
       ? `${result.inserted} carte(s) ajoutée(s). ${result.skipped} ignorée(s) dont ${result.invalidCodes.length} code(s) invalide(s) (${formatHint}).`
       : `${result.inserted} carte(s) ajoutée(s) avec succès. ${result.skipped} ignorée(s).`;
