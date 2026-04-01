@@ -518,22 +518,44 @@ router.post('/cards/bulk', (req, res) => {
       VALUES (?, ?, ?, ?, 'available')
     `);
 
+    // Normalize and validate PSN code format if product is PSN
+    const isPSN = product.platform && product.platform.toLowerCase().includes('psn');
+    const psnRegex = /^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/i;
+
+    function normalizePSNCode(raw) {
+      // Remove all dashes/spaces, uppercase
+      const clean = raw.replace(/[-\s]/g, '').toUpperCase();
+      if (clean.length !== 12) return null;
+      return `${clean.slice(0,4)}-${clean.slice(4,8)}-${clean.slice(8,12)}`;
+    }
+
     const insertMany = db.transaction((cards) => {
       let inserted = 0;
       let skipped = 0;
+      const invalidCodes = [];
       for (const card of cards) {
         if (!card.code || !card.code.trim()) { skipped++; continue; }
+        let code = card.code.trim();
+        if (isPSN) {
+          const normalized = normalizePSNCode(code);
+          if (!normalized || !psnRegex.test(normalized)) {
+            invalidCodes.push(code);
+            skipped++;
+            continue;
+          }
+          code = normalized;
+        }
         try {
           insertCard.run(
             product_id,
-            encrypt(card.code.trim()),
+            encrypt(code),
             card.pin ? encrypt(card.pin) : null,
             card.serial ? encrypt(card.serial) : null
           );
           inserted++;
         } catch (e) { skipped++; }
       }
-      return { inserted, skipped };
+      return { inserted, skipped, invalidCodes };
     });
 
     const result = insertMany(cards);
@@ -542,10 +564,15 @@ router.post('/cards/bulk', (req, res) => {
     const stockCount = db.prepare('SELECT COUNT(*) as count FROM cards WHERE product_id = ? AND status = ?').get(product_id, 'available').count;
     db.prepare('UPDATE products SET stock_count = ? WHERE id = ?').run(stockCount, product_id);
 
+    const msg = result.invalidCodes && result.invalidCodes.length > 0
+      ? `${result.inserted} carte(s) ajoutée(s). ${result.skipped} ignorée(s) dont ${result.invalidCodes.length} code(s) PSN invalide(s) (format attendu: XXXX-XXXX-XXXX).`
+      : `${result.inserted} carte(s) ajoutée(s) avec succès. ${result.skipped} ignorée(s).`;
+
     res.status(201).json({
-      message: `${result.inserted} carte(s) ajoutée(s) avec succès. ${result.skipped} ignorée(s).`,
+      message: msg,
       inserted: result.inserted,
       skipped: result.skipped,
+      invalid_codes: result.invalidCodes || [],
       total_stock: stockCount
     });
   } catch (err) {
