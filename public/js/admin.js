@@ -35,6 +35,12 @@ window.addEventListener('DOMContentLoaded', async () => {
     });
     const data = await res.json();
 
+    if (res.status === 403 && data.two_fa_setup_required) {
+      localStorage.setItem('temp_token', authToken);
+      window.location.href = '/2fa-setup';
+      return;
+    }
+
     if (!res.ok || !data.user || data.user.role !== 'admin') {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
@@ -173,6 +179,16 @@ async function adminFetch(url, options = {}) {
     localStorage.removeItem('token');
     window.location.href = '/login';
     return;
+  }
+  if (res.status === 403) {
+    const data = await res.clone().json().catch(() => ({}));
+    if (data.two_fa_setup_required) {
+      localStorage.setItem('temp_token', authToken);
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      localStorage.setItem('user', JSON.stringify(user));
+      window.location.href = '/2fa-setup';
+      return;
+    }
   }
   return res;
 }

@@ -214,16 +214,6 @@ function updateCartUI() {
     estimateNote.remove();
   }
 
-  // Show/hide phone input for Orange Money
-  const paymentRadios = document.querySelectorAll('input[name="paymentMethod"]');
-  const phoneInput = document.getElementById('paymentPhone');
-  paymentRadios.forEach(radio => {
-    radio.addEventListener('change', () => {
-      if (phoneInput) {
-        phoneInput.style.display = radio.value === 'orange_money' ? 'block' : 'none';
-      }
-    });
-  });
 }
 
 // ============ CART SIDEBAR ============
@@ -299,9 +289,6 @@ async function confirmDeliveryAndPay() {
 
 // ============ CHECKOUT ============
 async function checkout(deliveryEmail, deliveryPhone) {
-  const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked')?.value || 'wave';
-  const phone = deliveryPhone || document.getElementById('paymentPhone')?.value;
-
   const checkoutBtn = document.getElementById('checkoutBtn');
   const originalText = checkoutBtn?.textContent;
   if (checkoutBtn) {
@@ -317,7 +304,7 @@ async function checkout(deliveryEmail, deliveryPhone) {
 
     const orderRes = await authFetch('/orders', {
       method: 'POST',
-      body: JSON.stringify({ items, payment_method: paymentMethod, delivery_email: deliveryEmail, delivery_phone: deliveryPhone })
+      body: JSON.stringify({ items, payment_method: 'djamo', delivery_email: deliveryEmail, delivery_phone: deliveryPhone })
     });
 
     if (!orderRes || !orderRes.ok) {
@@ -330,7 +317,7 @@ async function checkout(deliveryEmail, deliveryPhone) {
     const actualTotal = orderData.order.total_amount;
 
     // Show order confirmation with real per-card prices before payment
-    showOrderConfirmModal(orderId, actualTotal, orderData.items || [], paymentMethod, phone);
+    showOrderConfirmModal(orderId, actualTotal, orderData.items || []);
 
   } catch (err) {
     showToast(err.message || 'Erreur lors du paiement', 'error');
@@ -364,14 +351,12 @@ function buildOrderConfirmModal() {
   document.body.appendChild(overlay);
 }
 
-let _pendingOrderId = null, _pendingPaymentMethod = null, _pendingPhone = null;
+let _pendingOrderId = null;
 
-function showOrderConfirmModal(orderId, total, items, paymentMethod, phone) {
+function showOrderConfirmModal(orderId, total, items) {
   if (!document.getElementById('orderConfirmOverlay')) buildOrderConfirmModal();
 
   _pendingOrderId = orderId;
-  _pendingPaymentMethod = paymentMethod;
-  _pendingPhone = phone;
 
   // Group items by product name to show summary
   const grouped = {};
@@ -403,22 +388,16 @@ function showOrderConfirmModal(orderId, total, items, paymentMethod, phone) {
 
 async function proceedToPayment() {
   const orderId = _pendingOrderId;
-  const paymentMethod = _pendingPaymentMethod;
-  const phone = _pendingPhone;
 
   const btn = document.getElementById('orderConfirmPayBtn');
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Traitement...'; }
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Redirection Djamo...'; }
 
   document.getElementById('orderConfirmOverlay').style.display = 'none';
 
   try {
-    const paymentBody = { order_id: orderId };
-    if (paymentMethod === 'orange_money' && phone) paymentBody.phone = phone;
-
-    const paymentEndpoint = paymentMethod === 'wave' ? '/payment/wave/initiate' : '/payment/orange/initiate';
-    const paymentRes = await authFetch(paymentEndpoint, {
+    const paymentRes = await authFetch('/payment/djamo/initiate', {
       method: 'POST',
-      body: JSON.stringify(paymentBody)
+      body: JSON.stringify({ order_id: orderId })
     });
 
     if (!paymentRes || !paymentRes.ok) {

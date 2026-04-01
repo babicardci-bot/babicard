@@ -166,6 +166,7 @@ app.get('/seller', (req, res) => res.sendFile(path.join(__dirname, 'public', 'se
 app.get('/seller-register', (req, res) => res.sendFile(path.join(__dirname, 'public', 'seller-register.html')));
 app.get('/forgot-password', (req, res) => res.sendFile(path.join(__dirname, 'public', 'forgot-password.html')));
 app.get('/reset-password', (req, res) => res.sendFile(path.join(__dirname, 'public', 'reset-password.html')));
+app.get('/2fa-setup', (_req, res) => res.sendFile(path.join(__dirname, 'public', '2fa-setup.html')));
 app.get('/about', (req, res) => res.sendFile(path.join(__dirname, 'public', 'about.html')));
 app.get('/faq', (req, res) => res.sendFile(path.join(__dirname, 'public', 'faq.html')));
 app.get('/cgu', (req, res) => res.sendFile(path.join(__dirname, 'public', 'cgu.html')));

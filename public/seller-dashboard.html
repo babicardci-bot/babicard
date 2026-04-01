@@ -516,6 +516,15 @@
           headers: { 'Authorization': 'Bearer ' + token }
         });
 
+        if (res.status === 403) {
+          const errData = await res.json().catch(() => ({}));
+          if (errData.two_fa_setup_required) {
+            localStorage.setItem('temp_token', token);
+            window.location.href = '/2fa-setup';
+            return;
+          }
+        }
+
         if (!res.ok) {
           // No seller profile
           document.getElementById('pendingIcon').textContent = '🏪';

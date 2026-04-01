@@ -141,7 +141,19 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // 2FA check — required for admin and seller accounts if enabled
+    // 2FA mandatory for admin and seller — force setup if not yet configured
+    if (['admin', 'seller'].includes(user.role) && !user.two_fa_enabled) {
+      // Issue a temporary one-time token so the setup page can call /2fa/setup
+      const tempToken = generateToken(user.id, user.token_version || 0);
+      return res.status(200).json({
+        two_fa_setup_required: true,
+        message: 'La double authentification est obligatoire pour votre compte. Configurez-la maintenant.',
+        temp_token: tempToken,
+        user: { id: user.id, name: user.name, email: user.email, role: user.role }
+      });
+    }
+
+    // 2FA check — verify TOTP code if 2FA is enabled
     if (user.two_fa_enabled) {
       if (!two_fa_code) {
         return res.status(200).json({ two_fa_required: true, message: 'Code 2FA requis.' });
@@ -363,7 +375,7 @@ router.post('/2fa/setup', authenticateToken, async (req, res) => {
     db.prepare('UPDATE users SET two_fa_secret = ? WHERE id = ?').run(secret.base32, req.user.id);
 
     const qrCodeUrl = await QRCode.toDataURL(secret.otpauth_url);
-    res.json({ qr_code: qrCodeUrl, secret: secret.base32, message: 'Scannez le QR code avec Google Authenticator puis confirmez avec un code.' });
+    res.json({ qr_code: qrCodeUrl, secret: secret.base32, manual_key: secret.base32, message: 'Scannez le QR code avec Google Authenticator puis confirmez avec un code.' });
   } catch (err) {
     console.error('Erreur 2FA setup:', err);
     res.status(500).json({ error: 'Erreur configuration 2FA.' });
@@ -373,25 +385,29 @@ router.post('/2fa/setup', authenticateToken, async (req, res) => {
 // POST /api/auth/2fa/enable — Verify code and enable 2FA
 router.post('/2fa/enable', authenticateToken, (req, res) => {
   try {
-    const { code } = req.body;
-    if (!code) return res.status(400).json({ error: 'Code requis.' });
+    const { code, token } = req.body;
+    const otpCode = code || token;
+    if (!otpCode) return res.status(400).json({ error: 'Code requis.' });
 
     const db = getDb();
-    const user = db.prepare('SELECT two_fa_secret, two_fa_enabled FROM users WHERE id = ?').get(req.user.id);
+    const user = db.prepare('SELECT id, two_fa_secret, two_fa_enabled, token_version, role FROM users WHERE id = ?').get(req.user.id);
     if (!user.two_fa_secret) return res.status(400).json({ error: 'Lancez d\'abord la configuration 2FA.' });
     if (user.two_fa_enabled) return res.status(400).json({ error: '2FA déjà activé.' });
 
     const valid = speakeasy.totp.verify({
       secret: user.two_fa_secret,
       encoding: 'base32',
-      token: String(code),
+      token: String(otpCode),
       window: 1
     });
 
     if (!valid) return res.status(400).json({ error: 'Code invalide. Réessayez.' });
 
     db.prepare('UPDATE users SET two_fa_enabled = 1 WHERE id = ?').run(req.user.id);
-    res.json({ message: '2FA activé avec succès. Votre compte est maintenant sécurisé.' });
+
+    // Issue a fresh token now that 2FA is fully configured
+    const freshToken = generateToken(user.id, user.token_version || 0);
+    res.json({ message: '2FA activé avec succès. Votre compte est maintenant sécurisé.', token: freshToken });
   } catch (err) {
     console.error('Erreur 2FA enable:', err);
     res.status(500).json({ error: 'Erreur activation 2FA.' });

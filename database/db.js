@@ -148,7 +148,6 @@ function initializeDatabase() {
     CREATE INDEX IF NOT EXISTS idx_seller_earnings_seller ON seller_earnings(seller_id);
     CREATE INDEX IF NOT EXISTS idx_orders_payment_status ON orders(payment_status);
     CREATE INDEX IF NOT EXISTS idx_seller_earnings_status ON seller_earnings(status);
-    CREATE INDEX IF NOT EXISTS idx_cards_seller_status ON cards(seller_id, status);
   `);
 
   migrateDatabase(db);
@@ -253,6 +252,7 @@ function migrateDatabase(db) {
       db.prepare("ALTER TABLE cards ADD COLUMN seller_id INTEGER").run();
       console.log('Migration: seller_id ajouté à cards.');
     }
+    db.prepare("CREATE INDEX IF NOT EXISTS idx_cards_seller_status ON cards(seller_id, status)").run();
   } catch(e) { console.error('Migration cards seller_id:', e.message); }
 
   // Add PIN brute-force protection columns to seller_profiles
@@ -272,8 +272,11 @@ function migrateDatabase(db) {
   try {
     const userCols = db.prepare("PRAGMA table_info(users)").all().map(c => c.name);
     if (!userCols.includes('email_verified')) {
-      db.prepare("ALTER TABLE users ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 1").run();
-      console.log('Migration: email_verified ajouté à users.');
+      // DEFAULT 0 — new accounts must verify. Existing accounts set to 1 below.
+      db.prepare("ALTER TABLE users ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 0").run();
+      // All existing accounts (created before email verification was added) are considered verified
+      db.prepare("UPDATE users SET email_verified = 1 WHERE email_verified = 0").run();
+      console.log('Migration: email_verified ajouté à users (existants marqués vérifiés).');
     }
     if (!userCols.includes('token_version')) {
       db.prepare("ALTER TABLE users ADD COLUMN token_version INTEGER NOT NULL DEFAULT 0").run();

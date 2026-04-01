@@ -1,291 +1,186 @@
 const express = require('express');
 const router = express.Router();
 const axios = require('axios');
+const crypto = require('crypto');
 const { v4: uuidv4 } = require('uuid');
 const { getDb } = require('../database/db');
 const { authenticateToken, requireAdmin } = require('../middleware/auth');
 const { processDelivery } = require('../services/delivery');
 
-// ===== WAVE CI =====
+const DJAMO_API_URL = process.env.DJAMO_API_URL || 'https://apibusiness.civ.staging.djam.ooo';
+const DJAMO_ACCESS_TOKEN = process.env.DJAMO_ACCESS_TOKEN;
+const DJAMO_COMPANY_ID = process.env.DJAMO_COMPANY_ID;
+const DJAMO_WEBHOOK_SECRET = process.env.DJAMO_WEBHOOK_SECRET;
 
-// POST /api/payment/wave/initiate (protected)
-router.post('/wave/initiate', authenticateToken, async (req, res) => {
+function djamoHeaders() {
+  return {
+    'Authorization': `Bearer ${DJAMO_ACCESS_TOKEN}`,
+    'X-Company-Id': DJAMO_COMPANY_ID,
+    'Content-Type': 'application/json'
+  };
+}
+
+// ===== DJAMO =====
+
+// POST /api/payment/djamo/initiate
+router.post('/djamo/initiate', authenticateToken, async (req, res) => {
   try {
     const { order_id } = req.body;
     const db = getDb();
 
     const order = db.prepare('SELECT * FROM orders WHERE id = ? AND user_id = ?').get(order_id, req.user.id);
-    if (!order) {
-      return res.status(404).json({ error: 'Commande non trouvée.' });
-    }
+    if (!order) return res.status(404).json({ error: 'Commande non trouvée.' });
+    if (order.payment_status !== 'pending') return res.status(400).json({ error: 'Cette commande a déjà été traitée.' });
 
-    if (order.payment_status !== 'pending') {
-      return res.status(400).json({ error: 'Cette commande a déjà été traitée.' });
-    }
+    const siteUrl = process.env.SITE_URL || 'http://localhost:3000';
+    const externalId = `BABI-${uuidv4().split('-')[0].toUpperCase()}-${order_id}`;
+    const successUrl = `${siteUrl}/dashboard?order=${order_id}&status=success`;
+    const cancelUrl  = `${siteUrl}/dashboard?order=${order_id}&status=failed`;
 
-    const paymentRef = `WAVE-${uuidv4().split('-')[0].toUpperCase()}-${order_id}`;
-    const callbackUrl = `${process.env.SITE_URL || 'http://localhost:3000'}/api/payment/wave/callback`;
-    const successUrl = `${process.env.SITE_URL || 'http://localhost:3000'}/dashboard?order=${order_id}&status=success`;
-    const errorUrl = `${process.env.SITE_URL || 'http://localhost:3000'}/dashboard?order=${order_id}&status=failed`;
+    db.prepare('UPDATE orders SET payment_ref = ? WHERE id = ?').run(externalId, order_id);
 
-    // Update order with payment ref
-    db.prepare('UPDATE orders SET payment_ref = ? WHERE id = ?').run(paymentRef, order_id);
-
-    // Try to call Wave API if key is configured
-    if (process.env.WAVE_API_KEY && process.env.WAVE_API_KEY !== 'your_wave_api_key') {
+    // Call Djamo API if credentials are configured
+    if (DJAMO_ACCESS_TOKEN && DJAMO_ACCESS_TOKEN !== 'your_djamo_access_token') {
       try {
-        const waveResponse = await axios.post(
-          'https://api.wave.com/v1/checkout/sessions',
+        const chargeRes = await axios.post(
+          `${DJAMO_API_URL}/v1/charges`,
           {
             amount: order.total_amount,
             currency: 'XOF',
-            error_url: errorUrl,
-            success_url: successUrl,
-            client_reference: paymentRef
+            description: `Commande Babicard #${order_id}`,
+            externalId,
+            onCompletedRedirectionUrl: successUrl,
+            onCanceledRedirectionUrl: cancelUrl
           },
-          {
-            headers: {
-              'Authorization': `Bearer ${process.env.WAVE_API_KEY}`,
-              'Content-Type': 'application/json'
-            }
-          }
+          { headers: djamoHeaders() }
         );
 
-        return res.json({
-          payment_url: waveResponse.data.wave_launch_url || waveResponse.data.checkout_url,
-          payment_ref: paymentRef,
-          order_id
-        });
-      } catch (waveErr) {
-        console.error('Erreur Wave API:', waveErr.response?.data || waveErr.message);
+        const charge = chargeRes.data?.data || chargeRes.data;
+        const chargeId  = charge?.id;
+        const paymentUrl = charge?.paymentUrl;
+
+        if (!paymentUrl) throw new Error('paymentUrl absent de la réponse Djamo');
+
+        // Store chargeId for webhook matching
+        db.prepare('UPDATE orders SET payment_ref = ? WHERE id = ?').run(chargeId || externalId, order_id);
+
+        return res.json({ payment_url: paymentUrl, payment_ref: chargeId || externalId, order_id });
+      } catch (djamoErr) {
+        console.error('Erreur Djamo API:', djamoErr.response?.data || djamoErr.message);
+        return res.status(502).json({ error: 'Erreur lors de l\'initialisation du paiement Djamo. Réessayez.' });
       }
     }
 
-    // Demo mode: auto-process payment directly (no separate /simulate call needed)
+    // Demo mode — no Djamo credentials configured
     db.prepare("UPDATE orders SET payment_status = 'paid', paid_at = CURRENT_TIMESTAMP WHERE id = ?").run(order_id);
     const deliveryResult = await processDelivery(order_id);
 
     res.json({
       payment_url: successUrl,
-      payment_ref: paymentRef,
+      payment_ref: externalId,
       order_id,
       demo_mode: true,
       delivery: deliveryResult,
-      message: 'Mode démonstration: paiement auto-approuvé (aucune clé Wave configurée).'
+      message: 'Mode démonstration : paiement auto-approuvé (aucune clé Djamo configurée).'
     });
   } catch (err) {
-    console.error('Erreur Wave initiate:', err);
-    res.status(500).json({ error: 'Erreur lors de l\'initialisation du paiement Wave.' });
+    console.error('Erreur Djamo initiate:', err);
+    res.status(500).json({ error: 'Erreur lors de l\'initialisation du paiement.' });
   }
 });
 
-// POST /api/payment/wave/callback (webhook)
-router.post('/wave/callback', express.raw({ type: 'application/json' }), async (req, res) => {
+// GET /api/payment/djamo/status/:chargeId
+router.get('/djamo/status/:chargeId', authenticateToken, async (req, res) => {
   try {
-    const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-    const { client_reference, status, payment_id } = body;
-
-    if (!client_reference) {
-      return res.status(400).json({ error: 'Référence manquante.' });
-    }
-    // Validate payment_ref format (basic protection)
-    if (!client_reference || typeof client_reference !== 'string' || client_reference.length > 100) {
-      return res.status(400).json({ error: 'Invalid reference.' });
-    }
+    const { chargeId } = req.params;
+    if (!chargeId || chargeId.length > 100) return res.status(400).json({ error: 'chargeId invalide.' });
 
     const db = getDb();
-    const order = db.prepare('SELECT * FROM orders WHERE payment_ref = ?').get(client_reference);
+    const order = db.prepare('SELECT id, payment_status, delivery_status FROM orders WHERE payment_ref = ? AND user_id = ?').get(chargeId, req.user.id);
+    if (!order) return res.status(404).json({ error: 'Commande non trouvée.' });
 
-    if (!order) {
-      return res.status(404).json({ error: 'Commande non trouvée.' });
+    if (!DJAMO_ACCESS_TOKEN || DJAMO_ACCESS_TOKEN === 'your_djamo_access_token') {
+      return res.json({ chargeId, status: order.payment_status, order_id: order.id });
     }
 
-    if (status === 'succeeded' || status === 'paid' || status === 'complete') {
-      // Idempotency: skip if already paid
-      if (order.payment_status === 'paid') {
-        return res.json({ received: true, skipped: 'already_paid' });
-      }
-      // Mark as paid
-      db.prepare(`
-        UPDATE orders SET payment_status = 'paid', paid_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-      `).run(order.id);
+    const chargeRes = await axios.get(`${DJAMO_API_URL}/v1/charges/${chargeId}`, { headers: djamoHeaders() });
+    const charge = chargeRes.data?.data || chargeRes.data;
+    const status = charge?.status;
 
-      // Process delivery
-      await processDelivery(order.id);
-    } else if (status === 'failed' || status === 'cancelled') {
-      if (order.payment_status !== 'pending') {
-        return res.json({ received: true, skipped: 'not_pending' });
+    res.json({ chargeId, status, order_id: order.id });
+  } catch (err) {
+    console.error('Erreur Djamo status:', err.response?.data || err.message);
+    res.status(500).json({ error: 'Erreur vérification statut.' });
+  }
+});
+
+// POST /api/payment/djamo/webhook — Djamo charge events
+router.post('/djamo/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  try {
+    const rawBody = req.body;
+    const body = typeof rawBody === 'string' ? JSON.parse(rawBody) : rawBody;
+
+    // Verify HMAC signature if secret is configured
+    if (DJAMO_WEBHOOK_SECRET) {
+      const signature = req.headers['x-djamo-signature'];
+      if (!signature) return res.status(401).json({ error: 'Signature manquante.' });
+
+      const expected = crypto
+        .createHmac('sha256', DJAMO_WEBHOOK_SECRET)
+        .update(typeof rawBody === 'string' ? rawBody : JSON.stringify(body))
+        .digest('hex');
+
+      if (signature !== expected) {
+        return res.status(401).json({ error: 'Signature invalide.' });
       }
-      db.prepare(`UPDATE orders SET payment_status = 'failed' WHERE id = ?`).run(order.id);
-      db.prepare(`UPDATE cards SET status = 'available', order_id = NULL WHERE order_id = ? AND status = 'reserved'`).run(order.id);
+    }
+
+    if (body.topic !== 'charge/events') return res.json({ received: true, skipped: 'unknown_topic' });
+
+    const { id: chargeId, status } = body.data || {};
+    if (!chargeId) return res.status(400).json({ error: 'chargeId manquant.' });
+
+    const db = getDb();
+    const order = db.prepare('SELECT * FROM orders WHERE payment_ref = ?').get(chargeId);
+    if (!order) return res.status(404).json({ error: 'Commande non trouvée.' });
+
+    if (status === 'paid') {
+      if (order.payment_status === 'paid') return res.json({ received: true, skipped: 'already_paid' });
+      db.prepare("UPDATE orders SET payment_status = 'paid', paid_at = CURRENT_TIMESTAMP WHERE id = ?").run(order.id);
+      await processDelivery(order.id);
+
+    } else if (status === 'dropped' || status === 'cancelled') {
+      if (order.payment_status !== 'pending') return res.json({ received: true, skipped: 'not_pending' });
+      db.prepare("UPDATE orders SET payment_status = 'failed' WHERE id = ?").run(order.id);
+      db.prepare("UPDATE cards SET status = 'available', order_id = NULL WHERE order_id = ? AND status = 'reserved'").run(order.id);
+
+    } else if (status === 'refunded') {
+      db.prepare("UPDATE orders SET payment_status = 'refunded', delivery_status = 'refunded' WHERE id = ?").run(order.id);
     }
 
     res.json({ received: true });
   } catch (err) {
-    console.error('Erreur Wave callback:', err);
-    res.status(500).json({ error: 'Erreur traitement callback.' });
+    console.error('Erreur Djamo webhook:', err);
+    res.status(500).json({ error: 'Erreur traitement webhook.' });
   }
 });
 
-// ===== ORANGE MONEY CI =====
-
-// POST /api/payment/orange/initiate (protected)
-router.post('/orange/initiate', authenticateToken, async (req, res) => {
-  try {
-    const { order_id, phone } = req.body;
-    const db = getDb();
-
-    const order = db.prepare('SELECT * FROM orders WHERE id = ? AND user_id = ?').get(order_id, req.user.id);
-    if (!order) {
-      return res.status(404).json({ error: 'Commande non trouvée.' });
-    }
-
-    if (order.payment_status !== 'pending') {
-      return res.status(400).json({ error: 'Cette commande a déjà été traitée.' });
-    }
-
-    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
-    const paymentPhone = phone || user.phone;
-
-    if (!paymentPhone) {
-      return res.status(400).json({ error: 'Numéro de téléphone requis pour Orange Money.' });
-    }
-
-    const paymentRef = `OM-${uuidv4().split('-')[0].toUpperCase()}-${order_id}`;
-    db.prepare('UPDATE orders SET payment_ref = ? WHERE id = ?').run(paymentRef, order_id);
-
-    // Try Orange Money API if configured
-    if (process.env.ORANGE_CLIENT_ID && process.env.ORANGE_CLIENT_ID !== 'your_orange_client_id') {
-      try {
-        // Step 1: Get access token
-        const tokenResponse = await axios.post(
-          'https://api.orange.com/oauth/v3/token',
-          'grant_type=client_credentials',
-          {
-            headers: {
-              'Authorization': `Basic ${Buffer.from(`${process.env.ORANGE_CLIENT_ID}:${process.env.ORANGE_CLIENT_SECRET}`).toString('base64')}`,
-              'Content-Type': 'application/x-www-form-urlencoded'
-            }
-          }
-        );
-
-        const accessToken = tokenResponse.data.access_token;
-
-        // Step 2: Initiate payment
-        const omResponse = await axios.post(
-          'https://api.orange.com/orange-money-webpay/ci/v1/webpayment',
-          {
-            merchant_key: process.env.ORANGE_MERCHANT_KEY,
-            currency: 'XOF',
-            order_id: paymentRef,
-            amount: order.total_amount,
-            return_url: `${process.env.SITE_URL}/api/payment/orange/callback`,
-            cancel_url: `${process.env.SITE_URL}/dashboard?order=${order_id}&status=failed`,
-            notif_url: `${process.env.SITE_URL}/api/payment/orange/callback`,
-            lang: 'fr',
-            reference: paymentRef
-          },
-          {
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-              'Content-Type': 'application/json'
-            }
-          }
-        );
-
-        return res.json({
-          payment_url: omResponse.data.payment_url,
-          payment_ref: paymentRef,
-          order_id
-        });
-      } catch (omErr) {
-        console.error('Erreur Orange Money API:', omErr.response?.data || omErr.message);
-      }
-    }
-
-    // Demo mode: auto-process payment directly
-    db.prepare("UPDATE orders SET payment_status = 'paid', paid_at = CURRENT_TIMESTAMP WHERE id = ?").run(order_id);
-    const deliveryResult = await processDelivery(order_id);
-    const omSuccessUrl = `${process.env.SITE_URL || 'http://localhost:3000'}/dashboard?order=${order_id}&status=success`;
-
-    res.json({
-      payment_url: omSuccessUrl,
-      payment_ref: paymentRef,
-      order_id,
-      demo_mode: true,
-      delivery: deliveryResult,
-      message: 'Mode démonstration: paiement auto-approuvé (aucune clé Orange Money configurée).'
-    });
-  } catch (err) {
-    console.error('Erreur Orange initiate:', err);
-    res.status(500).json({ error: 'Erreur lors de l\'initialisation du paiement Orange Money.' });
-  }
-});
-
-// POST /api/payment/orange/callback (webhook)
-router.post('/orange/callback', async (req, res) => {
-  try {
-    const { status, order_id: paymentRef, txnid } = req.body;
-    // Validate payment_ref format (basic protection)
-    if (!paymentRef || typeof paymentRef !== 'string' || paymentRef.length > 100) {
-      return res.status(400).json({ error: 'Invalid reference.' });
-    }
-    const db = getDb();
-
-    const order = db.prepare('SELECT * FROM orders WHERE payment_ref = ?').get(paymentRef);
-    if (!order) {
-      return res.status(404).json({ error: 'Commande non trouvée.' });
-    }
-
-    if (status === '00' || status === 'SUCCESS' || status === 'paid') {
-      // Idempotency: skip if already paid
-      if (order.payment_status === 'paid') {
-        return res.json({ received: true, skipped: 'already_paid' });
-      }
-      db.prepare(`
-        UPDATE orders SET payment_status = 'paid', paid_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-      `).run(order.id);
-
-      await processDelivery(order.id);
-    } else {
-      if (order.payment_status !== 'pending') {
-        return res.json({ received: true, skipped: 'not_pending' });
-      }
-      db.prepare(`UPDATE orders SET payment_status = 'failed' WHERE id = ?`).run(order.id);
-      db.prepare(`UPDATE cards SET status = 'available', order_id = NULL WHERE order_id = ? AND status = 'reserved'`).run(order.id);
-    }
-
-    res.json({ received: true });
-  } catch (err) {
-    console.error('Erreur Orange callback:', err);
-    res.status(500).json({ error: 'Erreur traitement callback.' });
-  }
-});
-
-// POST /api/payment/simulate - Demo payment simulation (admin only until real API integrated)
+// POST /api/payment/simulate — Demo uniquement (admin)
 router.post('/simulate', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { payment_ref, success = true } = req.body;
     const db = getDb();
 
     const order = db.prepare('SELECT * FROM orders WHERE payment_ref = ?').get(payment_ref);
-    if (!order) {
-      return res.status(404).json({ error: 'Commande non trouvée.' });
-    }
+    if (!order) return res.status(404).json({ error: 'Commande non trouvée.' });
 
     if (success) {
-      db.prepare(`
-        UPDATE orders SET payment_status = 'paid', paid_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-      `).run(order.id);
-
+      db.prepare("UPDATE orders SET payment_status = 'paid', paid_at = CURRENT_TIMESTAMP WHERE id = ?").run(order.id);
       const result = await processDelivery(order.id);
       res.json({ message: 'Paiement simulé avec succès!', delivery: result });
     } else {
-      db.prepare(`UPDATE orders SET payment_status = 'failed' WHERE id = ?`).run(order.id);
-      db.prepare(`UPDATE cards SET status = 'available', order_id = NULL WHERE order_id = ? AND status = 'reserved'`).run(order.id);
+      db.prepare("UPDATE orders SET payment_status = 'failed' WHERE id = ?").run(order.id);
+      db.prepare("UPDATE cards SET status = 'available', order_id = NULL WHERE order_id = ? AND status = 'reserved'").run(order.id);
       res.json({ message: 'Paiement simulé comme échoué.' });
     }
   } catch (err) {

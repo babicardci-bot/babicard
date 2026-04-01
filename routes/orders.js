@@ -17,8 +17,8 @@ router.post('/', authenticateToken, (req, res) => {
       return res.status(400).json({ error: 'Maximum 50 articles par commande.' });
     }
 
-    if (!payment_method || !['wave', 'orange_money'].includes(payment_method)) {
-      return res.status(400).json({ error: 'Méthode de paiement invalide. Choisissez wave ou orange_money.' });
+    if (!payment_method || payment_method !== 'djamo') {
+      return res.status(400).json({ error: 'Méthode de paiement invalide.' });
     }
 
     // Pre-validate products exist (outside transaction — read-only, non-critical)

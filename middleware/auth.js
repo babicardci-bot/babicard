@@ -18,7 +18,7 @@ async function authenticateToken(req, res, next) {
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     const db = getDb();
-    const user = db.prepare('SELECT id, name, email, phone, role FROM users WHERE id = ?').get(decoded.userId);
+    const user = db.prepare('SELECT id, name, email, phone, role, two_fa_enabled FROM users WHERE id = ?').get(decoded.userId);
 
     if (!user) {
       return res.status(401).json({ error: 'Utilisateur non trouvé.' });
@@ -32,6 +32,15 @@ async function authenticateToken(req, res, next) {
           return res.status(401).json({ error: 'Session expirée. Veuillez vous reconnecter.' });
         }
       } catch (_) { /* colonne pas encore migrée — on accepte */ }
+    }
+
+    // Block admin/seller API access if 2FA is not set up — except for 2FA setup routes
+    if (['admin', 'seller'].includes(user.role) && !user.two_fa_enabled) {
+      const path = req.path || '';
+      const isSetupRoute = path.startsWith('/2fa/');
+      if (!isSetupRoute) {
+        return res.status(403).json({ error: '2FA_SETUP_REQUIRED', two_fa_setup_required: true });
+      }
     }
 
     req.user = user;

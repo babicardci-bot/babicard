@@ -1,4 +1,4 @@
-const CACHE_NAME = 'babicard-v2';
+const CACHE_NAME = 'babicard-v3';
 const STATIC_ASSETS = [
   '/',
   '/login',

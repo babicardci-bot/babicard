@@ -134,6 +134,14 @@
 
         const data = await response.json();
 
+        // 2FA setup mandatory — redirect to setup page
+        if (response.ok && data.two_fa_setup_required) {
+          localStorage.setItem('temp_token', data.temp_token);
+          localStorage.setItem('user', JSON.stringify(data.user));
+          window.location.href = '/2fa-setup';
+          return;
+        }
+
         // 2FA required — show the code field
         if (response.ok && data.two_fa_required) {
           document.getElementById('twoFaGroup').style.display = 'block';
