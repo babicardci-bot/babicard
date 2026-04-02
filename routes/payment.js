@@ -123,7 +123,8 @@ router.post('/djamo/webhook', express.raw({ type: 'application/json' }), async (
         .update(rawStr)
         .digest('hex');
 
-      if (signature.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
+      if (expected!==signature) {
+        console.log('[WEBHOOK] : signature invalide');
         return res.status(401).json({ error: 'Signature invalide.' });
       }
     }
