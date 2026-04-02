@@ -1052,7 +1052,7 @@ async function simulatePayment(orderId, success) {
     const data = await res.json();
     if (!res.ok) { showToast(data.error || 'Erreur simulation', 'error'); return; }
     showToast(data.message || `Simulation ${label} envoyée.`, success ? 'success' : 'info');
-    setTimeout(() => { closeOrderDetail(); loadOrders(); }, 2000);
+    setTimeout(() => { closeOrderDetail(); loadAdminOrders(); }, 2000);
   } catch(e) {
     showToast('Erreur réseau.', 'error');
   }
