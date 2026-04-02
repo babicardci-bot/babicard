@@ -39,6 +39,7 @@ router.post('/djamo/initiate', authenticateToken, async (req, res) => {
 
     db.prepare('UPDATE orders SET payment_ref = ? WHERE id = ?').run(externalId, order_id);
 
+    console.log('[DJAMO INITIATE] order_id:', order_id, '| amount:', order.total_amount, '| externalId:', externalId);
     // Appel API Djamo
     try {
       const chargeRes = await axios.post(
@@ -58,6 +59,7 @@ router.post('/djamo/initiate', authenticateToken, async (req, res) => {
       const chargeId  = charge?.id;
       const paymentUrl = charge?.paymentUrl;
 
+      console.log('[DJAMO INITIATE] Réponse Djamo — chargeId:', chargeId, '| paymentUrl:', paymentUrl ? 'OK' : 'ABSENT');
       if (!paymentUrl) throw new Error('paymentUrl absent de la réponse Djamo');
 
       db.prepare('UPDATE orders SET payment_ref = ? WHERE id = ?').run(chargeId || externalId, order_id);
@@ -103,8 +105,10 @@ router.get('/djamo/status/:chargeId', authenticateToken, async (req, res) => {
 
 // POST /api/payment/djamo/webhook — Djamo charge events
 router.post('/djamo/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  console.log('[WEBHOOK] Reçu — headers:', JSON.stringify(req.headers));
   try {
     const rawBody = req.body;
+    console.log('[WEBHOOK] Body brut:', rawBody?.toString?.().slice(0, 300));
     const rawStr = Buffer.isBuffer(rawBody) ? rawBody.toString('utf8') : (typeof rawBody === 'string' ? rawBody : JSON.stringify(rawBody));
     let body;
     try { body = JSON.parse(rawStr); } catch { return res.status(400).json({ error: 'Body JSON invalide.' }); }
@@ -132,6 +136,8 @@ router.post('/djamo/webhook', express.raw({ type: 'application/json' }), async (
         return res.status(400).json({ error: 'Webhook expiré.' });
       }
     }
+
+    console.log('[WEBHOOK] Topic:', body.topic, '| Status:', body.data?.status, '| ChargeId:', body.data?.id);
 
     if (body.topic !== 'charge/events') return res.json({ received: true, skipped: 'unknown_topic' });
 
