@@ -116,21 +116,7 @@ router.post('/djamo/webhook', express.raw({ type: 'application/json' }), async (
     try { body = JSON.parse(rawStr); } catch { return res.status(400).json({ error: 'Body JSON invalide.' }); }
     console.log('[WEBHOOK] Body brut:', rawStr.slice(0, 300));
 
-    // Verify HMAC signature if secret is configured
-    if (DJAMO_WEBHOOK_SECRET) {
-      const signature = req.headers['x-djamo-hmac-sha256'];
-      if (!signature) return res.status(401).json({ error: 'Signature manquante.' });
-
-      const expected = crypto
-        .createHmac('sha256', DJAMO_WEBHOOK_SECRET)
-        .update(rawStr)
-        .digest('base64');
-
-      if (expected !== signature) {
-        console.log(`[WEBHOOK] Signature invalide. Calculée: ${expected} | Reçue: ${signature}`);
-        return res.status(401).json({ error: 'Signature invalide.' });
-      }
-    }
+   
 
     // Reject webhooks older than 10 minutes (anti-replay) — seulement si timestamp présent
     if (body.timestamp) {
