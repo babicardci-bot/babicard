@@ -988,7 +988,7 @@ async function viewOrderDetail(orderId) {
             <span class="badge badge-${order.payment_status}">${statusLabel(order.payment_status)}</span>
             <span class="badge badge-${order.delivery_status}">${statusLabel(order.delivery_status)}</span>
           </div>
-          <div style="font-size:0.82rem;color:var(--text-secondary)">${order.payment_method === 'wave' ? '🌊 Wave CI' : '🟠 Orange Money'}</div>
+          <div style="font-size:0.82rem;color:var(--text-secondary)">${order.payment_method === 'djamo' ? '💳 Djamo' : order.payment_method === 'wave' ? '🌊 Wave CI' : order.payment_method === 'orange_money' ? '🟠 Orange Money' : order.payment_method || ''}</div>
           <div style="font-size:0.78rem;color:var(--text-muted);font-family:monospace;margin-top:4px">${esc(order.payment_ref || 'N/A')}</div>
           <div style="font-size:1.1rem;font-weight:700;color:#a78bfa;margin-top:8px">${formatPrice(order.total_amount)}</div>
         </div>
