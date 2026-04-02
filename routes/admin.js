@@ -845,6 +845,31 @@ router.post('/orders/:id/cancel', (req, res) => {
   }
 });
 
+// POST /api/admin/orders/:id/refund - Refund a paid order
+router.post('/orders/:id/refund', async (req, res) => {
+  try {
+    const { admin_note } = req.body;
+    const db = getDb();
+    const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(req.params.id);
+    if (!order) return res.status(404).json({ error: 'Commande non trouvée.' });
+    if (order.payment_status !== 'paid') return res.status(400).json({ error: 'Seules les commandes payées peuvent être remboursées.' });
+    if (order.delivery_status === 'refunded') return res.status(400).json({ error: 'Cette commande a déjà été remboursée.' });
+
+    const processRefund = db.transaction(() => {
+      db.prepare("UPDATE orders SET payment_status = 'refunded', delivery_status = 'refunded' WHERE id = ?").run(order.id);
+      db.prepare("UPDATE cards SET status = 'disputed' WHERE order_id = ? AND status = 'sold'").run(order.id);
+      db.prepare("UPDATE seller_earnings SET status = 'reversed' WHERE order_id = ?").run(order.id);
+    });
+    processRefund();
+
+    logAdminAction(req, 'refund_order', `order:${order.id}`, { admin_note });
+    res.json({ message: 'Remboursement effectué avec succès.' });
+  } catch (err) {
+    console.error('Erreur refund order:', err);
+    res.status(500).json({ error: 'Erreur lors du remboursement.' });
+  }
+});
+
 // POST /api/admin/orders/:id/redeliver - Manually trigger delivery
 router.post('/orders/:id/redeliver', async (req, res) => {
   try {

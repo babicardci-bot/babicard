@@ -959,6 +959,9 @@ async function viewOrderDetail(orderId) {
     const items = order.items || [];
 
     document.getElementById('redeliverBtn').style.display = order.payment_status === 'paid' ? 'inline-flex' : 'none';
+    const refundBtn = document.getElementById('refundBtn');
+    if (refundBtn) refundBtn.style.display = order.payment_status === 'paid' && order.delivery_status !== 'refunded' ? 'inline-flex' : 'none';
+    if (refundBtn) refundBtn.onclick = () => adminRefundOrder(order.id);
 
     const simContainer = document.getElementById('simulateBtns');
     if (simContainer) {
@@ -2073,6 +2076,23 @@ async function loadRefunds() {
     </table>`;
   } catch (err) {
     container.innerHTML = `<div class="error-state"><p>Erreur: ${err.message}</p></div>`;
+  }
+}
+
+async function adminRefundOrder(orderId) {
+  const note = prompt('Raison du remboursement (optionnel) :') ?? '';
+  if (!confirm(`Confirmer le remboursement de la commande #${orderId} ?`)) return;
+  try {
+    const res = await adminFetch(`/admin/orders/${orderId}/refund`, {
+      method: 'POST',
+      body: JSON.stringify({ admin_note: note })
+    });
+    const data = await res.json();
+    if (!res.ok) { showToast(data.error || 'Erreur', 'error'); return; }
+    showToast('Remboursement effectué avec succès.', 'success');
+    setTimeout(() => { closeOrderDetail(); loadAdminOrders(); }, 1500);
+  } catch(e) {
+    showToast('Erreur réseau.', 'error');
   }
 }
 
