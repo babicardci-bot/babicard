@@ -108,10 +108,13 @@ router.post('/djamo/webhook', express.raw({ type: 'application/json' }), async (
   console.log('[WEBHOOK] Reçu — headers:', JSON.stringify(req.headers));
   try {
     const rawBody = req.body;
-    console.log('[WEBHOOK] Body brut:',JSON.stringify(rawBody));
-    const rawStr = JSON.stringify(rawBody);
+    // rawBody peut être un Buffer, string ou Object selon le middleware qui a parsé en premier
+    const rawStr = Buffer.isBuffer(rawBody) ? rawBody.toString('utf8')
+                 : typeof rawBody === 'string' ? rawBody
+                 : JSON.stringify(rawBody);
     let body;
     try { body = JSON.parse(rawStr); } catch { return res.status(400).json({ error: 'Body JSON invalide.' }); }
+    console.log('[WEBHOOK] Body brut:', rawStr.slice(0, 300));
 
     // Verify HMAC signature if secret is configured
     if (DJAMO_WEBHOOK_SECRET) {
@@ -120,11 +123,11 @@ router.post('/djamo/webhook', express.raw({ type: 'application/json' }), async (
 
       const expected = crypto
         .createHmac('sha256', DJAMO_WEBHOOK_SECRET)
-        .update(rawBody)
+        .update(rawStr)
         .digest('base64');
 
-      if (expected!==signature) {
-       console.log(`[WEBHOOK] : Signature invalide. Calculated: ${expected} , signature recieved : ${signature}`);
+      if (expected !== signature) {
+        console.log(`[WEBHOOK] Signature invalide. Calculée: ${expected} | Reçue: ${signature}`);
         return res.status(401).json({ error: 'Signature invalide.' });
       }
     }
