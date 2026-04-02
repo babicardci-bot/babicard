@@ -105,7 +105,9 @@ router.get('/djamo/status/:chargeId', authenticateToken, async (req, res) => {
 router.post('/djamo/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   try {
     const rawBody = req.body;
-    const body = typeof rawBody === 'string' ? JSON.parse(rawBody) : rawBody;
+    const rawStr = Buffer.isBuffer(rawBody) ? rawBody.toString('utf8') : (typeof rawBody === 'string' ? rawBody : JSON.stringify(rawBody));
+    let body;
+    try { body = JSON.parse(rawStr); } catch { return res.status(400).json({ error: 'Body JSON invalide.' }); }
 
     // Verify HMAC signature if secret is configured
     if (DJAMO_WEBHOOK_SECRET) {
@@ -114,18 +116,19 @@ router.post('/djamo/webhook', express.raw({ type: 'application/json' }), async (
 
       const expected = crypto
         .createHmac('sha256', DJAMO_WEBHOOK_SECRET)
-        .update(typeof rawBody === 'string' ? rawBody : JSON.stringify(body))
+        .update(rawStr)
         .digest('hex');
 
-      if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
+      if (signature.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
         return res.status(401).json({ error: 'Signature invalide.' });
       }
     }
 
-    // Reject webhooks older than 5 minutes (anti-replay)
+    // Reject webhooks older than 10 minutes (anti-replay) — seulement si timestamp présent
     if (body.timestamp) {
       const webhookAge = Date.now() - new Date(body.timestamp).getTime();
-      if (webhookAge > 5 * 60 * 1000) {
+      if (webhookAge > 10 * 60 * 1000) {
+        console.warn('[WEBHOOK] Webhook expiré ignoré, age:', Math.round(webhookAge/1000), 's');
         return res.status(400).json({ error: 'Webhook expiré.' });
       }
     }
