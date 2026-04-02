@@ -19,6 +19,9 @@ router.post('/register', async (req, res) => {
     if (password.length < 8) {
       return res.status(400).json({ error: 'Le mot de passe doit contenir au moins 8 caractères.' });
     }
+    if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password)) {
+      return res.status(400).json({ error: 'Le mot de passe doit contenir au moins une majuscule, une minuscule et un chiffre.' });
+    }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return res.status(400).json({ error: 'Adresse email invalide.' });
     }
@@ -128,10 +131,27 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Email ou mot de passe incorrect.' });
     }
 
+    // Check account lockout
+    if (user.login_locked_until && new Date(user.login_locked_until) > new Date()) {
+      const remaining = Math.ceil((new Date(user.login_locked_until) - new Date()) / 60000);
+      return res.status(429).json({ error: `Compte temporairement bloqué. Réessayez dans ${remaining} minute(s).` });
+    }
+
     const isValid = await bcrypt.compare(password, user.password_hash);
     if (!isValid) {
-      return res.status(401).json({ error: 'Email ou mot de passe incorrect.' });
+      const newAttempts = (user.login_attempts || 0) + 1;
+      const MAX_ATTEMPTS = 10;
+      if (newAttempts >= MAX_ATTEMPTS) {
+        const lockedUntil = new Date(Date.now() + 30 * 60 * 1000).toISOString(); // 30 min
+        db.prepare('UPDATE users SET login_attempts = 0, login_locked_until = ? WHERE id = ?').run(lockedUntil, user.id);
+        return res.status(429).json({ error: 'Trop de tentatives. Compte bloqué 30 minutes.' });
+      }
+      db.prepare('UPDATE users SET login_attempts = ? WHERE id = ?').run(newAttempts, user.id);
+      return res.status(401).json({ error: `Email ou mot de passe incorrect. ${MAX_ATTEMPTS - newAttempts} tentative(s) restante(s).` });
     }
+
+    // Reset login attempts on success
+    db.prepare('UPDATE users SET login_attempts = 0, login_locked_until = NULL WHERE id = ?').run(user.id);
 
     // Block unverified accounts — only allow login if explicitly verified (= 1)
     if (user.email_verified !== 1) {

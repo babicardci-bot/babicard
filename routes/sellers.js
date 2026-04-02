@@ -478,33 +478,42 @@ router.post('/withdraw', authenticateToken, requireSeller, async (req, res) => {
       return res.status(400).json({ error: 'Numéro de paiement invalide.' });
     }
 
-    // Solde disponible = gains available - retraits en cours
-    const grossAvailable = db.prepare(`
-      SELECT COALESCE(SUM(net_amount), 0) as total
-      FROM seller_earnings WHERE seller_id = ? AND status = 'available'
-    `).get(req.user.id).total;
+    // Verrouillage transactionnel pour éviter les double-retraits
+    let withdrawalId;
+    const createWithdrawal = db.transaction(() => {
+      const grossAvailable = db.prepare(`
+        SELECT COALESCE(SUM(net_amount), 0) as total
+        FROM seller_earnings WHERE seller_id = ? AND status = 'available'
+      `).get(req.user.id).total;
 
-    const pendingWdAmount = db.prepare(`
-      SELECT COALESCE(SUM(amount), 0) as total
-      FROM withdrawal_requests WHERE seller_id = ? AND status IN ('pending', 'approved')
-    `).get(req.user.id).total;
+      const pendingWdAmount = db.prepare(`
+        SELECT COALESCE(SUM(amount), 0) as total
+        FROM withdrawal_requests WHERE seller_id = ? AND status IN ('pending', 'approved')
+      `).get(req.user.id).total;
 
-    const balance = Math.max(0, grossAvailable - pendingWdAmount);
+      const balance = Math.max(0, grossAvailable - pendingWdAmount);
 
-    if (parseInt(amount) > balance) {
-      return res.status(400).json({ error: `Solde insuffisant. Disponible: ${balance.toLocaleString('fr-FR')} FCFA` });
+      if (parseInt(amount) > balance) {
+        throw Object.assign(new Error(`Solde insuffisant. Disponible: ${balance.toLocaleString('fr-FR')} FCFA`), { statusCode: 400 });
+      }
+
+      const pendingWithdrawal = db.prepare(`SELECT id FROM withdrawal_requests WHERE seller_id = ? AND status = 'pending'`).get(req.user.id);
+      if (pendingWithdrawal) {
+        throw Object.assign(new Error('Vous avez déjà une demande de retrait en cours.'), { statusCode: 400 });
+      }
+
+      const result = db.prepare(`
+        INSERT INTO withdrawal_requests (seller_id, amount, payment_method, payment_number, status)
+        VALUES (?, ?, ?, ?, 'pending')
+      `).run(req.user.id, parseInt(amount), payment_method, payment_number.trim());
+      return result.lastInsertRowid;
+    });
+
+    try {
+      withdrawalId = createWithdrawal();
+    } catch (txErr) {
+      return res.status(txErr.statusCode || 400).json({ error: txErr.message });
     }
-
-    // Check no pending withdrawal
-    const pendingWithdrawal = db.prepare(`SELECT id FROM withdrawal_requests WHERE seller_id = ? AND status = 'pending'`).get(req.user.id);
-    if (pendingWithdrawal) {
-      return res.status(400).json({ error: 'Vous avez déjà une demande de retrait en cours.' });
-    }
-
-    db.prepare(`
-      INSERT INTO withdrawal_requests (seller_id, amount, payment_method, payment_number, status)
-      VALUES (?, ?, ?, ?, 'pending')
-    `).run(req.user.id, parseInt(amount), payment_method, payment_number.trim());
 
     // Notifier l'admin par email
     const sellerProfile = db.prepare('SELECT shop_name FROM seller_profiles WHERE user_id = ?').get(req.user.id);

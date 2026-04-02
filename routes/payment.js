@@ -117,8 +117,16 @@ router.post('/djamo/webhook', express.raw({ type: 'application/json' }), async (
         .update(typeof rawBody === 'string' ? rawBody : JSON.stringify(body))
         .digest('hex');
 
-      if (signature !== expected) {
+      if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
         return res.status(401).json({ error: 'Signature invalide.' });
+      }
+    }
+
+    // Reject webhooks older than 5 minutes (anti-replay)
+    if (body.timestamp) {
+      const webhookAge = Date.now() - new Date(body.timestamp).getTime();
+      if (webhookAge > 5 * 60 * 1000) {
+        return res.status(400).json({ error: 'Webhook expiré.' });
       }
     }
 

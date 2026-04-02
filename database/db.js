@@ -282,6 +282,14 @@ function migrateDatabase(db) {
       db.prepare("ALTER TABLE users ADD COLUMN token_version INTEGER NOT NULL DEFAULT 0").run();
       console.log('Migration: token_version ajouté à users.');
     }
+    if (!userCols.includes('login_attempts')) {
+      db.prepare("ALTER TABLE users ADD COLUMN login_attempts INTEGER NOT NULL DEFAULT 0").run();
+      console.log('Migration: login_attempts ajouté à users.');
+    }
+    if (!userCols.includes('login_locked_until')) {
+      db.prepare("ALTER TABLE users ADD COLUMN login_locked_until DATETIME").run();
+      console.log('Migration: login_locked_until ajouté à users.');
+    }
   } catch(e) { console.error('Migration users email_verified/token_version:', e.message); }
 
   // Add promo_price and promo_request columns to products

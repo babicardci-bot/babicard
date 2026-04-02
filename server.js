@@ -1,8 +1,8 @@
 require('dotenv').config();
 
 // Clé de chiffrement obligatoire — les codes de cartes doivent être chiffrés au repos
-if (!process.env.CARD_ENCRYPTION_KEY || process.env.CARD_ENCRYPTION_KEY.length !== 64) {
-  console.error('[FATAL] CARD_ENCRYPTION_KEY manquante ou invalide (doit faire 64 caractères hex). Arrêt du serveur.');
+if (!process.env.CARD_ENCRYPTION_KEY || !/^[0-9a-f]{64}$/i.test(process.env.CARD_ENCRYPTION_KEY)) {
+  console.error('[FATAL] CARD_ENCRYPTION_KEY manquante ou invalide (doit faire 64 caractères hexadécimaux). Arrêt du serveur.');
   process.exit(1);
 }
 
@@ -144,10 +144,19 @@ app.use('/api/auth/reset-password', forgotPasswordLimiter);
 app.use('/api/auth', authLimiter, authRouter);
 app.use('/api/products', require('./routes/products'));
 app.use('/api/orders', require('./routes/orders'));
-app.use('/api/payment/wave/initiate', paymentLimiter);
-app.use('/api/payment/orange/initiate', paymentLimiter);
+app.use('/api/payment/djamo/initiate', paymentLimiter);
+app.use('/api/payment/djamo/status', rateLimit({ windowMs: 60 * 1000, max: 30, message: { error: 'Trop de requêtes.' } }));
 app.use('/api/payment', require('./routes/payment'));
-app.use('/api/admin', require('./routes/admin'));
+
+// Rate limiting admin — 200 requêtes par 15 minutes
+const adminLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 200,
+  message: { error: 'Trop de requêtes admin, réessayez dans 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+app.use('/api/admin', adminLimiter, require('./routes/admin'));
 app.use('/api/sellers/withdraw', withdrawalLimiter);
 app.use('/api/sellers', require('./routes/sellers'));
 app.use('/api/settings', require('./routes/settings'));
