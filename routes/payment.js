@@ -115,7 +115,7 @@ router.post('/djamo/webhook', express.raw({ type: 'application/json' }), async (
 
     // Verify HMAC signature if secret is configured
     if (DJAMO_WEBHOOK_SECRET) {
-      const signature = req.headers['x-djamo-signature'];
+      const signature = req.headers['x-djamo-hmac-sha256'];
       if (!signature) return res.status(401).json({ error: 'Signature manquante.' });
 
       const expected = crypto
