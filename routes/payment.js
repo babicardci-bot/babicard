@@ -121,7 +121,7 @@ router.post('/djamo/webhook', express.raw({ type: 'application/json' }), async (
       const expected = crypto
         .createHmac('sha256', DJAMO_WEBHOOK_SECRET)
         .update(rawStr)
-        .digest('hex');
+        .digest('base64');
 
       if (expected!==signature) {
         console.log('[WEBHOOK] : signature invalide');
