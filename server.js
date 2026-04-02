@@ -189,6 +189,33 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 3000;
 
+// Auto-cancel pending orders older than 30 minutes
+function cancelExpiredOrders() {
+  try {
+    const { getDb } = require('./database/db');
+    const db = getDb();
+    const expiredOrders = db.prepare(`
+      SELECT id FROM orders
+      WHERE payment_status = 'pending'
+      AND created_at <= datetime('now', '-30 minutes')
+    `).all();
+
+    if (expiredOrders.length === 0) return;
+
+    const cancelOrder = db.transaction((orders) => {
+      for (const order of orders) {
+        db.prepare("UPDATE orders SET payment_status = 'failed' WHERE id = ?").run(order.id);
+        db.prepare("UPDATE cards SET status = 'available', order_id = NULL WHERE order_id = ? AND status = 'reserved'").run(order.id);
+      }
+    });
+
+    cancelOrder(expiredOrders);
+    console.log(`[AUTO-CANCEL] ${expiredOrders.length} commande(s) expirée(s) annulée(s).`);
+  } catch (err) {
+    console.error('[AUTO-CANCEL] Erreur:', err.message);
+  }
+}
+
 // Initialize DB then start server
 const { initializeDatabase } = require('./database/db');
 initializeDatabase()
@@ -201,6 +228,10 @@ initializeDatabase()
       console.log(`  API:   http://localhost:${PORT}/api/health`);
       console.log(`========================================\n`);
     });
+
+    // Run every 10 minutes
+    setInterval(cancelExpiredOrders, 10 * 60 * 1000);
+    cancelExpiredOrders(); // run once on startup
   })
   .catch(err => {
     console.error('Erreur initialisation base de données:', err);
