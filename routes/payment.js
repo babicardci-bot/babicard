@@ -226,19 +226,24 @@ router.post('/simulate', authenticateToken, requireAdmin, async (req, res) => {
         { recipientMsisdn: testPhone },
         { headers: djamoHeaders() }
       );
-      return res.json({ message: `Simulation ${success ? 'succès' : 'échec'} envoyée à Djamo. Le webhook va mettre à jour la commande dans quelques secondes.` });
+      console.log('[SIMULATE] /pay appelé avec succès pour chargeId:', chargeId);
     } catch (djamoErr) {
-      // Si Djamo échoue (limite atteinte, etc.) → simulation locale directe
-      console.warn('Djamo simulate échoué, fallback local:', djamoErr.response?.data?.message || djamoErr.message);
-      if (success) {
+      console.warn('[SIMULATE] Djamo /pay échoué, fallback local:', djamoErr.response?.data?.message || djamoErr.message);
+    }
+
+    // Traiter directement sans attendre le webhook
+    if (success) {
+      if (order.payment_status !== 'paid') {
         db.prepare("UPDATE orders SET payment_status = 'paid', paid_at = CURRENT_TIMESTAMP WHERE id = ?").run(order.id);
         const result = await processDelivery(order.id);
-        return res.json({ message: 'Paiement simulé localement avec succès (Djamo indisponible).', delivery: result });
+        return res.json({ message: 'Paiement simulé avec succès ! Codes livrés.', delivery: result });
       } else {
-        db.prepare("UPDATE orders SET payment_status = 'failed' WHERE id = ?").run(order.id);
-        db.prepare("UPDATE cards SET status = 'available', order_id = NULL WHERE order_id = ? AND status = 'reserved'").run(order.id);
-        return res.json({ message: 'Paiement simulé localement comme échoué (Djamo indisponible).' });
+        return res.json({ message: 'Commande déjà payée.' });
       }
+    } else {
+      db.prepare("UPDATE orders SET payment_status = 'failed' WHERE id = ?").run(order.id);
+      db.prepare("UPDATE cards SET status = 'available', order_id = NULL WHERE order_id = ? AND status = 'reserved'").run(order.id);
+      return res.json({ message: 'Paiement simulé comme échoué.' });
     }
   } catch (err) {
     console.error('Erreur simulate payment:', err.response?.data || err.message);
