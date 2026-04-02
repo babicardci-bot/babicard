@@ -160,36 +160,27 @@ router.post('/djamo/webhook', express.raw({ type: 'application/json' }), async (
   }
 });
 
-// POST /api/payment/simulate — Staging uniquement (admin)
-// Utilise l'endpoint Djamo staging POST /v1/charges/:id/pay
+// POST /api/payment/simulate — Admin uniquement, pour tester sans Djamo
 router.post('/simulate', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    if (!DJAMO_API_URL || !DJAMO_API_URL.includes('staging')) {
-      return res.status(403).json({ error: 'Simulation disponible uniquement en mode staging.' });
-    }
-
-    const { payment_ref, success = true } = req.body;
+    const { order_id, success = true } = req.body;
     const db = getDb();
 
-    const order = db.prepare('SELECT * FROM orders WHERE payment_ref = ?').get(payment_ref);
+    if (!order_id) return res.status(400).json({ error: 'order_id requis.' });
+
+    const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(order_id);
     if (!order) return res.status(404).json({ error: 'Commande non trouvée.' });
-    if (order.payment_status !== 'pending') return res.status(400).json({ error: 'Cette commande n\'est pas en attente de paiement.' });
 
-    // Numéro de test Djamo : 2250747000000 = succès, 2251212121205 = échec
-    const testPhone = success ? '2250747000000' : '2251212121205';
-
-    const chargeId = order.payment_ref;
-
-    try {
-      await axios.post(
-        `${DJAMO_API_URL}/v1/charges/${chargeId}/pay`,
-        { recipientMsisdn: testPhone },
-        { headers: djamoHeaders() }
-      );
-      res.json({ message: `Paiement de test ${success ? 'réussi' : 'échoué'} envoyé à Djamo staging. Le webhook mettra à jour la commande.` });
-    } catch (djamoErr) {
-      console.error('Erreur Djamo simulate:', djamoErr.response?.data || djamoErr.message);
-      res.status(502).json({ error: 'Erreur lors de la simulation Djamo.', detail: djamoErr.response?.data });
+    if (success) {
+      // Forcer le paiement comme réussi et livrer
+      db.prepare("UPDATE orders SET payment_status = 'paid', paid_at = CURRENT_TIMESTAMP WHERE id = ?").run(order.id);
+      const result = await processDelivery(order.id);
+      res.json({ message: 'Paiement simulé avec succès !', delivery: result });
+    } else {
+      // Forcer comme échoué et libérer les cartes
+      db.prepare("UPDATE orders SET payment_status = 'failed' WHERE id = ?").run(order.id);
+      db.prepare("UPDATE cards SET status = 'available', order_id = NULL WHERE order_id = ? AND status = 'reserved'").run(order.id);
+      res.json({ message: 'Paiement simulé comme échoué.' });
     }
   } catch (err) {
     console.error('Erreur simulate payment:', err);

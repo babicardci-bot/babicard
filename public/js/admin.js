@@ -962,11 +962,11 @@ async function viewOrderDetail(orderId) {
 
     const simContainer = document.getElementById('simulateBtns');
     if (simContainer) {
-      if (order.payment_status === 'pending' && order.payment_ref) {
+      if (['pending', 'failed'].includes(order.payment_status)) {
         simContainer.style.display = 'inline-flex';
         simContainer.innerHTML = `
-          <button onclick="simulatePayment('${order.payment_ref}', true)" style="background:rgba(34,197,94,0.15);color:#22c55e;border:1px solid rgba(34,197,94,0.3);padding:6px 14px;border-radius:6px;cursor:pointer;font-size:0.82rem;">✅ Simuler succès</button>
-          <button onclick="simulatePayment('${order.payment_ref}', false)" style="background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid rgba(239,68,68,0.3);padding:6px 14px;border-radius:6px;cursor:pointer;font-size:0.82rem;">❌ Simuler échec</button>
+          <button onclick="simulatePayment(${order.id}, true)" style="background:rgba(34,197,94,0.15);color:#22c55e;border:1px solid rgba(34,197,94,0.3);padding:6px 14px;border-radius:6px;cursor:pointer;font-size:0.82rem;">✅ Simuler succès</button>
+          <button onclick="simulatePayment(${order.id}, false)" style="background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid rgba(239,68,68,0.3);padding:6px 14px;border-radius:6px;cursor:pointer;font-size:0.82rem;">❌ Simuler échec</button>
         `;
       } else {
         simContainer.style.display = 'none';
@@ -1041,13 +1041,13 @@ async function revealCard(cardId) {
   }
 }
 
-async function simulatePayment(paymentRef, success) {
+async function simulatePayment(orderId, success) {
   const label = success ? 'réussi' : 'échoué';
-  if (!confirm(`Simuler un paiement ${label} pour la ref ${paymentRef} ?`)) return;
+  if (!confirm(`Simuler un paiement ${label} pour la commande #${orderId} ?`)) return;
   try {
     const res = await adminFetch('/payment/simulate', {
       method: 'POST',
-      body: JSON.stringify({ payment_ref: paymentRef, success })
+      body: JSON.stringify({ order_id: orderId, success })
     });
     const data = await res.json();
     if (!res.ok) { showToast(data.error || 'Erreur simulation', 'error'); return; }
