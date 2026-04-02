@@ -960,6 +960,20 @@ async function viewOrderDetail(orderId) {
 
     document.getElementById('redeliverBtn').style.display = order.payment_status === 'paid' ? 'inline-flex' : 'none';
 
+    const simContainer = document.getElementById('simulateBtns');
+    if (simContainer) {
+      if (order.payment_status === 'pending' && order.payment_ref) {
+        simContainer.style.display = 'inline-flex';
+        simContainer.innerHTML = `
+          <button onclick="simulatePayment('${order.payment_ref}', true)" style="background:rgba(34,197,94,0.15);color:#22c55e;border:1px solid rgba(34,197,94,0.3);padding:6px 14px;border-radius:6px;cursor:pointer;font-size:0.82rem;">✅ Simuler succès</button>
+          <button onclick="simulatePayment('${order.payment_ref}', false)" style="background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid rgba(239,68,68,0.3);padding:6px 14px;border-radius:6px;cursor:pointer;font-size:0.82rem;">❌ Simuler échec</button>
+        `;
+      } else {
+        simContainer.style.display = 'none';
+        simContainer.innerHTML = '';
+      }
+    }
+
     document.getElementById('orderDetailBody').innerHTML = `
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
         <div style="background:var(--admin-card);padding:16px;border-radius:8px;border:1px solid var(--admin-border)">
@@ -1022,6 +1036,23 @@ async function revealCard(cardId) {
     const pinEl = document.getElementById(`card-pin-${cardId}`);
     if (codeEl) codeEl.textContent = data.code || '';
     if (pinEl && data.pin) pinEl.innerHTML = `PIN: <strong>${data.pin}</strong>`;
+  } catch(e) {
+    showToast('Erreur réseau.', 'error');
+  }
+}
+
+async function simulatePayment(paymentRef, success) {
+  const label = success ? 'réussi' : 'échoué';
+  if (!confirm(`Simuler un paiement ${label} pour la ref ${paymentRef} ?`)) return;
+  try {
+    const res = await adminFetch('/payment/simulate', {
+      method: 'POST',
+      body: JSON.stringify({ payment_ref: paymentRef, success })
+    });
+    const data = await res.json();
+    if (!res.ok) { showToast(data.error || 'Erreur simulation', 'error'); return; }
+    showToast(data.message || `Simulation ${label} envoyée.`, success ? 'success' : 'info');
+    setTimeout(() => { closeOrderDetail(); loadOrders(); }, 2000);
   } catch(e) {
     showToast('Erreur réseau.', 'error');
   }
