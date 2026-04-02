@@ -211,16 +211,29 @@ router.post('/simulate', authenticateToken, requireAdmin, async (req, res) => {
 
     // Appel POST /v1/charges/:id/pay avec numéro de test
     const testPhone = success ? '2250747000000' : '2251212121205';
-    await axios.post(
-      `${DJAMO_API_URL}/v1/charges/${chargeId}/pay`,
-      { recipientMsisdn: testPhone },
-      { headers: djamoHeaders() }
-    );
-
-    res.json({ message: `Simulation ${success ? 'succès' : 'échec'} envoyée à Djamo. Le webhook va mettre à jour la commande dans quelques secondes.` });
+    try {
+      await axios.post(
+        `${DJAMO_API_URL}/v1/charges/${chargeId}/pay`,
+        { recipientMsisdn: testPhone },
+        { headers: djamoHeaders() }
+      );
+      return res.json({ message: `Simulation ${success ? 'succès' : 'échec'} envoyée à Djamo. Le webhook va mettre à jour la commande dans quelques secondes.` });
+    } catch (djamoErr) {
+      // Si Djamo échoue (limite atteinte, etc.) → simulation locale directe
+      console.warn('Djamo simulate échoué, fallback local:', djamoErr.response?.data?.message || djamoErr.message);
+      if (success) {
+        db.prepare("UPDATE orders SET payment_status = 'paid', paid_at = CURRENT_TIMESTAMP WHERE id = ?").run(order.id);
+        const result = await processDelivery(order.id);
+        return res.json({ message: 'Paiement simulé localement avec succès (Djamo indisponible).', delivery: result });
+      } else {
+        db.prepare("UPDATE orders SET payment_status = 'failed' WHERE id = ?").run(order.id);
+        db.prepare("UPDATE cards SET status = 'available', order_id = NULL WHERE order_id = ? AND status = 'reserved'").run(order.id);
+        return res.json({ message: 'Paiement simulé localement comme échoué (Djamo indisponible).' });
+      }
+    }
   } catch (err) {
     console.error('Erreur simulate payment:', err.response?.data || err.message);
-    res.status(502).json({ error: 'Erreur simulation Djamo.', detail: err.response?.data });
+    res.status(500).json({ error: 'Erreur simulation paiement.' });
   }
 });
 
