@@ -845,7 +845,7 @@ router.post('/orders/:id/cancel', (req, res) => {
   }
 });
 
-// POST /api/admin/orders/:id/refund - Refund a paid order
+// POST /api/admin/orders/:id/refund - Refund a paid order via Djamo
 router.post('/orders/:id/refund', async (req, res) => {
   try {
     const { admin_note } = req.body;
@@ -855,6 +855,28 @@ router.post('/orders/:id/refund', async (req, res) => {
     if (order.payment_status !== 'paid') return res.status(400).json({ error: 'Seules les commandes payées peuvent être remboursées.' });
     if (order.delivery_status === 'refunded') return res.status(400).json({ error: 'Cette commande a déjà été remboursée.' });
 
+    const chargeId = order.payment_ref;
+    const DJAMO_API_URL = process.env.DJAMO_API_URL || 'https://apibusiness.civ.staging.djam.ooo';
+    const DJAMO_ACCESS_TOKEN = process.env.DJAMO_ACCESS_TOKEN;
+    const DJAMO_COMPANY_ID = process.env.DJAMO_COMPANY_ID;
+
+    // Appel Djamo refund si credentials disponibles
+    if (DJAMO_ACCESS_TOKEN && chargeId && !chargeId.startsWith('BABI-')) {
+      try {
+        const axios = require('axios');
+        await axios.post(
+          `${DJAMO_API_URL}/v1/charges/${chargeId}/refund`,
+          {},
+          { headers: { 'Authorization': `Bearer ${DJAMO_ACCESS_TOKEN}`, 'X-Company-Id': DJAMO_COMPANY_ID, 'Content-Type': 'application/json' } }
+        );
+        console.log(`[REFUND] Remboursement Djamo OK pour chargeId: ${chargeId}`);
+      } catch (djamoErr) {
+        console.error('[REFUND] Erreur Djamo:', djamoErr.response?.data || djamoErr.message);
+        return res.status(502).json({ error: 'Erreur lors du remboursement Djamo.', detail: djamoErr.response?.data });
+      }
+    }
+
+    // Mettre à jour la base de données
     const processRefund = db.transaction(() => {
       db.prepare("UPDATE orders SET payment_status = 'refunded', delivery_status = 'refunded' WHERE id = ?").run(order.id);
       db.prepare("UPDATE cards SET status = 'disputed' WHERE order_id = ? AND status = 'sold'").run(order.id);
@@ -862,7 +884,7 @@ router.post('/orders/:id/refund', async (req, res) => {
     });
     processRefund();
 
-    logAdminAction(req, 'refund_order', `order:${order.id}`, { admin_note });
+    logAdminAction(req, 'refund_order', `order:${order.id}`, { admin_note, chargeId });
     res.json({ message: 'Remboursement effectué avec succès.' });
   } catch (err) {
     console.error('Erreur refund order:', err);
