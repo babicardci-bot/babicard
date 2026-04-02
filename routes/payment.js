@@ -160,7 +160,8 @@ router.post('/djamo/webhook', express.raw({ type: 'application/json' }), async (
   }
 });
 
-// POST /api/payment/simulate — Admin uniquement, pour tester sans Djamo
+// POST /api/payment/simulate — Staging uniquement (admin)
+// Utilise POST /v1/charges/:id/pay de Djamo staging
 router.post('/simulate', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { order_id, success = true } = req.body;
@@ -171,20 +172,55 @@ router.post('/simulate', authenticateToken, requireAdmin, async (req, res) => {
     const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(order_id);
     if (!order) return res.status(404).json({ error: 'Commande non trouvée.' });
 
-    if (success) {
-      // Forcer le paiement comme réussi et livrer
-      db.prepare("UPDATE orders SET payment_status = 'paid', paid_at = CURRENT_TIMESTAMP WHERE id = ?").run(order.id);
-      const result = await processDelivery(order.id);
-      res.json({ message: 'Paiement simulé avec succès !', delivery: result });
-    } else {
-      // Forcer comme échoué et libérer les cartes
-      db.prepare("UPDATE orders SET payment_status = 'failed' WHERE id = ?").run(order.id);
-      db.prepare("UPDATE cards SET status = 'available', order_id = NULL WHERE order_id = ? AND status = 'reserved'").run(order.id);
-      res.json({ message: 'Paiement simulé comme échoué.' });
+    // Si pas de token Djamo configuré, simuler localement
+    if (!DJAMO_ACCESS_TOKEN || DJAMO_ACCESS_TOKEN === 'your_djamo_access_token') {
+      if (success) {
+        db.prepare("UPDATE orders SET payment_status = 'paid', paid_at = CURRENT_TIMESTAMP WHERE id = ?").run(order.id);
+        const result = await processDelivery(order.id);
+        return res.json({ message: 'Paiement simulé avec succès !', delivery: result });
+      } else {
+        db.prepare("UPDATE orders SET payment_status = 'failed' WHERE id = ?").run(order.id);
+        db.prepare("UPDATE cards SET status = 'available', order_id = NULL WHERE order_id = ? AND status = 'reserved'").run(order.id);
+        return res.json({ message: 'Paiement simulé comme échoué.' });
+      }
     }
+
+    const siteUrl = process.env.SITE_URL || 'http://localhost:3000';
+    let chargeId = order.payment_ref;
+
+    // Si pas de charge Djamo valide, en créer un nouveau
+    if (!chargeId || chargeId.startsWith('BABI-')) {
+      const externalId = `BABI-SIM-${uuidv4().split('-')[0].toUpperCase()}-${order.id}`;
+      const chargeRes = await axios.post(
+        `${DJAMO_API_URL}/v1/charges`,
+        {
+          amount: order.total_amount,
+          currency: 'XOF',
+          description: `Simulation Babicard #${order.id}`,
+          externalId,
+          onCompletedRedirectionUrl: `${siteUrl}/dashboard`,
+          onCanceledRedirectionUrl: `${siteUrl}/dashboard`
+        },
+        { headers: djamoHeaders() }
+      );
+      const charge = chargeRes.data?.data || chargeRes.data;
+      chargeId = charge?.id;
+      if (!chargeId) return res.status(502).json({ error: 'Impossible de créer le charge Djamo.' });
+      db.prepare('UPDATE orders SET payment_ref = ? WHERE id = ?').run(chargeId, order.id);
+    }
+
+    // Appel POST /v1/charges/:id/pay avec numéro de test
+    const testPhone = success ? '2250747000000' : '2251212121205';
+    await axios.post(
+      `${DJAMO_API_URL}/v1/charges/${chargeId}/pay`,
+      { recipientMsisdn: testPhone },
+      { headers: djamoHeaders() }
+    );
+
+    res.json({ message: `Simulation ${success ? 'succès' : 'échec'} envoyée à Djamo. Le webhook va mettre à jour la commande dans quelques secondes.` });
   } catch (err) {
-    console.error('Erreur simulate payment:', err);
-    res.status(500).json({ error: 'Erreur simulation paiement.' });
+    console.error('Erreur simulate payment:', err.response?.data || err.message);
+    res.status(502).json({ error: 'Erreur simulation Djamo.', detail: err.response?.data });
   }
 });
 
