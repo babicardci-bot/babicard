@@ -218,33 +218,15 @@ router.post('/simulate', authenticateToken, requireAdmin, async (req, res) => {
       db.prepare('UPDATE orders SET payment_ref = ? WHERE id = ?').run(chargeId, order.id);
     }
 
-    // Appel POST /v1/charges/:id/pay avec numéro de test
+    // Appel POST /v1/charges/:id/pay — le webhook Djamo se chargera de mettre à jour la commande
     const testPhone = success ? '2250747000000' : '2251212121205';
-    try {
-      await axios.post(
-        `${DJAMO_API_URL}/v1/charges/${chargeId}/pay`,
-        { recipientMsisdn: testPhone },
-        { headers: djamoHeaders() }
-      );
-      console.log('[SIMULATE] /pay appelé avec succès pour chargeId:', chargeId);
-    } catch (djamoErr) {
-      console.warn('[SIMULATE] Djamo /pay échoué, fallback local:', djamoErr.response?.data?.message || djamoErr.message);
-    }
-
-    // Traiter directement sans attendre le webhook
-    if (success) {
-      if (order.payment_status !== 'paid') {
-        db.prepare("UPDATE orders SET payment_status = 'paid', paid_at = CURRENT_TIMESTAMP WHERE id = ?").run(order.id);
-        const result = await processDelivery(order.id);
-        return res.json({ message: 'Paiement simulé avec succès ! Codes livrés.', delivery: result });
-      } else {
-        return res.json({ message: 'Commande déjà payée.' });
-      }
-    } else {
-      db.prepare("UPDATE orders SET payment_status = 'failed' WHERE id = ?").run(order.id);
-      db.prepare("UPDATE cards SET status = 'available', order_id = NULL WHERE order_id = ? AND status = 'reserved'").run(order.id);
-      return res.json({ message: 'Paiement simulé comme échoué.' });
-    }
+    const payRes = await axios.post(
+      `${DJAMO_API_URL}/v1/charges/${chargeId}/pay`,
+      { recipientMsisdn: testPhone },
+      { headers: djamoHeaders() }
+    );
+    console.log('[SIMULATE] /pay réponse status:', payRes.data?.status);
+    return res.json({ message: `Paiement ${success ? 'succès' : 'échec'} envoyé à Djamo (status: ${payRes.data?.status}). Le webhook va mettre à jour la commande.` });
   } catch (err) {
     console.error('Erreur simulate payment:', err.response?.data || err.message);
     res.status(500).json({ error: 'Erreur simulation paiement.' });
