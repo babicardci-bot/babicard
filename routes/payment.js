@@ -108,7 +108,7 @@ router.post('/djamo/webhook', express.raw({ type: 'application/json' }), async (
   console.log('[WEBHOOK] Reçu — headers:', JSON.stringify(req.headers));
   try {
     const rawBody = req.body;
-    console.log('[WEBHOOK] Body brut:', rawBody?.toString?.().slice(0, 300));
+    console.log('[WEBHOOK] Body brut:',JSON.stringify(rawBody));
     const rawStr = JSON.stringify(rawBody);
     let body;
     try { body = JSON.parse(rawStr); } catch { return res.status(400).json({ error: 'Body JSON invalide.' }); }
