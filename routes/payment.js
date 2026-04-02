@@ -124,7 +124,7 @@ router.post('/djamo/webhook', express.raw({ type: 'application/json' }), async (
         .digest('base64');
 
       if (expected!==signature) {
-        console.log('[WEBHOOK] : signature invalide');
+       console.log(`[WEBHOOK] : Signature invalide. Calculated: ${expected} , signature recieved : ${signature}`);
         return res.status(401).json({ error: 'Signature invalide.' });
       }
     }
