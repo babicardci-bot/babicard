@@ -85,10 +85,13 @@ function logout() {
   window.location.href = '/';
 }
 
-// ============ AUTO-DÉCONNEXION après 15min d'inactivité ============
-const INACTIVITY_TIMEOUT = 15 * 60 * 1000; // 15 minutes
+// ============ AUTO-DÉCONNEXION après 20min d'inactivité ============
+const INACTIVITY_TIMEOUT = 20 * 60 * 1000; // 20 minutes
 
+let _activityThrottle = null;
 function updateActivity() {
+  if (_activityThrottle) return;
+  _activityThrottle = setTimeout(() => { _activityThrottle = null; }, 5000);
   localStorage.setItem('lastActivity', Date.now().toString());
 }
 
@@ -111,8 +114,8 @@ function checkInactivity() {
 (function initInactivityTracker() {
   if (!isLoggedIn()) return;
   updateActivity();
-  // Seulement les actions délibérées (pas mousemove)
-  ['keydown', 'click', 'scroll', 'touchstart', 'mousedown'].forEach(evt => {
+  // Actions délibérées uniquement — scroll exclus car trop passif
+  ['keydown', 'click', 'touchstart', 'mousedown'].forEach(evt => {
     document.addEventListener(evt, updateActivity, { passive: true });
   });
   // Vérifie toutes les 30 secondes
