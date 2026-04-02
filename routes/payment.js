@@ -65,6 +65,9 @@ router.post('/djamo/initiate', authenticateToken, async (req, res) => {
       return res.json({ payment_url: paymentUrl, payment_ref: chargeId || externalId, order_id });
     } catch (djamoErr) {
       console.error('Erreur Djamo API:', djamoErr.response?.data || djamoErr.message);
+      // Annuler la commande et libérer les cartes réservées
+      db.prepare("UPDATE orders SET payment_status = 'failed' WHERE id = ?").run(order_id);
+      db.prepare("UPDATE cards SET status = 'available', order_id = NULL WHERE order_id = ? AND status = 'reserved'").run(order_id);
       return res.status(502).json({ error: 'Erreur lors de l\'initialisation du paiement. Réessayez.' });
     }
   } catch (err) {
