@@ -131,12 +131,25 @@ router.post('/djamo/webhook', express.raw({ type: 'application/json' }), async (
 
     if (body.topic !== 'charge/events') return res.json({ received: true, skipped: 'unknown_topic' });
 
-    const { id: chargeId, status } = body.data || {};
+    const { id: chargeId, status, externalId } = body.data || {};
     if (!chargeId) return res.status(400).json({ error: 'chargeId manquant.' });
 
     const db = getDb();
-    const order = db.prepare('SELECT * FROM orders WHERE payment_ref = ?').get(chargeId);
-    if (!order) return res.status(404).json({ error: 'Commande non trouvée.' });
+    // Chercher par chargeId OU par externalId (format BABI-XXXX-orderId)
+    let order = db.prepare('SELECT * FROM orders WHERE payment_ref = ?').get(chargeId);
+    if (!order && externalId) {
+      // Extraire order_id depuis externalId format BABI-XXXX-{orderId}
+      const match = externalId.match(/BABI-[A-Z0-9]+-(\d+)$/);
+      if (match) order = db.prepare('SELECT * FROM orders WHERE id = ?').get(parseInt(match[1]));
+    }
+    if (!order) {
+      console.warn('[WEBHOOK] Commande non trouvée pour chargeId:', chargeId, '| externalId:', externalId);
+      return res.status(404).json({ error: 'Commande non trouvée.' });
+    }
+    // Mettre à jour payment_ref avec le vrai chargeId si nécessaire
+    if (order.payment_ref !== chargeId) {
+      db.prepare('UPDATE orders SET payment_ref = ? WHERE id = ?').run(chargeId, order.id);
+    }
 
     if (status === 'paid') {
       if (order.payment_status === 'paid') return res.json({ received: true, skipped: 'already_paid' });
