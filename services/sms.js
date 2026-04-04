@@ -82,7 +82,7 @@ async function sendSMS(phone, message) {
       }
     );
 
-    console.log(`[SMS] Orange — Envoyé à ${formattedPhone}`);
+    console.log(`[SMS] Orange — Envoyé à ${formattedPhone} | Réponse:`, JSON.stringify(res.data));
     return { success: true, data: res.data };
   } catch (err) {
     console.error('[SMS] Erreur Orange API:', err.response?.data || err.message);
