@@ -22,16 +22,13 @@ let orangeTokenExpiry = 0;
 async function getOrangeToken() {
   if (orangeToken && Date.now() < orangeTokenExpiry) return orangeToken;
 
-  const clientId = process.env.ORANGE_CLIENT_ID;
-  const clientSecret = process.env.ORANGE_CLIENT_SECRET;
-  const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
-
+  const authHeader = process.env.ORANGE_AUTH_HEADER;
   const res = await axios.post(
     'https://api.orange.com/oauth/v3/token',
     'grant_type=client_credentials',
     {
       headers: {
-        'Authorization': `Basic ${credentials}`,
+        'Authorization': `Basic ${authHeader}`,
         'Content-Type': 'application/x-www-form-urlencoded',
         'Accept': 'application/json'
       }
@@ -39,7 +36,8 @@ async function getOrangeToken() {
   );
 
   orangeToken = res.data.access_token;
-  orangeTokenExpiry = Date.now() + (res.data.expires_in - 60) * 1000; // -60s de marge
+  orangeTokenExpiry = Date.now() + (res.data.expires_in - 60) * 1000;
+  console.log('[SMS] Token Orange obtenu, expire dans', res.data.expires_in, 's');
   return orangeToken;
 }
 
@@ -50,19 +48,21 @@ async function sendSMS(phone, message) {
     return { success: false, error: 'Numéro invalide' };
   }
 
-  const clientId = process.env.ORANGE_CLIENT_ID;
-  const clientSecret = process.env.ORANGE_CLIENT_SECRET;
-  const senderNumber = process.env.ORANGE_SENDER_NUMBER; // ex: +2250000000000
+  const authHeader = process.env.ORANGE_AUTH_HEADER;
   const senderName = process.env.ORANGE_SENDER_NAME || 'Babicard';
 
-  if (!clientId || !clientSecret || !senderNumber) {
+  if (!authHeader) {
     console.log(`[SMS DEMO] À: ${formattedPhone} | Message: ${message}`);
     return { success: true, demo: true, phone: formattedPhone, message };
   }
 
   try {
     const token = await getOrangeToken();
-    const encodedSender = encodeURIComponent(senderNumber);
+
+    // Orange CI : le senderAddress est le numéro pays CI (+225)
+    // Sans numéro fixe assigné, on utilise le senderName uniquement
+    const senderNumber = process.env.ORANGE_SENDER_NUMBER || '+2250000000000';
+    const encodedSender = encodeURIComponent(`tel:${senderNumber}`);
 
     const res = await axios.post(
       `https://api.orange.com/smsmessaging/v1/outbound/${encodedSender}/requests`,
