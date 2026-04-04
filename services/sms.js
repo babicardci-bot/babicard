@@ -8,12 +8,39 @@ function formatPhone(phone) {
   else if (cleaned.startsWith('225')) cleaned = '+' + cleaned;
   else if (!cleaned.startsWith('+')) cleaned = '+225' + cleaned;
 
-  // Numéro CI valide : +225 suivi de 10 chiffres (format post-2021)
   if (!/^\+225\d{10}$/.test(cleaned)) {
     console.log(`[SMS] Numéro invalide ou incomplet: ${cleaned}`);
     return null;
   }
   return cleaned;
+}
+
+// Cache du token Orange (valide 1h)
+let orangeToken = null;
+let orangeTokenExpiry = 0;
+
+async function getOrangeToken() {
+  if (orangeToken && Date.now() < orangeTokenExpiry) return orangeToken;
+
+  const clientId = process.env.ORANGE_CLIENT_ID;
+  const clientSecret = process.env.ORANGE_CLIENT_SECRET;
+  const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+
+  const res = await axios.post(
+    'https://api.orange.com/oauth/v3/token',
+    'grant_type=client_credentials',
+    {
+      headers: {
+        'Authorization': `Basic ${credentials}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json'
+      }
+    }
+  );
+
+  orangeToken = res.data.access_token;
+  orangeTokenExpiry = Date.now() + (res.data.expires_in - 60) * 1000; // -60s de marge
+  return orangeToken;
 }
 
 async function sendSMS(phone, message) {
@@ -23,53 +50,42 @@ async function sendSMS(phone, message) {
     return { success: false, error: 'Numéro invalide' };
   }
 
-  const AT_USERNAME = process.env.AT_USERNAME;
-  const AT_API_KEY = process.env.AT_API_KEY;
+  const clientId = process.env.ORANGE_CLIENT_ID;
+  const clientSecret = process.env.ORANGE_CLIENT_SECRET;
+  const senderNumber = process.env.ORANGE_SENDER_NUMBER; // ex: +2250000000000
+  const senderName = process.env.ORANGE_SENDER_NAME || 'Babicard';
 
-  if (!AT_USERNAME || !AT_API_KEY) {
-    console.log(`\n[SMS DEMO] ==================`);
-    console.log(`[SMS DEMO] À: ${formattedPhone}`);
-    console.log(`[SMS DEMO] Message: ${message}`);
-    console.log(`[SMS DEMO] ==================\n`);
+  if (!clientId || !clientSecret || !senderNumber) {
+    console.log(`[SMS DEMO] À: ${formattedPhone} | Message: ${message}`);
     return { success: true, demo: true, phone: formattedPhone, message };
   }
 
   try {
-    const apiUrl = AT_USERNAME === 'sandbox'
-      ? 'https://api.sandbox.africastalking.com/version1/messaging'
-      : 'https://api.africastalking.com/version1/messaging';
+    const token = await getOrangeToken();
+    const encodedSender = encodeURIComponent(senderNumber);
 
-    const params = { username: AT_USERNAME, to: formattedPhone, message: message };
-    // Only add sender ID if explicitly set and not in sandbox
-    if (process.env.AT_SENDER_ID && AT_USERNAME !== 'sandbox') {
-      params.from = process.env.AT_SENDER_ID;
-    }
-
-    const response = await axios.post(
-      apiUrl,
-      new URLSearchParams(params).toString(),
+    const res = await axios.post(
+      `https://api.orange.com/smsmessaging/v1/outbound/${encodedSender}/requests`,
+      {
+        outboundSMSMessageRequest: {
+          address: `tel:${formattedPhone}`,
+          senderAddress: `tel:${senderNumber}`,
+          senderName,
+          outboundSMSTextMessage: { message }
+        }
+      },
       {
         headers: {
-          'apiKey': AT_API_KEY,
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Accept': 'application/json'
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
       }
     );
 
-    const result = response.data;
-    if (result.SMSMessageData && result.SMSMessageData.Recipients) {
-      const recipient = result.SMSMessageData.Recipients[0];
-      if (recipient && recipient.status === 'Success') {
-        console.log(`[SMS] Envoyé à ${formattedPhone}: ${recipient.messageId}`);
-        return { success: true, messageId: recipient.messageId };
-      }
-    }
-
-    console.error('[SMS] Réponse inattendue:', JSON.stringify(result));
-    return { success: false, error: 'Réponse inattendue', data: result };
+    console.log(`[SMS] Orange — Envoyé à ${formattedPhone}`);
+    return { success: true, data: res.data };
   } catch (err) {
-    console.error('[SMS] Erreur Africa\'s Talking:', err.response?.data || err.message);
+    console.error('[SMS] Erreur Orange API:', err.response?.data || err.message);
     return { success: false, error: err.message };
   }
 }
