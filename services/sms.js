@@ -59,9 +59,11 @@ async function sendSMS(phone, message) {
   try {
     const token = await getOrangeToken();
 
-    // Orange CI : le senderAddress est le numéro pays CI (+225)
-    // Sans numéro fixe assigné, on utilise le senderName uniquement
-    const senderNumber = process.env.ORANGE_SENDER_NUMBER || '+2250000000000';
+    const senderNumber = process.env.ORANGE_SENDER_NUMBER;
+    if (!senderNumber) {
+      console.warn('[SMS] ORANGE_SENDER_NUMBER non défini — SMS non envoyé.');
+      return { success: false, error: 'Numéro expéditeur Orange non configuré.' };
+    }
     const encodedSender = encodeURIComponent(`tel:${senderNumber}`);
 
     const res = await axios.post(
