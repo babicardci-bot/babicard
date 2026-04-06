@@ -312,15 +312,18 @@ router.post('/mobilemoney/webhook', express.raw({ type: 'application/json' }), a
                  : typeof rawBody === 'string' ? rawBody
                  : JSON.stringify(rawBody);
 
-    // Vérifier la signature HMAC-SHA256
+    // Vérifier la signature HMAC-SHA256 avec le webhook secret
     const signature = req.headers['x-webhook-signature'];
     const timestamp = req.headers['x-webhook-timestamp'];
-    if (GENIUS_API_SECRET && signature && timestamp) {
-      const expected = crypto.createHmac('sha256', GENIUS_API_SECRET)
-        .update(`${timestamp}.${rawStr}`)
+    const webhookSecret = process.env.GENIUS_WEBHOOK_SECRET || GENIUS_API_SECRET;
+    if (webhookSecret && signature) {
+      const payload = timestamp ? `${timestamp}.${rawStr}` : rawStr;
+      const expected = crypto.createHmac('sha256', webhookSecret)
+        .update(payload)
         .digest('hex');
-      if (expected !== signature) {
-        console.warn('[MOBILE MONEY WEBHOOK] Signature invalide');
+      const sigToCheck = signature.startsWith('sha256=') ? signature.slice(7) : signature;
+      if (expected !== sigToCheck) {
+        console.warn('[MOBILE MONEY WEBHOOK] Signature invalide — reçu:', sigToCheck.slice(0,20), '| attendu:', expected.slice(0,20));
         return res.status(401).json({ error: 'Signature invalide.' });
       }
     }
