@@ -278,8 +278,8 @@ router.post('/mobilemoney/initiate', authenticateToken, async (req, res) => {
         description: `Commande Babicard #${order_id}`,
         reference,
         callback_url: `${siteUrl}/api/payment/mobilemoney/webhook`,
-        return_url: `${siteUrl}/dashboard?order=${order_id}&status=success`,
-        cancel_url: `${siteUrl}/dashboard?order=${order_id}&status=cancel`
+        success_url: `${siteUrl}/dashboard?order=${order_id}&status=success`,
+        error_url: `${siteUrl}/dashboard?order=${order_id}&status=cancel`
       },
       { headers: geniusHeaders() }
     );
