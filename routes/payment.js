@@ -316,25 +316,27 @@ router.post('/mobilemoney/webhook', express.raw({ type: 'application/json' }), a
     const signature = req.headers['x-webhook-signature'];
     const timestamp = req.headers['x-webhook-timestamp'];
     const webhookSecret = process.env.GENIUS_WEBHOOK_SECRET || GENIUS_API_SECRET;
-    console.log('[MOBILE MONEY WEBHOOK] Headers sig:', signature?.slice(0,20), '| ts:', timestamp);
+    console.log('[MOBILE MONEY WEBHOOK] sig:', signature?.slice(0,20), '| ts:', timestamp);
     if (webhookSecret && signature) {
       const sigToCheck = signature.startsWith('sha256=') ? signature.slice(7) : signature;
-      const secretStr = webhookSecret.startsWith('whsec_') ? webhookSecret.slice(6) : webhookSecret;
-      // Décoder le secret Base64 (format whsec_ comme Stripe)
-      const secretBuf = Buffer.from(secretStr, 'base64');
+      const secretNoPrefix = webhookSecret.startsWith('whsec_') ? webhookSecret.slice(6) : webhookSecret;
+      const secretBuf = Buffer.from(secretNoPrefix, 'base64');
       const payloadWithTs = timestamp ? `${timestamp}.${rawStr}` : rawStr;
-      // Tester: secret brut vs secret décodé Base64, avec/sans timestamp
+      // 6 variantes : (full secret | sans préfixe | décodé base64) x (avec timestamp | sans timestamp)
       const variants = [
-        [secretStr, payloadWithTs],
-        [secretBuf, payloadWithTs],
-        [secretStr, rawStr],
-        [secretBuf, rawStr],
+        ['full',   webhookSecret,  payloadWithTs],
+        ['full',   webhookSecret,  rawStr],
+        ['noprfx', secretNoPrefix, payloadWithTs],
+        ['noprfx', secretNoPrefix, rawStr],
+        ['b64buf', secretBuf,      payloadWithTs],
+        ['b64buf', secretBuf,      rawStr],
       ];
       let valid = false;
-      for (const [key, payload] of variants) {
+      for (const [label, key, payload] of variants) {
         const h = crypto.createHmac('sha256', key).update(payload).digest('hex');
-        console.log('[MOBILE MONEY WEBHOOK] key:', typeof key === 'string' ? 'str' : 'buf', '| payload:', payload.slice(0,30), '| hash:', h.slice(0,16));
-        if (h === sigToCheck) { valid = true; break; }
+        const match = h === sigToCheck;
+        console.log(`[MOBILE MONEY WEBHOOK] ${label} | ts=${!!timestamp} | hash:${h.slice(0,16)} | match:${match}`);
+        if (match) { valid = true; break; }
       }
       if (!valid) {
         console.warn('[MOBILE MONEY WEBHOOK] Signature invalide — reçu:', sigToCheck.slice(0,20));
