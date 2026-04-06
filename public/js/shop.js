@@ -304,7 +304,7 @@ async function checkout(deliveryEmail, deliveryPhone) {
 
     const orderRes = await authFetch('/orders', {
       method: 'POST',
-      body: JSON.stringify({ items, payment_method: document.querySelector('input[name="payMethod"]:checked')?.value || 'djamo', delivery_email: deliveryEmail, delivery_phone: deliveryPhone })
+      body: JSON.stringify({ items, payment_method: document.querySelector('input[name="payMethod"]:checked')?.value || 'mobile_money', delivery_email: deliveryEmail, delivery_phone: deliveryPhone })
     });
 
     if (!orderRes || !orderRes.ok) {
@@ -345,11 +345,11 @@ function buildOrderConfirmModal() {
       <div style="margin-bottom:14px;">
         <p style="margin:0 0 8px;color:#a0a0c0;font-size:0.85rem;">Choisir le moyen de paiement :</p>
         <div style="display:flex;gap:8px;">
-          <label id="payMethodDjamo" style="flex:1;display:flex;align-items:center;gap:8px;padding:10px 12px;border:2px solid #6C63FF;border-radius:8px;cursor:pointer;background:rgba(108,99,255,0.1);">
-            <input type="radio" name="payMethod" value="djamo" checked style="accent-color:#6C63FF;"> <span style="color:#e0e0ff;font-size:0.9rem;font-weight:600;">Djamo</span>
+          <label id="payMethodGenius" style="flex:1;display:flex;align-items:center;gap:8px;padding:10px 12px;border:2px solid #f59e0b;border-radius:8px;cursor:pointer;background:rgba(245,158,11,0.1);">
+            <input type="radio" name="payMethod" value="mobile_money" checked style="accent-color:#f59e0b;"> <span style="color:#e0e0ff;font-size:0.9rem;font-weight:600;">Mobile Money</span>
           </label>
-          <label id="payMethodGenius" style="flex:1;display:flex;align-items:center;gap:8px;padding:10px 12px;border:2px solid rgba(255,255,255,0.1);border-radius:8px;cursor:pointer;background:rgba(255,255,255,0.03);">
-            <input type="radio" name="payMethod" value="mobile_money" style="accent-color:#f59e0b;"> <span style="color:#e0e0ff;font-size:0.9rem;font-weight:600;">Mobile Money</span>
+          <label id="payMethodDjamo" style="flex:1;display:flex;align-items:center;gap:8px;padding:10px 12px;border:2px solid rgba(255,255,255,0.1);border-radius:8px;cursor:pointer;background:rgba(255,255,255,0.03);">
+            <input type="radio" name="payMethod" value="djamo" style="accent-color:#6C63FF;"> <span style="color:#e0e0ff;font-size:0.9rem;font-weight:600;">Djamo</span>
           </label>
         </div>
       </div>
@@ -397,10 +397,10 @@ function showOrderConfirmModal(orderId, total, items) {
   // Style radio buttons on change
   document.querySelectorAll('input[name="payMethod"]').forEach(radio => {
     radio.onchange = () => {
+      document.getElementById('payMethodGenius').style.borderColor = radio.value === 'mobile_money' ? '#f59e0b' : 'rgba(255,255,255,0.1)';
+      document.getElementById('payMethodGenius').style.background = radio.value === 'mobile_money' ? 'rgba(245,158,11,0.1)' : 'rgba(255,255,255,0.03)';
       document.getElementById('payMethodDjamo').style.borderColor = radio.value === 'djamo' ? '#6C63FF' : 'rgba(255,255,255,0.1)';
       document.getElementById('payMethodDjamo').style.background = radio.value === 'djamo' ? 'rgba(108,99,255,0.1)' : 'rgba(255,255,255,0.03)';
-      document.getElementById('payMethodGenius').style.borderColor = radio.value === 'genius' ? '#f59e0b' : 'rgba(255,255,255,0.1)';
-      document.getElementById('payMethodGenius').style.background = radio.value === 'genius' ? 'rgba(245,158,11,0.1)' : 'rgba(255,255,255,0.03)';
     };
   });
 
@@ -410,7 +410,7 @@ function showOrderConfirmModal(orderId, total, items) {
 async function proceedToPayment() {
   const orderId = _pendingOrderId;
 
-  const selectedMethod = document.querySelector('input[name="payMethod"]:checked')?.value || 'djamo';
+  const selectedMethod = document.querySelector('input[name="payMethod"]:checked')?.value || 'mobile_money';
   const methodLabel = selectedMethod === 'mobile_money' ? 'Mobile Money' : 'Djamo';
 
   const btn = document.getElementById('orderConfirmPayBtn');
