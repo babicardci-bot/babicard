@@ -17,7 +17,7 @@ router.post('/', authenticateToken, (req, res) => {
       return res.status(400).json({ error: 'Maximum 50 articles par commande.' });
     }
 
-    if (!payment_method || payment_method !== 'djamo') {
+    if (!payment_method || !['djamo', 'genius'].includes(payment_method)) {
       return res.status(400).json({ error: 'Méthode de paiement invalide.' });
     }
 

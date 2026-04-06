@@ -236,4 +236,141 @@ router.post('/simulate', authenticateToken, requireAdmin, async (req, res) => {
   }
 });
 
+// ============ GENIUS PAY ============
+const GENIUS_API_URL = 'https://pay.genius.ci/api/v1/merchant';
+const GENIUS_API_KEY = process.env.GENIUS_API_KEY;
+const GENIUS_API_SECRET = process.env.GENIUS_API_SECRET;
+
+function geniusHeaders() {
+  return {
+    'X-API-Key': GENIUS_API_KEY,
+    'X-API-Secret': GENIUS_API_SECRET,
+    'Content-Type': 'application/json'
+  };
+}
+
+// POST /api/payment/genius/initiate
+router.post('/genius/initiate', authenticateToken, async (req, res) => {
+  try {
+    const { order_id } = req.body;
+    if (!order_id) return res.status(400).json({ error: 'order_id requis.' });
+
+    const db = getDb();
+    const order = db.prepare('SELECT * FROM orders WHERE id = ? AND user_id = ?').get(order_id, req.user.id);
+    if (!order) return res.status(404).json({ error: 'Commande non trouvée.' });
+    if (order.payment_status !== 'pending') return res.status(400).json({ error: 'Commande déjà traitée.' });
+
+    if (!GENIUS_API_KEY || !GENIUS_API_SECRET) {
+      return res.status(503).json({ error: 'GeniusPay non configuré.' });
+    }
+
+    const siteUrl = process.env.SITE_URL || 'http://localhost:3000';
+    const reference = `BABI-G-${uuidv4().split('-')[0].toUpperCase()}-${order_id}`;
+
+    const paymentRes = await axios.post(
+      `${GENIUS_API_URL}/payments`,
+      {
+        amount: order.total_amount,
+        currency: 'XOF',
+        description: `Commande Babicard #${order_id}`,
+        reference,
+        callback_url: `${siteUrl}/api/payment/genius/webhook`,
+        return_url: `${siteUrl}/dashboard?order=${order_id}&status=success`,
+        cancel_url: `${siteUrl}/dashboard?order=${order_id}&status=cancel`
+      },
+      { headers: geniusHeaders() }
+    );
+
+    const checkout_url = paymentRes.data?.data?.checkout_url || paymentRes.data?.checkout_url;
+    const payRef = paymentRes.data?.data?.reference || reference;
+
+    if (!checkout_url) throw new Error('checkout_url absent de la réponse GeniusPay');
+
+    db.prepare('UPDATE orders SET payment_ref = ?, payment_method = ? WHERE id = ?').run(payRef, 'genius', order_id);
+
+    console.log('[GENIUS] Paiement initié — ref:', payRef, '| checkout_url: OK');
+    res.json({ payment_url: checkout_url, payment_ref: payRef, order_id });
+  } catch (err) {
+    console.error('[GENIUS] Erreur initiate:', err.response?.data || err.message);
+    const db = getDb();
+    db.prepare("UPDATE orders SET payment_status = 'failed' WHERE id = ?").run(req.body.order_id);
+    db.prepare("UPDATE cards SET status = 'available', order_id = NULL WHERE order_id = ? AND status = 'reserved'").run(req.body.order_id);
+    res.status(502).json({ error: 'Erreur initialisation GeniusPay. Réessayez.' });
+  }
+});
+
+// POST /api/payment/genius/webhook
+router.post('/genius/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  console.log('[GENIUS WEBHOOK] Reçu');
+  try {
+    const rawBody = req.body;
+    const rawStr = Buffer.isBuffer(rawBody) ? rawBody.toString('utf8')
+                 : typeof rawBody === 'string' ? rawBody
+                 : JSON.stringify(rawBody);
+
+    // Vérifier la signature HMAC-SHA256
+    const signature = req.headers['x-webhook-signature'];
+    const timestamp = req.headers['x-webhook-timestamp'];
+    if (GENIUS_API_SECRET && signature && timestamp) {
+      const expected = crypto.createHmac('sha256', GENIUS_API_SECRET)
+        .update(`${timestamp}.${rawStr}`)
+        .digest('hex');
+      if (expected !== signature) {
+        console.warn('[GENIUS WEBHOOK] Signature invalide');
+        return res.status(401).json({ error: 'Signature invalide.' });
+      }
+    }
+
+    let body;
+    try { body = JSON.parse(rawStr); } catch { return res.status(400).json({ error: 'Body invalide.' }); }
+
+    const event = req.headers['x-webhook-event'] || body.event;
+    const data = body.data || body;
+    const reference = data.reference;
+    console.log('[GENIUS WEBHOOK] Event:', event, '| Reference:', reference);
+
+    const db = getDb();
+    const order = db.prepare('SELECT * FROM orders WHERE payment_ref = ?').get(reference);
+    if (!order) {
+      // Chercher par externalId format BABI-G-XXXX-{orderId}
+      const match = reference?.match(/BABI-G-[A-Z0-9]+-(\d+)$/);
+      if (match) {
+        const foundOrder = db.prepare('SELECT * FROM orders WHERE id = ?').get(parseInt(match[1]));
+        if (foundOrder) {
+          db.prepare('UPDATE orders SET payment_ref = ? WHERE id = ?').run(reference, foundOrder.id);
+        }
+      }
+    }
+
+    const targetOrder = order || (() => {
+      const match = reference?.match(/BABI-G-[A-Z0-9]+-(\d+)$/);
+      return match ? db.prepare('SELECT * FROM orders WHERE id = ?').get(parseInt(match[1])) : null;
+    })();
+
+    if (!targetOrder) {
+      console.warn('[GENIUS WEBHOOK] Commande non trouvée pour ref:', reference);
+      return res.json({ received: true });
+    }
+
+    if (event === 'payment.success') {
+      if (targetOrder.payment_status === 'paid') return res.json({ received: true, skipped: 'already_paid' });
+      db.prepare("UPDATE orders SET payment_status = 'paid', paid_at = CURRENT_TIMESTAMP WHERE id = ?").run(targetOrder.id);
+      await processDelivery(targetOrder.id);
+      console.log('[GENIUS WEBHOOK] Commande', targetOrder.id, 'payée et livrée.');
+
+    } else if (['payment.failed', 'payment.cancelled', 'payment.expired'].includes(event)) {
+      db.prepare("UPDATE orders SET payment_status = 'failed' WHERE id = ?").run(targetOrder.id);
+      db.prepare("UPDATE cards SET status = 'available', order_id = NULL WHERE order_id = ? AND status = 'reserved'").run(targetOrder.id);
+
+    } else if (event === 'payment.refunded') {
+      db.prepare("UPDATE orders SET payment_status = 'refunded', delivery_status = 'refunded' WHERE id = ?").run(targetOrder.id);
+    }
+
+    res.json({ received: true });
+  } catch (err) {
+    console.error('[GENIUS WEBHOOK] Erreur:', err);
+    res.status(500).json({ error: 'Erreur traitement webhook.' });
+  }
+});
+
 module.exports = router;
