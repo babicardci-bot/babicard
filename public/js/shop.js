@@ -349,7 +349,7 @@ function buildOrderConfirmModal() {
             <input type="radio" name="payMethod" value="djamo" checked style="accent-color:#6C63FF;"> <span style="color:#e0e0ff;font-size:0.9rem;font-weight:600;">Djamo</span>
           </label>
           <label id="payMethodGenius" style="flex:1;display:flex;align-items:center;gap:8px;padding:10px 12px;border:2px solid rgba(255,255,255,0.1);border-radius:8px;cursor:pointer;background:rgba(255,255,255,0.03);">
-            <input type="radio" name="payMethod" value="genius" style="accent-color:#f59e0b;"> <span style="color:#e0e0ff;font-size:0.9rem;font-weight:600;">GeniusPay</span>
+            <input type="radio" name="payMethod" value="mobile_money" style="accent-color:#f59e0b;"> <span style="color:#e0e0ff;font-size:0.9rem;font-weight:600;">Mobile Money</span>
           </label>
         </div>
       </div>
@@ -411,7 +411,7 @@ async function proceedToPayment() {
   const orderId = _pendingOrderId;
 
   const selectedMethod = document.querySelector('input[name="payMethod"]:checked')?.value || 'djamo';
-  const methodLabel = selectedMethod === 'genius' ? 'GeniusPay' : 'Djamo';
+  const methodLabel = selectedMethod === 'mobile_money' ? 'Mobile Money' : 'Djamo';
 
   const btn = document.getElementById('orderConfirmPayBtn');
   if (btn) { btn.disabled = true; btn.textContent = `⏳ Redirection ${methodLabel}...`; }
@@ -419,7 +419,8 @@ async function proceedToPayment() {
   document.getElementById('orderConfirmOverlay').style.display = 'none';
 
   try {
-    const paymentRes = await authFetch(`/payment/${selectedMethod}/initiate`, {
+    const endpoint = selectedMethod === 'mobile_money' ? 'mobilemoney' : selectedMethod;
+    const paymentRes = await authFetch(`/payment/${endpoint}/initiate`, {
       method: 'POST',
       body: JSON.stringify({ order_id: orderId })
     });

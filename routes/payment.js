@@ -236,7 +236,7 @@ router.post('/simulate', authenticateToken, requireAdmin, async (req, res) => {
   }
 });
 
-// ============ GENIUS PAY ============
+// ============ MOBILE MONEY (GeniusPay) ============
 const GENIUS_API_URL = 'https://pay.genius.ci/api/v1/merchant';
 const GENIUS_API_KEY = process.env.GENIUS_API_KEY;
 const GENIUS_API_SECRET = process.env.GENIUS_API_SECRET;
@@ -249,8 +249,8 @@ function geniusHeaders() {
   };
 }
 
-// POST /api/payment/genius/initiate
-router.post('/genius/initiate', authenticateToken, async (req, res) => {
+// POST /api/payment/mobilemoney/initiate
+router.post('/mobilemoney/initiate', authenticateToken, async (req, res) => {
   try {
     const { order_id } = req.body;
     if (!order_id) return res.status(400).json({ error: 'order_id requis.' });
@@ -261,7 +261,7 @@ router.post('/genius/initiate', authenticateToken, async (req, res) => {
     if (order.payment_status !== 'pending') return res.status(400).json({ error: 'Commande déjà traitée.' });
 
     if (!GENIUS_API_KEY || !GENIUS_API_SECRET) {
-      return res.status(503).json({ error: 'GeniusPay non configuré.' });
+      return res.status(503).json({ error: 'Mobile Money non configuré.' });
     }
 
     const siteUrl = process.env.SITE_URL || 'http://localhost:3000';
@@ -274,7 +274,7 @@ router.post('/genius/initiate', authenticateToken, async (req, res) => {
         currency: 'XOF',
         description: `Commande Babicard #${order_id}`,
         reference,
-        callback_url: `${siteUrl}/api/payment/genius/webhook`,
+        callback_url: `${siteUrl}/api/payment/mobilemoney/webhook`,
         return_url: `${siteUrl}/dashboard?order=${order_id}&status=success`,
         cancel_url: `${siteUrl}/dashboard?order=${order_id}&status=cancel`
       },
@@ -286,22 +286,22 @@ router.post('/genius/initiate', authenticateToken, async (req, res) => {
 
     if (!checkout_url) throw new Error('checkout_url absent de la réponse GeniusPay');
 
-    db.prepare('UPDATE orders SET payment_ref = ?, payment_method = ? WHERE id = ?').run(payRef, 'genius', order_id);
+    db.prepare('UPDATE orders SET payment_ref = ?, payment_method = ? WHERE id = ?').run(payRef, 'mobile_money', order_id);
 
-    console.log('[GENIUS] Paiement initié — ref:', payRef, '| checkout_url: OK');
+    console.log('[MOBILE MONEY] Paiement initié — ref:', payRef, '| checkout_url: OK');
     res.json({ payment_url: checkout_url, payment_ref: payRef, order_id });
   } catch (err) {
-    console.error('[GENIUS] Erreur initiate:', err.response?.data || err.message);
+    console.error('[MOBILE MONEY] Erreur initiate:', err.response?.data || err.message);
     const db = getDb();
     db.prepare("UPDATE orders SET payment_status = 'failed' WHERE id = ?").run(req.body.order_id);
     db.prepare("UPDATE cards SET status = 'available', order_id = NULL WHERE order_id = ? AND status = 'reserved'").run(req.body.order_id);
-    res.status(502).json({ error: 'Erreur initialisation GeniusPay. Réessayez.' });
+    res.status(502).json({ error: 'Erreur initialisation Mobile Money. Réessayez.' });
   }
 });
 
-// POST /api/payment/genius/webhook
-router.post('/genius/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
-  console.log('[GENIUS WEBHOOK] Reçu');
+// POST /api/payment/mobilemoney/webhook
+router.post('/mobilemoney/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  console.log('[MOBILE MONEY WEBHOOK] Reçu');
   try {
     const rawBody = req.body;
     const rawStr = Buffer.isBuffer(rawBody) ? rawBody.toString('utf8')
@@ -316,7 +316,7 @@ router.post('/genius/webhook', express.raw({ type: 'application/json' }), async 
         .update(`${timestamp}.${rawStr}`)
         .digest('hex');
       if (expected !== signature) {
-        console.warn('[GENIUS WEBHOOK] Signature invalide');
+        console.warn('[MOBILE MONEY WEBHOOK] Signature invalide');
         return res.status(401).json({ error: 'Signature invalide.' });
       }
     }
@@ -327,7 +327,7 @@ router.post('/genius/webhook', express.raw({ type: 'application/json' }), async 
     const event = req.headers['x-webhook-event'] || body.event;
     const data = body.data || body;
     const reference = data.reference;
-    console.log('[GENIUS WEBHOOK] Event:', event, '| Reference:', reference);
+    console.log('[MOBILE MONEY WEBHOOK] Event:', event, '| Reference:', reference);
 
     const db = getDb();
     const order = db.prepare('SELECT * FROM orders WHERE payment_ref = ?').get(reference);
@@ -348,7 +348,7 @@ router.post('/genius/webhook', express.raw({ type: 'application/json' }), async 
     })();
 
     if (!targetOrder) {
-      console.warn('[GENIUS WEBHOOK] Commande non trouvée pour ref:', reference);
+      console.warn('[MOBILE MONEY WEBHOOK] Commande non trouvée pour ref:', reference);
       return res.json({ received: true });
     }
 
@@ -356,7 +356,7 @@ router.post('/genius/webhook', express.raw({ type: 'application/json' }), async 
       if (targetOrder.payment_status === 'paid') return res.json({ received: true, skipped: 'already_paid' });
       db.prepare("UPDATE orders SET payment_status = 'paid', paid_at = CURRENT_TIMESTAMP WHERE id = ?").run(targetOrder.id);
       await processDelivery(targetOrder.id);
-      console.log('[GENIUS WEBHOOK] Commande', targetOrder.id, 'payée et livrée.');
+      console.log('[MOBILE MONEY WEBHOOK] Commande', targetOrder.id, 'payée et livrée.');
 
     } else if (['payment.failed', 'payment.cancelled', 'payment.expired'].includes(event)) {
       db.prepare("UPDATE orders SET payment_status = 'failed' WHERE id = ?").run(targetOrder.id);
@@ -368,7 +368,7 @@ router.post('/genius/webhook', express.raw({ type: 'application/json' }), async 
 
     res.json({ received: true });
   } catch (err) {
-    console.error('[GENIUS WEBHOOK] Erreur:', err);
+    console.error('[MOBILE MONEY WEBHOOK] Erreur:', err);
     res.status(500).json({ error: 'Erreur traitement webhook.' });
   }
 });
