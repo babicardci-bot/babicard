@@ -88,18 +88,12 @@ const withdrawalLimiter = rateLimit({
   legacyHeaders: false
 });
 
-// Capturer le body brut pour les webhooks (avant le JSON parser)
-app.use((req, _res, next) => {
-  if (req.path.includes('/webhook')) {
-    let data = [];
-    req.on('data', chunk => data.push(chunk));
-    req.on('end', () => { req.rawBody = Buffer.concat(data).toString('utf8'); next(); });
-  } else {
-    next();
+app.use(express.json({
+  limit: '2mb',
+  verify: (req, _res, buf) => {
+    if (req.path.includes('/webhook')) req.rawBody = buf.toString('utf8');
   }
-});
-
-app.use(express.json({ limit: '2mb' }));
+}));
 app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 
 // Serve static files
