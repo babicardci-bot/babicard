@@ -104,14 +104,13 @@ router.get('/djamo/status/:chargeId', authenticateToken, async (req, res) => {
 });
 
 // POST /api/payment/djamo/webhook — Djamo charge events
-router.post('/djamo/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+router.post('/djamo/webhook', async (req, res) => {
   console.log('[WEBHOOK] Reçu — headers:', JSON.stringify(req.headers));
   try {
-    const rawBody = req.body;
-    // rawBody peut être un Buffer, string ou Object selon le middleware qui a parsé en premier
-    const rawStr = Buffer.isBuffer(rawBody) ? rawBody.toString('utf8')
-                 : typeof rawBody === 'string' ? rawBody
-                 : JSON.stringify(rawBody);
+    // req.rawBody capturé avant express.json() dans server.js
+    const rawStr = req.rawBody || (Buffer.isBuffer(req.body) ? req.body.toString('utf8')
+                 : typeof req.body === 'string' ? req.body
+                 : JSON.stringify(req.body));
     let body;
     try { body = JSON.parse(rawStr); } catch { return res.status(400).json({ error: 'Body JSON invalide.' }); }
     console.log('[WEBHOOK] Body brut:', rawStr.slice(0, 300));
@@ -304,13 +303,13 @@ router.post('/mobilemoney/initiate', authenticateToken, async (req, res) => {
 });
 
 // POST /api/payment/mobilemoney/webhook
-router.post('/mobilemoney/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+router.post('/mobilemoney/webhook', async (req, res) => {
   console.log('[MOBILE MONEY WEBHOOK] Reçu');
   try {
-    const rawBody = req.body;
-    const rawStr = Buffer.isBuffer(rawBody) ? rawBody.toString('utf8')
-                 : typeof rawBody === 'string' ? rawBody
-                 : JSON.stringify(rawBody);
+    // req.rawBody capturé avant express.json() dans server.js
+    const rawStr = req.rawBody || (Buffer.isBuffer(req.body) ? req.body.toString('utf8')
+                 : typeof req.body === 'string' ? req.body
+                 : JSON.stringify(req.body));
 
     // Vérifier la signature HMAC-SHA256 avec le webhook secret
     const signature = req.headers['x-webhook-signature'];
