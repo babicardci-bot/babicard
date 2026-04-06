@@ -316,14 +316,25 @@ router.post('/mobilemoney/webhook', express.raw({ type: 'application/json' }), a
     const signature = req.headers['x-webhook-signature'];
     const timestamp = req.headers['x-webhook-timestamp'];
     const webhookSecret = process.env.GENIUS_WEBHOOK_SECRET || GENIUS_API_SECRET;
+    console.log('[MOBILE MONEY WEBHOOK] Headers sig:', signature, '| ts:', timestamp);
     if (webhookSecret && signature) {
-      const payload = timestamp ? `${timestamp}.${rawStr}` : rawStr;
-      const expected = crypto.createHmac('sha256', webhookSecret)
-        .update(payload)
-        .digest('hex');
       const sigToCheck = signature.startsWith('sha256=') ? signature.slice(7) : signature;
-      if (expected !== sigToCheck) {
-        console.warn('[MOBILE MONEY WEBHOOK] Signature invalide — reçu:', sigToCheck.slice(0,20), '| attendu:', expected.slice(0,20));
+      const secretRaw = webhookSecret.startsWith('whsec_') ? webhookSecret.slice(6) : webhookSecret;
+      // Essayer les différentes combinaisons de payload
+      const candidates = [
+        timestamp ? `${timestamp}.${rawStr}` : null,
+        rawStr,
+        timestamp || ''
+      ].filter(Boolean);
+      let valid = false;
+      for (const payload of candidates) {
+        const h1 = crypto.createHmac('sha256', webhookSecret).update(payload).digest('hex');
+        const h2 = crypto.createHmac('sha256', secretRaw).update(payload).digest('hex');
+        console.log('[MOBILE MONEY WEBHOOK] Test payload:', payload.slice(0,40), '| h1:', h1.slice(0,16), '| h2:', h2.slice(0,16));
+        if (h1 === sigToCheck || h2 === sigToCheck) { valid = true; break; }
+      }
+      if (!valid) {
+        console.warn('[MOBILE MONEY WEBHOOK] Signature invalide — reçu:', sigToCheck.slice(0,20));
         return res.status(401).json({ error: 'Signature invalide.' });
       }
     }
