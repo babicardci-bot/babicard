@@ -315,6 +315,8 @@ router.post('/mobilemoney/webhook', async (req, res) => {
     const signature = req.headers['x-webhook-signature'];
     const timestamp = req.headers['x-webhook-timestamp'];
     const webhookSecret = process.env.GENIUS_WEBHOOK_SECRET;
+    console.log('[MOBILE MONEY WEBHOOK] rawBody présent:', !!req.rawBody, '| rawStr len:', rawStr.length, '| rawStr début:', rawStr.slice(0, 60));
+    console.log('[MOBILE MONEY WEBHOOK] Content-Type:', req.headers['content-type']);
     if (webhookSecret && signature) {
       const sigToCheck = signature.startsWith('sha256=') ? signature.slice(7) : signature;
       const secretNoPrefix = webhookSecret.startsWith('whsec_') ? webhookSecret.slice(6) : webhookSecret;
@@ -322,15 +324,14 @@ router.post('/mobilemoney/webhook', async (req, res) => {
       const h1 = crypto.createHmac('sha256', webhookSecret).update(payloadWithTs).digest('hex');
       const h2 = crypto.createHmac('sha256', secretNoPrefix).update(payloadWithTs).digest('hex');
       const h3 = crypto.createHmac('sha256', Buffer.from(secretNoPrefix, 'base64')).update(payloadWithTs).digest('hex');
+      console.log('[MOBILE MONEY WEBHOOK] sigToCheck:', sigToCheck, '| h1:', h1.slice(0,16), '| h2:', h2.slice(0,16), '| h3:', h3.slice(0,16));
       if (h1 !== sigToCheck && h2 !== sigToCheck && h3 !== sigToCheck) {
         console.warn('[MOBILE MONEY WEBHOOK] Signature invalide — paiement traité quand même (debug)');
-        // TODO: rejeter quand le format de signature est confirmé
-        // return res.status(401).json({ error: 'Signature invalide.' });
       } else {
         console.log('[MOBILE MONEY WEBHOOK] Signature valide');
       }
     } else {
-      console.warn('[MOBILE MONEY WEBHOOK] Pas de signature ou GENIUS_WEBHOOK_SECRET non défini');
+      console.warn('[MOBILE MONEY WEBHOOK] GENIUS_WEBHOOK_SECRET non défini ou pas de signature');
     }
 
     let body;
