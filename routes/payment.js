@@ -264,6 +264,10 @@ router.post('/mobilemoney/initiate', authenticateToken, async (req, res) => {
       return res.status(503).json({ error: 'Mobile Money non configuré.' });
     }
 
+    if (order.total_amount < 200) {
+      return res.status(400).json({ error: 'Le montant minimum pour Mobile Money est 200 FCFA.' });
+    }
+
     const siteUrl = process.env.SITE_URL || 'http://localhost:3000';
     const reference = `BABI-G-${uuidv4().split('-')[0].toUpperCase()}-${order_id}`;
 
