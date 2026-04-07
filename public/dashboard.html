@@ -425,7 +425,30 @@
       return false;
     }
 
-    async function loadOrders() {
+    let _pollInterval = null;
+
+    function startOrderPolling() {
+      if (_pollInterval) return;
+      _pollInterval = setInterval(async () => {
+        const hasPending = allOrders.some(o => o.payment_status === 'pending');
+        if (!hasPending) { stopOrderPolling(); return; }
+        const prevOrders = JSON.stringify(allOrders.map(o => o.payment_status));
+        await loadOrders(true);
+        const newOrders = JSON.stringify(allOrders.map(o => o.payment_status));
+        if (prevOrders !== newOrders) {
+          const newlyPaid = allOrders.find(o => o.payment_status === 'paid' && JSON.parse(prevOrders)[allOrders.indexOf(o)] !== 'paid');
+          if (newlyPaid || allOrders.some(o => o.payment_status === 'paid')) {
+            showToast('✅ Paiement confirmé ! Votre commande est payée.', 'success');
+          }
+        }
+      }, 5000);
+    }
+
+    function stopOrderPolling() {
+      if (_pollInterval) { clearInterval(_pollInterval); _pollInterval = null; }
+    }
+
+    async function loadOrders(silent = false) {
       const token = localStorage.getItem('token');
       const container = document.getElementById('ordersContainer');
 
@@ -454,8 +477,15 @@
         }
 
         container.innerHTML = `<div class="orders-list">${allOrders.map(order => renderOrderCard(order)).join('')}</div>`;
+
+        // Démarrer le polling si une commande est en attente
+        if (allOrders.some(o => o.payment_status === 'pending')) {
+          startOrderPolling();
+        } else {
+          stopOrderPolling();
+        }
       } catch (err) {
-        container.innerHTML = `<div class="error-state">❌ Erreur lors du chargement des commandes. <button onclick="loadOrders()">Réessayer</button></div>`;
+        if (!silent) container.innerHTML = `<div class="error-state">❌ Erreur lors du chargement des commandes. <button onclick="loadOrders()">Réessayer</button></div>`;
       }
     }
 
