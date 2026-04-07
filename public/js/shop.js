@@ -243,10 +243,10 @@ function updateCartPayStyle(selected) {
   const mobile = document.getElementById('cartMethodMobile');
   const djamo = document.getElementById('cartMethodDjamo');
   if (!mobile || !djamo) return;
-  mobile.style.borderColor = selected === 'mobile_money' ? '#F59E0B' : 'rgba(255,255,255,0.1)';
-  mobile.style.background   = selected === 'mobile_money' ? 'rgba(245,158,11,0.08)' : 'rgba(255,255,255,0.03)';
-  djamo.style.borderColor  = selected === 'djamo' ? '#6C63FF' : 'rgba(255,255,255,0.1)';
-  djamo.style.background    = selected === 'djamo' ? 'rgba(108,99,255,0.08)' : 'rgba(255,255,255,0.03)';
+  mobile.style.borderColor = selected === 'mobile_money' ? '#F59E0B' : '#e0e0e0';
+  mobile.style.background   = selected === 'mobile_money' ? 'rgba(245,158,11,0.12)' : 'rgba(0,0,0,0.03)';
+  djamo.style.borderColor  = selected === 'djamo' ? '#6C63FF' : '#e0e0e0';
+  djamo.style.background    = selected === 'djamo' ? 'rgba(108,99,255,0.1)' : 'rgba(0,0,0,0.03)';
 }
 
 function openDeliveryModal() {
