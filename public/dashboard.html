@@ -472,7 +472,7 @@
         failed: '<span class="status-badge status-failed">⚠️ Erreur</span>',
         refunded: '<span class="status-badge" style="background:#7c3aed22;color:#7c3aed;">↩️ Remboursée</span>'
       };
-      const payMethod = '💳 Djamo';
+      const payMethod = order.payment_method === 'mobile_money' ? '📱 Mobile Money' : '💳 Djamo';
 
       return `
         <div class="order-card" onclick="viewOrderDetail(${order.id})">
@@ -539,7 +539,7 @@
         <div class="order-detail-grid">
           <div class="detail-section">
             <h4>Informations</h4>
-            <div class="detail-row"><span>Méthode:</span><strong>💳 Djamo</strong></div>
+            <div class="detail-row"><span>Méthode:</span><strong>${order?.payment_method === 'mobile_money' ? '📱 Mobile Money' : '💳 Djamo'}</strong></div>
             <div class="detail-row"><span>Statut paiement:</span><strong>${({'paid':'✅ Payée','pending':'⏳ En attente','failed':'❌ Échouée','cancelled':'🚫 Annulée'})[order?.payment_status] || order?.payment_status}</strong></div>
             <div class="detail-row"><span>Réf. paiement:</span><code>${order?.payment_ref || 'N/A'}</code></div>
             <div class="detail-row"><span>Total:</span><strong class="amount-large">${formatPrice(order?.total_amount || 0)}</strong></div>
