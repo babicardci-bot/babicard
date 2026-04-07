@@ -436,7 +436,7 @@ async function proceedToPayment() {
       // Codes already delivered in initiate route — just redirect
       cart = []; saveCart(); updateCartUI();
       showToast('✅ Paiement confirmé ! Codes envoyés par email.', 'success');
-      setTimeout(() => { window.location.href = `/dashboard?order=${orderId}&status=success`; }, 1500);
+      setTimeout(() => { window.location.href = `/dashboard#orders`; }, 1500);
     } else {
       cart = []; saveCart();
       showToast('Redirection vers la page de paiement...', 'info');
