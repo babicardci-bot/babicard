@@ -149,6 +149,7 @@ app.use('/api/auth/reset-password', forgotPasswordLimiter);
 app.use('/api/auth', authLimiter, authRouter);
 app.use('/api/products', require('./routes/products'));
 app.use('/api/orders', require('./routes/orders'));
+app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/payment/djamo/initiate', paymentLimiter);
 app.use('/api/payment/djamo/status', rateLimit({ windowMs: 60 * 1000, max: 30, message: { error: 'Trop de requêtes.' } }));
 app.use('/api/payment', require('./routes/payment'));
@@ -229,6 +230,10 @@ function cancelExpiredOrders() {
     console.error('[AUTO-CANCEL] Erreur:', err.message);
   }
 }
+
+// Initialize Firebase
+const { initFirebase } = require('./services/notifications');
+initFirebase();
 
 // Initialize DB then start server
 const { initializeDatabase } = require('./database/db');

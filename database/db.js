@@ -385,6 +385,19 @@ function migrateDatabase(db) {
     }
   } catch(e) { console.error('Migration users 2fa:', e.message); }
 
+  // FCM tokens table (push notifications)
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS fcm_tokens (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        token TEXT NOT NULL UNIQUE,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `);
+  } catch(e) { console.error('Migration fcm_tokens:', e.message); }
+
   // Refund requests table
   try {
     db.exec(`

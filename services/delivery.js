@@ -1,6 +1,7 @@
 const { getDb } = require('../database/db');
 const { sendOrderConfirmationEmail, sendLowStockEmail, sendDeliveryFailedEmail, sendSellerSaleNotificationEmail } = require('./email');
 const { decrypt } = require('./encryption');
+const { sendToUser } = require('./notifications');
 
 async function processDelivery(orderId, forceRedeliver = false) {
   const db = getDb();
@@ -240,6 +241,25 @@ async function processDelivery(orderId, forceRedeliver = false) {
     } catch (e) {
       console.error('[DELIVERY] Erreur email échec livraison:', e.message);
     }
+  }
+
+  // Push notifications Firebase
+  try {
+    if (anyAssigned) {
+      await sendToUser(db, user.id,
+        '✅ Commande livrée !',
+        `Votre commande #${orderId} a été livrée. Vérifiez votre email pour les codes.`,
+        { order_id: String(orderId), type: 'delivery' }
+      );
+    } else {
+      await sendToUser(db, user.id,
+        '⚠️ Problème de livraison',
+        `Un problème est survenu avec la commande #${orderId}. Contactez le support.`,
+        { order_id: String(orderId), type: 'delivery_failed' }
+      );
+    }
+  } catch (fcmErr) {
+    console.error('[DELIVERY] Erreur push notification:', fcmErr.message);
   }
 
   console.log(`[DELIVERY] Commande #${orderId} traitée: ${results.cards_assigned.length}/${orderItems.length} cartes livrées.`);
