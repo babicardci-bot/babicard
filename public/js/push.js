@@ -9,7 +9,7 @@ const FIREBASE_CONFIG = {
 };
 
 // VAPID key — à remplacer avec ta clé publique Firebase Cloud Messaging
-const VAPID_KEY = 'REMPLACER_PAR_VAPID_KEY';
+const VAPID_KEY = 'BOGqWh6UsWH8UZ0Y0X3C1iSkYtIk1s7bkf1KYX-PTGQcxDD72WeS8aPD3FIzUripOrJl-Bqzzyw0klFbqELBfaM';
 
 let firebaseApp = null;
 let messaging = null;
