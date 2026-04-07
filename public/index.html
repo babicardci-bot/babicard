@@ -590,8 +590,13 @@
         <strong id="cartTotal">0 FCFA</strong>
       </div>
       <div class="cart-payment-selector" id="cartPaymentSelector">
-        <div class="payment-options" style="justify-content:center;">
-          <span style="font-size:0.85rem;color:var(--text-secondary);">💳 Paiement via <strong>Djamo</strong></span>
+        <div style="display:flex;gap:8px;margin-bottom:4px;">
+          <label id="cartMethodMobile" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px;border:2px solid #F59E0B;border-radius:8px;cursor:pointer;background:rgba(245,158,11,0.08);font-size:0.82rem;font-weight:600;color:#e0e0ff;" onclick="updateCartPayStyle('mobile_money')">
+            <input type="radio" name="cartPayMethod" value="mobile_money" checked style="accent-color:#F59E0B;"> 📱 Mobile Money
+          </label>
+          <label id="cartMethodDjamo" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px;border:2px solid rgba(255,255,255,0.1);border-radius:8px;cursor:pointer;background:rgba(255,255,255,0.03);font-size:0.82rem;font-weight:600;color:#e0e0ff;" onclick="updateCartPayStyle('djamo')">
+            <input type="radio" name="cartPayMethod" value="djamo" style="accent-color:#6C63FF;"> 💳 Djamo
+          </label>
         </div>
       </div>
       <button class="btn-checkout" id="checkoutBtn" onclick="openDeliveryModal()">

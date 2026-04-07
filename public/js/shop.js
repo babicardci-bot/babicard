@@ -239,6 +239,16 @@ function openCart() {
 }
 
 // ============ DELIVERY CONFIRMATION MODAL ============
+function updateCartPayStyle(selected) {
+  const mobile = document.getElementById('cartMethodMobile');
+  const djamo = document.getElementById('cartMethodDjamo');
+  if (!mobile || !djamo) return;
+  mobile.style.borderColor = selected === 'mobile_money' ? '#F59E0B' : 'rgba(255,255,255,0.1)';
+  mobile.style.background   = selected === 'mobile_money' ? 'rgba(245,158,11,0.08)' : 'rgba(255,255,255,0.03)';
+  djamo.style.borderColor  = selected === 'djamo' ? '#6C63FF' : 'rgba(255,255,255,0.1)';
+  djamo.style.background    = selected === 'djamo' ? 'rgba(108,99,255,0.08)' : 'rgba(255,255,255,0.03)';
+}
+
 function openDeliveryModal() {
   if (cart.length === 0) { showToast('Votre panier est vide.', 'error'); return; }
   if (!isLoggedIn()) {
@@ -304,7 +314,7 @@ async function checkout(deliveryEmail, deliveryPhone) {
 
     const orderRes = await authFetch('/orders', {
       method: 'POST',
-      body: JSON.stringify({ items, payment_method: document.querySelector('input[name="payMethod"]:checked')?.value || 'mobile_money', delivery_email: deliveryEmail, delivery_phone: deliveryPhone })
+      body: JSON.stringify({ items, payment_method: document.querySelector('input[name="cartPayMethod"]:checked')?.value || document.querySelector('input[name="payMethod"]:checked')?.value || 'mobile_money', delivery_email: deliveryEmail, delivery_phone: deliveryPhone })
     });
 
     if (!orderRes || !orderRes.ok) {
