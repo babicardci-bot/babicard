@@ -461,6 +461,9 @@ async function proceedToPayment() {
 async function cancelPendingOrder() {
   const orderId = _pendingOrderId;
   document.getElementById('orderConfirmOverlay').style.display = 'none';
+  // Réactiver le bouton si bloqué
+  const btn = document.getElementById('orderConfirmPayBtn');
+  if (btn) { btn.disabled = false; btn.textContent = '💳 Confirmer et payer'; }
   if (!orderId) return;
   try {
     await authFetch(`/orders/${orderId}/cancel`, { method: 'DELETE' });
