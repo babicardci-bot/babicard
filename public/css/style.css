@@ -13,6 +13,9 @@
   --color-primary-dark: #5a52d5;
   --color-primary-light: #a78bfa;
   --color-secondary: #00d4ff;
+  --color-gold: #F59E0B;
+  --color-gold-dark: #d97706;
+  --color-gold-light: #fcd34d;
   --color-accent: #ff6b6b;
   --color-green: #22c55e;
   --color-orange: #f97316;
@@ -56,7 +59,7 @@ img { max-width: 100%; }
 
 /* TEXT UTILS */
 .text-gradient {
-  background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+  background: linear-gradient(135deg, var(--color-primary), var(--color-gold));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -337,17 +340,17 @@ img { max-width: 100%; }
 .slide-cta {
   display: inline-block;
   padding: 14px 32px;
-  background: linear-gradient(135deg, var(--color-primary), #8b5cf6);
+  background: linear-gradient(135deg, var(--color-primary), var(--color-gold-dark));
   border-radius: 50px;
   color: white;
   font-weight: 700;
   font-size: 1rem;
   transition: var(--transition);
-  box-shadow: 0 4px 20px rgba(108, 99, 255, 0.4);
+  box-shadow: 0 4px 20px rgba(108, 99, 255, 0.3), 0 4px 20px rgba(245, 158, 11, 0.2);
 }
 .slide-cta:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 30px rgba(108, 99, 255, 0.6);
+  box-shadow: 0 8px 30px rgba(108, 99, 255, 0.4), 0 8px 30px rgba(245, 158, 11, 0.3);
 }
 
 /* Slider arrows */
@@ -716,7 +719,7 @@ img { max-width: 100%; }
   font-family: var(--font-heading);
   font-size: 1.3rem;
   font-weight: 700;
-  color: var(--color-primary-light);
+  color: var(--color-gold);
 }
 .product-price small {
   font-size: 0.7rem;
@@ -727,7 +730,7 @@ img { max-width: 100%; }
 }
 .btn-add-cart {
   padding: 8px 16px;
-  background: var(--color-primary);
+  background: linear-gradient(135deg, var(--color-primary), var(--color-gold-dark));
   border: none;
   border-radius: var(--radius-sm);
   color: white;
@@ -736,7 +739,7 @@ img { max-width: 100%; }
   transition: var(--transition);
 }
 .btn-add-cart:hover:not(:disabled) {
-  background: var(--color-primary-dark);
+  background: linear-gradient(135deg, var(--color-primary-dark), var(--color-gold));
   transform: scale(1.05);
 }
 .btn-add-cart:disabled {
