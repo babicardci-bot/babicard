@@ -1,6 +1,5 @@
 const { getDb } = require('../database/db');
 const { sendOrderConfirmationEmail, sendLowStockEmail, sendDeliveryFailedEmail, sendSellerSaleNotificationEmail } = require('./email');
-const { sendCardDeliveredSMS, sendPaymentConfirmationSMS } = require('./sms');
 const { decrypt } = require('./encryption');
 
 async function processDelivery(orderId, forceRedeliver = false) {
@@ -209,13 +208,6 @@ async function processDelivery(orderId, forceRedeliver = false) {
     };
   });
 
-  // Send payment confirmation SMS immediately
-  try {
-    results.sms_payment = await sendPaymentConfirmationSMS(user.phone, user.name, orderId, order.total_amount);
-  } catch (smsErr) {
-    console.error('[DELIVERY] Erreur SMS paiement:', smsErr);
-  }
-
   // Send email with card codes
   try {
     results.email = await sendOrderConfirmationEmail(user, order, itemsForNotification);
@@ -250,17 +242,6 @@ async function processDelivery(orderId, forceRedeliver = false) {
     }
   }
 
-  // Send SMS with card codes
-  try {
-    if (anyAssigned) {
-      results.sms = await sendCardDeliveredSMS(user.phone, user.name, orderId, results.cards_assigned);
-      console.log(`[DELIVERY] SMS ${results.sms.success ? 'envoyé' : 'échoué'} à ${user.phone}`);
-    }
-  } catch (smsErr) {
-    console.error('[DELIVERY] Erreur SMS livraison:', smsErr);
-    results.sms = { success: false, error: smsErr.message };
-  }
-
   console.log(`[DELIVERY] Commande #${orderId} traitée: ${results.cards_assigned.length}/${orderItems.length} cartes livrées.`);
 
   return {
@@ -270,7 +251,6 @@ async function processDelivery(orderId, forceRedeliver = false) {
     cards_assigned: results.cards_assigned.length,
     cards_failed: results.cards_failed.length,
     email_sent: results.email?.success || false,
-    sms_sent: results.sms?.success || false,
     failed_items: results.cards_failed
   };
 }
