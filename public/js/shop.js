@@ -424,9 +424,7 @@ async function proceedToPayment() {
   const methodLabel = selectedMethod === 'mobile_money' ? 'Mobile Money' : 'Djamo';
 
   const btn = document.getElementById('orderConfirmPayBtn');
-  if (btn) { btn.disabled = true; btn.textContent = `⏳ Redirection ${methodLabel}...`; }
-
-  document.getElementById('orderConfirmOverlay').style.display = 'none';
+  if (btn) { btn.disabled = true; btn.textContent = `⏳ ${methodLabel}...`; }
 
   try {
     const endpoint = selectedMethod === 'mobile_money' ? 'mobilemoney' : selectedMethod;
@@ -442,8 +440,10 @@ async function proceedToPayment() {
 
     const paymentData = await paymentRes.json();
 
+    // Fermer le modal seulement au moment de rediriger
+    document.getElementById('orderConfirmOverlay').style.display = 'none';
+
     if (paymentData.demo_mode) {
-      // Codes already delivered in initiate route — just redirect
       cart = []; saveCart(); updateCartUI();
       showToast('✅ Paiement confirmé ! Codes envoyés par email.', 'success');
       setTimeout(() => { window.location.href = `/dashboard#orders`; }, 1500);
