@@ -251,7 +251,25 @@ router.post('/logout', authenticateToken, (req, res) => {
 
 // GET /api/auth/me
 router.get('/me', authenticateToken, (req, res) => {
-  res.json({ user: req.user });
+  const db = getDb();
+  const user = db.prepare('SELECT id, name, email, phone, role, email_verified, avatar, created_at FROM users WHERE id = ?').get(req.user.id);
+  res.json({ user });
+});
+
+// POST /api/auth/avatar — mettre à jour l'avatar (base64)
+router.post('/avatar', authenticateToken, (req, res) => {
+  try {
+    const { avatar } = req.body;
+    if (!avatar) return res.status(400).json({ error: 'Avatar requis.' });
+    // Limit size ~500KB base64
+    if (avatar.length > 700000) return res.status(400).json({ error: 'Image trop grande. Maximum 500KB.' });
+    const db = getDb();
+    db.prepare('UPDATE users SET avatar = ? WHERE id = ?').run(avatar, req.user.id);
+    res.json({ message: 'Avatar mis à jour.', avatar });
+  } catch (err) {
+    console.error('Erreur avatar:', err);
+    res.status(500).json({ error: 'Erreur lors de la mise à jour de l\'avatar.' });
+  }
 });
 
 // PUT /api/auth/me — mettre à jour nom et téléphone

@@ -2245,3 +2245,211 @@ img { max-width: 100%; }
   .slide-title { font-size: 1.5rem; }
   .nav-container { padding: 0 12px; }
 }
+
+/* ── APP DOWNLOAD SECTION ───────────────────────────────────────── */
+.app-download-section {
+  padding: 60px 0;
+  background: linear-gradient(135deg, rgba(108,99,255,0.06) 0%, rgba(59,130,246,0.04) 100%);
+  border-top: 1px solid rgba(108,99,255,0.1);
+  border-bottom: 1px solid rgba(108,99,255,0.1);
+}
+
+.app-download-card {
+  display: flex;
+  align-items: center;
+  gap: 60px;
+  background: var(--bg-card);
+  border: 1px solid rgba(108,99,255,0.2);
+  border-radius: 24px;
+  padding: 48px;
+  box-shadow: 0 8px 40px rgba(108,99,255,0.08);
+}
+
+.app-download-left { flex: 1; }
+
+.app-download-tag {
+  display: inline-block;
+  background: rgba(108,99,255,0.12);
+  color: var(--color-primary);
+  border: 1px solid rgba(108,99,255,0.3);
+  border-radius: 20px;
+  padding: 4px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  margin-bottom: 16px;
+}
+
+.app-download-title {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 2.4rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1.1;
+  margin-bottom: 14px;
+}
+
+.app-download-desc {
+  font-size: 15px;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  margin-bottom: 20px;
+  max-width: 480px;
+}
+
+.app-download-features {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 28px;
+}
+
+.app-feature {
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 5px 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.app-download-buttons {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.app-btn-android, .app-btn-ios {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  border-radius: 14px;
+  text-decoration: none;
+  transition: all 0.2s;
+  min-width: 180px;
+}
+
+.app-btn-android {
+  background: linear-gradient(135deg, #6C63FF, #3B82F6);
+  color: white;
+  box-shadow: 0 4px 20px rgba(108,99,255,0.35);
+}
+
+.app-btn-android:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(108,99,255,0.45);
+  color: white;
+}
+
+.app-btn-ios {
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.app-btn-sub {
+  display: block;
+  font-size: 10px;
+  opacity: 0.85;
+  font-family: 'Inter', sans-serif;
+}
+
+.app-btn-main {
+  display: block;
+  font-size: 15px;
+  font-weight: 700;
+  font-family: 'Rajdhani', sans-serif;
+  letter-spacing: 0.3px;
+}
+
+/* Mockup téléphone */
+.app-download-right {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.app-phone-mockup {
+  width: 180px;
+  height: 320px;
+  background: var(--bg-secondary);
+  border-radius: 32px;
+  border: 6px solid rgba(108,99,255,0.3);
+  box-shadow: 0 20px 60px rgba(108,99,255,0.2), 0 0 0 1px rgba(108,99,255,0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.app-phone-mockup::before {
+  content: '';
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 6px;
+  background: rgba(108,99,255,0.3);
+  border-radius: 3px;
+}
+
+.phone-screen {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(160deg, rgba(108,99,255,0.15), rgba(59,130,246,0.08));
+}
+
+.phone-screen-inner {
+  text-align: center;
+  padding: 20px;
+}
+
+.phone-app-icon {
+  font-size: 48px;
+  margin-bottom: 10px;
+  filter: drop-shadow(0 4px 12px rgba(108,99,255,0.4));
+}
+
+.phone-app-name {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--color-primary);
+  letter-spacing: 1px;
+  margin-bottom: 6px;
+}
+
+.phone-app-stars {
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+
+.phone-app-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+@media (max-width: 768px) {
+  .app-download-card {
+    flex-direction: column;
+    padding: 28px 20px;
+    gap: 32px;
+    text-align: center;
+  }
+  .app-download-title { font-size: 1.8rem; }
+  .app-download-features { justify-content: center; }
+  .app-download-buttons { justify-content: center; }
+  .app-download-desc { margin: 0 auto 20px; }
+  .app-phone-mockup { width: 140px; height: 240px; }
+}

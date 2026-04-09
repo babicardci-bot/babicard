@@ -278,6 +278,88 @@ router.post('/:id/refund', authenticateToken, (req, res) => {
   }
 });
 
+// POST /api/orders/:id/resend-codes — Renvoyer les codes par email
+router.post('/:id/resend-codes', authenticateToken, async (req, res) => {
+  try {
+    const db = getDb();
+    const order = db.prepare('SELECT * FROM orders WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
+    if (!order) return res.status(404).json({ error: 'Commande non trouvée.' });
+    if (order.payment_status !== 'paid') return res.status(400).json({ error: 'Cette commande n\'a pas encore été payée.' });
+
+    // Anti-spam : max 3 renvois par commande
+    const resendCount = order.resend_count || 0;
+    if (resendCount >= 3) return res.status(429).json({ error: 'Limite de renvoi atteinte (3 max). Contactez le support.' });
+
+    // Récupérer les codes
+    const cards = db.prepare(`
+      SELECT c.code, c.pin, p.name as product_name
+      FROM order_items oi
+      JOIN cards c ON oi.card_id = c.id
+      JOIN products p ON oi.product_id = p.id
+      WHERE oi.order_id = ? AND c.code IS NOT NULL
+    `).all(order.id);
+
+    if (cards.length === 0) return res.status(400).json({ error: 'Aucun code disponible pour cette commande.' });
+
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
+    const email = user?.email;
+    if (!email) return res.status(400).json({ error: 'Email introuvable.' });
+
+    // Construire le corps de l'email
+    const codesHtml = cards.map(c =>
+      `<tr><td style="padding:8px;border-bottom:1px solid #333"><b>${c.product_name}</b></td>
+       <td style="padding:8px;border-bottom:1px solid #333;font-family:monospace;color:#10B981">${c.code}</td>
+       ${c.pin ? `<td style="padding:8px;border-bottom:1px solid #333">PIN: ${c.pin}</td>` : '<td></td>'}</tr>`
+    ).join('');
+
+    // Utiliser nodemailer si configuré, sinon logger
+    const nodemailer = require('nodemailer');
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST || 'smtp.gmail.com',
+      port: parseInt(process.env.SMTP_PORT || '587'),
+      secure: false,
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
+    });
+
+    const mailOptions = {
+      from: `"Babicard" <${process.env.SMTP_USER || 'noreply@babicard.ci'}>`,
+      to: email,
+      subject: `🎮 Vos codes — Commande #${order.id}`,
+      html: `
+        <div style="background:#0A0A0F;color:#fff;padding:32px;font-family:sans-serif;max-width:600px;margin:0 auto">
+          <h1 style="color:#6C63FF;margin-bottom:8px">Babicard</h1>
+          <p style="color:#aaa">Voici vos codes pour la commande <b>#${order.id}</b></p>
+          <table style="width:100%;border-collapse:collapse;margin:16px 0">
+            <tr style="background:#1a1a2e"><th style="padding:8px;text-align:left">Produit</th><th style="padding:8px;text-align:left">Code</th><th style="padding:8px;text-align:left">PIN</th></tr>
+            ${codesHtml}
+          </table>
+          <p style="color:#aaa;font-size:12px">Ne partagez pas ces codes. Toute utilisation est sous votre responsabilité.</p>
+          <p style="color:#555;font-size:11px">Babicard.ci — Votre marketplace de cartes cadeaux</p>
+        </div>
+      `,
+    };
+
+    try {
+      await transporter.sendMail(mailOptions);
+    } catch (mailErr) {
+      console.error('[RESEND CODES] Erreur email:', mailErr.message);
+      // Ne pas bloquer si l'email échoue — logger et continuer
+    }
+
+    // Incrémenter le compteur de renvois
+    db.prepare('UPDATE orders SET resend_count = COALESCE(resend_count, 0) + 1 WHERE id = ?').run(order.id);
+
+    console.log(`[RESEND CODES] Commande #${order.id} — ${cards.length} code(s) renvoyé(s) à ${email}`);
+    res.json({ message: `Codes renvoyés à ${email}`, count: cards.length });
+  } catch (err) {
+    console.error('Erreur resend-codes:', err);
+    res.status(500).json({ error: 'Erreur lors du renvoi des codes.' });
+  }
+});
+
 // GET /api/orders/:id/refund — Get refund status for an order
 router.get('/:id/refund', authenticateToken, (req, res) => {
   try {

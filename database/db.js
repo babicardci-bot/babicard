@@ -417,6 +417,25 @@ function migrateDatabase(db) {
     console.log('Migration: refund_requests table OK.');
   } catch(e) { console.error('Migration refund_requests:', e.message); }
 
+  // Product reviews table
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS product_reviews (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        product_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        rating INTEGER NOT NULL CHECK(rating BETWEEN 1 AND 5),
+        comment TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(product_id, user_id),
+        FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS idx_product_reviews_product ON product_reviews(product_id);
+    `);
+    console.log('Migration: product_reviews table OK.');
+  } catch(e) { console.error('Migration product_reviews:', e.message); }
+
   // Email OTP tokens table (remplace TOTP 2FA)
   try {
     db.exec(`
@@ -433,6 +452,62 @@ function migrateDatabase(db) {
       CREATE INDEX IF NOT EXISTS idx_email_otp_user ON email_otp_tokens(user_id, used);
     `);
   } catch(e) { console.error('Migration email_otp_tokens:', e.message); }
+
+  // Promo codes table
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS promo_codes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        code TEXT NOT NULL UNIQUE COLLATE NOCASE,
+        discount_type TEXT NOT NULL CHECK(discount_type IN ('percent','fixed')),
+        discount_value INTEGER NOT NULL,
+        min_order_amount INTEGER NOT NULL DEFAULT 0,
+        max_uses INTEGER DEFAULT NULL,
+        uses_count INTEGER NOT NULL DEFAULT 0,
+        expires_at DATETIME DEFAULT NULL,
+        is_active INTEGER NOT NULL DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX IF NOT EXISTS idx_promo_codes_code ON promo_codes(code);
+    `);
+    console.log('Migration: promo_codes table OK.');
+  } catch(e) { console.error('Migration promo_codes:', e.message); }
+
+  // Promo code uses tracking
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS promo_code_uses (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        promo_code_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        order_id INTEGER,
+        discount_amount INTEGER NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(promo_code_id, user_id),
+        FOREIGN KEY (promo_code_id) REFERENCES promo_codes(id),
+        FOREIGN KEY (user_id) REFERENCES users(id)
+      );
+    `);
+  } catch(e) { console.error('Migration promo_code_uses:', e.message); }
+
+  // orders promo columns
+  try {
+    const orderCols = db.prepare("PRAGMA table_info(orders)").all().map(c => c.name);
+    if (!orderCols.includes('promo_code_id')) {
+      db.prepare("ALTER TABLE orders ADD COLUMN promo_code_id INTEGER DEFAULT NULL").run();
+      db.prepare("ALTER TABLE orders ADD COLUMN discount_amount INTEGER NOT NULL DEFAULT 0").run();
+      console.log('Migration: promo columns ajoutés à orders.');
+    }
+  } catch(e) { console.error('Migration orders promo:', e.message); }
+
+  // Avatar column for users
+  try {
+    const userColsAv = db.prepare("PRAGMA table_info(users)").all().map(c => c.name);
+    if (!userColsAv.includes('avatar')) {
+      db.prepare("ALTER TABLE users ADD COLUMN avatar TEXT DEFAULT NULL").run();
+      console.log('Migration: avatar ajouté à users.');
+    }
+  } catch(e) { console.error('Migration users avatar:', e.message); }
 
   console.log('Migration vérifiée.');
 }

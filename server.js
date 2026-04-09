@@ -97,7 +97,14 @@ app.use(express.json({
 app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 
 // Serve static files
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public'), {
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.apk')) {
+      res.setHeader('Content-Type', 'application/vnd.android.package-archive');
+      res.setHeader('Content-Disposition', 'attachment; filename="Babicard.apk"');
+    }
+  }
+}));
 
 // SEO files — sitemap dynamique incluant les produits actifs
 app.get('/sitemap.xml', (req, res) => {
@@ -166,6 +173,7 @@ app.use('/api/admin', adminLimiter, require('./routes/admin'));
 app.use('/api/sellers/withdraw', withdrawalLimiter);
 app.use('/api/sellers', require('./routes/sellers'));
 app.use('/api/settings', require('./routes/settings'));
+app.use('/api/promos', require('./routes/promos'));
 
 // Health check
 app.get('/api/health', (req, res) => {
