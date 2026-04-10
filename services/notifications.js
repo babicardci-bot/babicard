@@ -1,14 +1,22 @@
 const admin = require('firebase-admin');
-const path = require('path');
 
 let initialized = false;
 
 function initFirebase() {
   if (initialized) return;
+
+  const projectId = process.env.FIREBASE_PROJECT_ID;
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+
+  if (!projectId || !clientEmail || !privateKey) {
+    console.warn('[FCM] Variables Firebase manquantes — notifications désactivées.');
+    return;
+  }
+
   try {
-    const serviceAccount = require('./firebase-service-account.json');
     admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount)
+      credential: admin.credential.cert({ projectId, clientEmail, privateKey })
     });
     initialized = true;
     console.log('[FCM] Firebase Admin initialisé (FCM V1).');
@@ -43,7 +51,6 @@ async function sendToUser(db, userId, title, body, data = {}) {
   const tokens = db.prepare('SELECT token FROM fcm_tokens WHERE user_id = ?').all(userId);
   if (!tokens.length) return;
   const results = await Promise.all(tokens.map(t => sendPushNotification(t.token, title, body, data)));
-  // Supprimer les tokens invalides
   results.forEach((r, i) => {
     if (!r.success && r.error?.includes('registration-token')) {
       db.prepare('DELETE FROM fcm_tokens WHERE token = ?').run(tokens[i].token);
