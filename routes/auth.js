@@ -48,7 +48,11 @@ router.post('/register', async (req, res) => {
     const baseUrl = process.env.SITE_URL || process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
     const verifyLink = `${baseUrl}/api/auth/verify-email?token=${verifyToken}`;
 
-    sendEmailVerificationEmail(user, verifyLink).catch(() => {});
+    sendEmailVerificationEmail(user, verifyLink).then(r => {
+      console.log(`[REGISTER] Email vérification → ${user.email}: ${JSON.stringify(r)}`);
+    }).catch(err => {
+      console.error(`[REGISTER] Erreur email vérification → ${user.email}:`, err.message);
+    });
 
     res.status(201).json({
       message: 'Compte créé ! Vérifiez votre email pour activer votre compte.',
@@ -108,7 +112,8 @@ router.post('/resend-verification', async (req, res) => {
     const baseUrl = process.env.SITE_URL || process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
     const verifyLink = `${baseUrl}/api/auth/verify-email?token=${verifyToken}`;
 
-    await sendEmailVerificationEmail(user, verifyLink);
+    const emailResult = await sendEmailVerificationEmail(user, verifyLink);
+    console.log(`[RESEND] Email vérification → ${user.email}: ${JSON.stringify(emailResult)}`);
 
     res.json({ message: 'Si cet email existe et n\'est pas encore vérifié, un lien a été envoyé.' });
   } catch (err) {
