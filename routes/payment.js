@@ -88,17 +88,51 @@ router.get('/djamo/status/:chargeId', authenticateToken, async (req, res) => {
     const order = db.prepare('SELECT id, payment_status, delivery_status FROM orders WHERE payment_ref = ? AND user_id = ?').get(chargeId, req.user.id);
     if (!order) return res.status(404).json({ error: 'Commande non trouvée.' });
 
+    // Si déjà payé en DB → retourner directement sans appeler Djamo
+    if (order.payment_status === 'paid' || order.payment_status === 'delivered') {
+      return res.json({ chargeId, status: 'paid', order_id: order.id });
+    }
+
     if (!DJAMO_ACCESS_TOKEN || DJAMO_ACCESS_TOKEN === 'your_djamo_access_token') {
       return res.json({ chargeId, status: order.payment_status, order_id: order.id });
     }
 
     const chargeRes = await axios.get(`${DJAMO_API_URL}/v1/charges/${chargeId}`, { headers: djamoHeaders() });
     const charge = chargeRes.data?.data || chargeRes.data;
-    const status = charge?.status;
+    const djamoStatus = charge?.status;
 
-    res.json({ chargeId, status, order_id: order.id });
+    // Normaliser le statut Djamo → statut interne
+    const normalizedStatus = ['charged', 'completed', 'success', 'paid'].includes(djamoStatus)
+      ? 'paid'
+      : ['failed', 'cancelled', 'expired'].includes(djamoStatus)
+        ? 'failed'
+        : djamoStatus;
+
+    // Mettre à jour la DB si payé
+    if (normalizedStatus === 'paid') {
+      db.prepare("UPDATE orders SET payment_status = 'paid' WHERE id = ?").run(order.id);
+    }
+
+    res.json({ chargeId, status: normalizedStatus, order_id: order.id });
   } catch (err) {
     console.error('Erreur Djamo status:', err.response?.data || err.message);
+    res.status(500).json({ error: 'Erreur vérification statut.' });
+
+  }
+});
+
+// GET /api/payment/order-status/:orderId — vérification statut par orderId (Mobile Money)
+router.get('/order-status/:orderId', authenticateToken, (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const db = getDb();
+    const order = db.prepare('SELECT id, payment_status FROM orders WHERE id = ? AND user_id = ?').get(orderId, req.user.id);
+    if (!order) return res.status(404).json({ error: 'Commande non trouvée.' });
+    const status = (order.payment_status === 'paid' || order.payment_status === 'delivered') ? 'paid'
+      : order.payment_status === 'failed' ? 'failed'
+      : 'pending';
+    res.json({ status, order_id: order.id });
+  } catch (err) {
     res.status(500).json({ error: 'Erreur vérification statut.' });
   }
 });
