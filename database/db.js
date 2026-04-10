@@ -398,6 +398,17 @@ function migrateDatabase(db) {
     `);
   } catch(e) { console.error('Migration fcm_tokens:', e.message); }
 
+  // Purge old FCM tokens (Firebase project change — new SenderID 84378128568)
+  try {
+    const purgeKey = 'fcm_purge_v2_babicard689e8';
+    const alreadyDone = db.prepare("SELECT value FROM settings WHERE key = ?").get(purgeKey);
+    if (!alreadyDone) {
+      const deleted = db.prepare('DELETE FROM fcm_tokens').run();
+      db.prepare("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)").run(purgeKey, '1');
+      console.log(`[FCM] Purge anciens tokens (nouveau projet Firebase): ${deleted.changes} token(s) supprimé(s).`);
+    }
+  } catch(e) { console.error('Migration purge fcm_tokens:', e.message); }
+
   // Refund requests table
   try {
     db.exec(`
