@@ -295,15 +295,31 @@ router.delete('/users/:id', (req, res) => {
     if (user.role === 'admin') return res.status(400).json({ error: 'Impossible de supprimer un compte administrateur.' });
 
     const deleteUser = db.transaction(() => {
-      // Supprimer les données liées dans l'ordre correct
-      db.prepare('DELETE FROM withdrawal_requests WHERE seller_id = ?').run(user.id);
-      db.prepare('DELETE FROM seller_earnings WHERE seller_id = ?').run(user.id);
-      db.prepare('DELETE FROM seller_profiles WHERE user_id = ?').run(user.id);
+      const id = user.id;
+      // Dépendances feuilles (pas de référence vers d'autres tables)
+      try { db.prepare('DELETE FROM promo_code_uses WHERE user_id = ?').run(id); } catch(e) {}
+      try { db.prepare('DELETE FROM refund_requests WHERE user_id = ?').run(id); } catch(e) {}
+      try { db.prepare('DELETE FROM email_otp_tokens WHERE user_id = ?').run(id); } catch(e) {}
+      try { db.prepare('DELETE FROM email_verification_tokens WHERE user_id = ?').run(id); } catch(e) {}
+      try { db.prepare('DELETE FROM login_otp_tokens WHERE user_id = ?').run(id); } catch(e) {}
+      try { db.prepare('DELETE FROM fcm_tokens WHERE user_id = ?').run(id); } catch(e) {}
+      try { db.prepare('DELETE FROM password_reset_tokens WHERE user_id = ?').run(id); } catch(e) {}
+      // Commandes et items
       try {
-        db.prepare('UPDATE cards SET seller_id = NULL WHERE seller_id = ?').run(user.id);
-      } catch(e) { /* seller_id column may not exist yet */ }
-      db.prepare('DELETE FROM password_reset_tokens WHERE user_id = ?').run(user.id);
-      db.prepare('DELETE FROM users WHERE id = ?').run(user.id);
+        const orderIds = db.prepare('SELECT id FROM orders WHERE user_id = ?').all(id).map(o => o.id);
+        for (const oid of orderIds) {
+          db.prepare('DELETE FROM refund_requests WHERE order_id = ?').run(oid);
+          db.prepare('DELETE FROM order_items WHERE order_id = ?').run(oid);
+        }
+        db.prepare('DELETE FROM orders WHERE user_id = ?').run(id);
+      } catch(e) {}
+      // Vendeur
+      try { db.prepare('DELETE FROM withdrawal_requests WHERE seller_id = ?').run(id); } catch(e) {}
+      try { db.prepare('DELETE FROM seller_earnings WHERE seller_id = ?').run(id); } catch(e) {}
+      try { db.prepare('DELETE FROM seller_profiles WHERE user_id = ?').run(id); } catch(e) {}
+      try { db.prepare('UPDATE cards SET seller_id = NULL WHERE seller_id = ?').run(id); } catch(e) {}
+      // Supprimer l'utilisateur
+      db.prepare('DELETE FROM users WHERE id = ?').run(id);
     });
     deleteUser();
 
