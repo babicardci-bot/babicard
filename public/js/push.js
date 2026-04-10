@@ -1,13 +1,13 @@
 // ============ FIREBASE PUSH NOTIFICATIONS ============
-const VAPID_KEY = 'BOGqWh6UsWH8UZ0Y0X3C1iSkYtIk1s7bkf1KYX-PTGQcxDD72WeS8aPD3FIzUripOrJl-Bqzzyw0klFbqELBfaM';
+const VAPID_KEY = 'BC_4VMOqBClpJ1AlGrd75Y7YFgi1XOThtDTnfmGZvEJ2u0SbttdmQFDvRFUnG75kwQ-11sEF7GBY65IT_Fayy0A';
 
 const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyAJJWhEHCr1CBbn2AA0UJ3gdS2HYPrsPK8",
-  authDomain: "babicard-ci.firebaseapp.com",
-  projectId: "babicard-ci",
-  storageBucket: "babicard-ci.firebasestorage.app",
-  messagingSenderId: "1003419055824",
-  appId: "1:1003419055824:web:f3f828e3c69f6c746d50d5"
+  apiKey: "AIzaSyDOEDLgEXLLjGlBsi3qtLXLDobu2pS5PhY",
+  authDomain: "babicard-ci-689e8.firebaseapp.com",
+  projectId: "babicard-ci-689e8",
+  storageBucket: "babicard-ci-689e8.firebasestorage.app",
+  messagingSenderId: "84378128568",
+  appId: "1:84378128568:android:9b6d6f850904d3f689244d"
 };
 
 async function initPushNotifications() {

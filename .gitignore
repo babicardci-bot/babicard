@@ -7,3 +7,4 @@ uploads/
 *.log
 .DS_Store
 Thumbs.db
+services/firebase-service-account.json
