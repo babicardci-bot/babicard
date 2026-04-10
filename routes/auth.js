@@ -331,17 +331,26 @@ router.delete('/me', authenticateToken, async (req, res) => {
     if (pendingOrder) return res.status(400).json({ error: 'Annulez vos commandes en attente avant de supprimer votre compte.' });
 
     const deleteAccount = db.transaction(() => {
+      const id = req.user.id;
       // Release any reserved cards
-      db.prepare("UPDATE cards SET status = 'available', order_id = NULL WHERE order_id IN (SELECT id FROM orders WHERE user_id = ?) AND status = 'reserved'").run(req.user.id);
+      db.prepare("UPDATE cards SET status = 'available', order_id = NULL WHERE order_id IN (SELECT id FROM orders WHERE user_id = ?) AND status = 'reserved'").run(id);
+      // Tokens
+      try { db.prepare('DELETE FROM promo_code_uses WHERE user_id = ?').run(id); } catch(e) {}
+      try { db.prepare('DELETE FROM refund_requests WHERE user_id = ?').run(id); } catch(e) {}
+      try { db.prepare('DELETE FROM email_otp_tokens WHERE user_id = ?').run(id); } catch(e) {}
+      try { db.prepare('DELETE FROM email_verification_tokens WHERE user_id = ?').run(id); } catch(e) {}
+      try { db.prepare('DELETE FROM login_otp_tokens WHERE user_id = ?').run(id); } catch(e) {}
+      try { db.prepare('DELETE FROM fcm_tokens WHERE user_id = ?').run(id); } catch(e) {}
+      try { db.prepare('DELETE FROM password_reset_tokens WHERE user_id = ?').run(id); } catch(e) {}
       // Anonymize orders (keep for accounting, remove personal data)
-      db.prepare("UPDATE orders SET delivery_email = '', delivery_phone = '' WHERE user_id = ?").run(req.user.id);
-      // Delete tokens
-      db.prepare('DELETE FROM password_reset_tokens WHERE user_id = ?').run(req.user.id);
-      db.prepare('DELETE FROM email_verification_tokens WHERE user_id = ?').run(req.user.id);
-      // Delete seller profile if exists
-      db.prepare('DELETE FROM seller_profiles WHERE user_id = ?').run(req.user.id);
+      db.prepare("UPDATE orders SET delivery_email = '', delivery_phone = '' WHERE user_id = ?").run(id);
+      // Seller profile
+      try { db.prepare('DELETE FROM withdrawal_requests WHERE seller_id = ?').run(id); } catch(e) {}
+      try { db.prepare('DELETE FROM seller_earnings WHERE seller_id = ?').run(id); } catch(e) {}
+      try { db.prepare('DELETE FROM seller_profiles WHERE user_id = ?').run(id); } catch(e) {}
+      try { db.prepare('UPDATE cards SET seller_id = NULL WHERE seller_id = ?').run(id); } catch(e) {}
       // Delete the user account
-      db.prepare('DELETE FROM users WHERE id = ?').run(req.user.id);
+      db.prepare('DELETE FROM users WHERE id = ?').run(id);
     });
 
     deleteAccount();
