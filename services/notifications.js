@@ -52,7 +52,9 @@ async function sendToUser(db, userId, title, body, data = {}) {
   if (!tokens.length) return;
   const results = await Promise.all(tokens.map(t => sendPushNotification(t.token, title, body, data)));
   results.forEach((r, i) => {
-    if (!r.success && r.error?.includes('registration-token')) {
+    if (!r.success && (r.error?.includes('registration-token') || r.error?.includes('not-registered') ||
+        r.error?.includes('SenderIdMismatch') || r.error?.includes('sender-id-mismatch') ||
+        r.error?.includes('mismatched-credential') || r.error?.includes('invalid-argument'))) {
       db.prepare('DELETE FROM fcm_tokens WHERE token = ?').run(tokens[i].token);
     }
   });
@@ -68,8 +70,11 @@ async function sendToAll(db, title, body, data = {}) {
       sent++;
     } else {
       failed++;
-      if (r.error?.includes('registration-token') || r.error?.includes('not-registered')) {
+      if (r.error?.includes('registration-token') || r.error?.includes('not-registered') ||
+          r.error?.includes('SenderIdMismatch') || r.error?.includes('sender-id-mismatch') ||
+          r.error?.includes('mismatched-credential') || r.error?.includes('invalid-argument')) {
         db.prepare('DELETE FROM fcm_tokens WHERE token = ?').run(t.token);
+        console.log(`[FCM] Token invalide supprimé: ${t.token.substring(0, 20)}...`);
       }
     }
   }

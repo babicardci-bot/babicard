@@ -1372,6 +1372,17 @@ router.put('/refunds/:id/reject', async (req, res) => {
   }
 });
 
+// DELETE /api/admin/fcm-tokens — Purger tous les tokens FCM invalides
+router.delete('/fcm-tokens', authenticateToken, requireAdmin, (req, res) => {
+  try {
+    const db = getDb();
+    const result = db.prepare('DELETE FROM fcm_tokens').run();
+    res.json({ message: `${result.changes} token(s) FCM supprimé(s).` });
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur.' });
+  }
+});
+
 // POST /api/admin/send-notification — Envoyer une notification push à tous les utilisateurs
 router.post('/send-notification', authenticateToken, requireAdmin, async (req, res) => {
   try {
