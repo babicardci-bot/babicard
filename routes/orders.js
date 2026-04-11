@@ -49,14 +49,14 @@ router.post('/', authenticateToken, (req, res) => {
         UPDATE order_items SET card_id = NULL
         WHERE order_id IN (
           SELECT id FROM orders WHERE payment_status = 'pending'
-            AND datetime(created_at) < datetime('now', '-30 minutes')
+            AND datetime(created_at) < datetime('now', '-15 minutes')
         )
       `).run();
       db.prepare(`
         UPDATE cards SET status = 'available', order_id = NULL
         WHERE status = 'reserved' AND order_id IN (
           SELECT id FROM orders WHERE payment_status = 'pending'
-            AND datetime(created_at) < datetime('now', '-30 minutes')
+            AND datetime(created_at) < datetime('now', '-15 minutes')
         )
       `).run();
 
