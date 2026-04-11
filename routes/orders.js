@@ -38,12 +38,20 @@ router.post('/', authenticateToken, (req, res) => {
     for (const old of existingPending) {
       db.prepare("UPDATE orders SET payment_status = 'failed' WHERE id = ?").run(old.id);
       db.prepare("UPDATE cards SET status = 'available', order_id = NULL WHERE order_id = ? AND status = 'reserved'").run(old.id);
+      db.prepare("UPDATE order_items SET card_id = NULL WHERE order_id = ?").run(old.id);
     }
 
     // Reserve cards + create order atomically to prevent race conditions
     let orderId;
     const createOrder = db.transaction(() => {
       // Release expired reservations (> 30 minutes) to free stuck cards
+      db.prepare(`
+        UPDATE order_items SET card_id = NULL
+        WHERE order_id IN (
+          SELECT id FROM orders WHERE payment_status = 'pending'
+            AND datetime(created_at) < datetime('now', '-30 minutes')
+        )
+      `).run();
       db.prepare(`
         UPDATE cards SET status = 'available', order_id = NULL
         WHERE status = 'reserved' AND order_id IN (

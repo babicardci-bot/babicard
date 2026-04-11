@@ -71,13 +71,36 @@ async function processDelivery(orderId, forceRedeliver = false) {
       let availableCard = null;
 
       if (item.card_id) {
-        // Card was pre-reserved at order creation — just confirm it
-        const confirmResult = db.prepare(
-          "UPDATE cards SET status = 'sold', sold_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'reserved'"
-        ).run(item.card_id);
+        // Card was pre-reserved at order creation — verify it still belongs to THIS order
+        const cardCheck = db.prepare('SELECT * FROM cards WHERE id = ?').get(item.card_id);
 
-        if (confirmResult.changes > 0 || db.prepare('SELECT status FROM cards WHERE id = ?').get(item.card_id)?.status === 'sold') {
-          availableCard = db.prepare('SELECT * FROM cards WHERE id = ?').get(item.card_id);
+        if (cardCheck && cardCheck.status === 'sold' && cardCheck.order_id === orderId) {
+          // Already delivered for this exact order — safe to re-use (re-delivery)
+          availableCard = cardCheck;
+        } else if (cardCheck && cardCheck.status === 'reserved' && cardCheck.order_id === orderId) {
+          // Card is reserved for THIS order — confirm it
+          const confirmResult = db.prepare(
+            "UPDATE cards SET status = 'sold', sold_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'reserved' AND order_id = ?"
+          ).run(item.card_id, orderId);
+          if (confirmResult.changes > 0) {
+            availableCard = db.prepare('SELECT * FROM cards WHERE id = ?').get(item.card_id);
+          }
+        }
+        // If card belongs to another order (race condition / re-reservation), fall through to fallback
+        if (!availableCard) {
+          // Card was stolen by another order — find a new available card
+          const updateResult = db.prepare(`
+            UPDATE cards SET status = 'sold', sold_at = CURRENT_TIMESTAMP, order_id = ?
+            WHERE id = (
+              SELECT id FROM cards
+              WHERE product_id = ? AND status = 'available'
+              ORDER BY added_at ASC
+              LIMIT 1
+            )
+          `).run(orderId, item.product_id);
+          availableCard = updateResult.changes > 0
+            ? db.prepare('SELECT * FROM cards WHERE product_id = ? AND status = ? AND order_id = ? ORDER BY sold_at DESC LIMIT 1').get(item.product_id, 'sold', orderId)
+            : null;
         }
       } else {
         // Fallback for old orders without pre-assigned cards
