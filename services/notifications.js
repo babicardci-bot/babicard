@@ -58,4 +58,23 @@ async function sendToUser(db, userId, title, body, data = {}) {
   });
 }
 
-module.exports = { initFirebase, sendPushNotification, sendToUser };
+async function sendToAll(db, title, body, data = {}) {
+  const tokens = db.prepare('SELECT DISTINCT token, user_id FROM fcm_tokens').all();
+  if (!tokens.length) return { sent: 0, failed: 0 };
+  let sent = 0, failed = 0;
+  for (const t of tokens) {
+    const r = await sendPushNotification(t.token, title, body, data);
+    if (r.success) {
+      sent++;
+    } else {
+      failed++;
+      if (r.error?.includes('registration-token') || r.error?.includes('not-registered')) {
+        db.prepare('DELETE FROM fcm_tokens WHERE token = ?').run(t.token);
+      }
+    }
+  }
+  console.log(`[FCM] Broadcast: ${sent} envoyés, ${failed} échoués.`);
+  return { sent, failed };
+}
+
+module.exports = { initFirebase, sendPushNotification, sendToUser, sendToAll };

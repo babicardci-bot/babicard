@@ -1372,4 +1372,22 @@ router.put('/refunds/:id/reject', async (req, res) => {
   }
 });
 
+// POST /api/admin/send-notification — Envoyer une notification push à tous les utilisateurs
+router.post('/send-notification', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { title, body } = req.body;
+    if (!title || !body) return res.status(400).json({ error: 'Titre et message requis.' });
+
+    const db = getDb();
+    const { sendToAll } = require('../services/notifications');
+    const result = await sendToAll(db, title, body);
+
+    logAdminAction(req, 'send_notification', 'all_users', { title, body, ...result });
+    res.json({ message: `Notification envoyée: ${result.sent} reçue(s), ${result.failed} échouée(s).`, ...result });
+  } catch (err) {
+    console.error('Erreur send-notification:', err);
+    res.status(500).json({ error: 'Erreur envoi notification.' });
+  }
+});
+
 module.exports = router;
