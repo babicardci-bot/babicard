@@ -165,6 +165,13 @@ function renderProducts(products) {
 
   if (!grid) return;
 
+  // Trier : produits en stock en premier, ruptures à la fin
+  products = [...products].sort((a, b) => {
+    const aStock = a.available_stock > 0 ? 1 : 0;
+    const bStock = b.available_stock > 0 ? 1 : 0;
+    return bStock - aStock;
+  });
+
   if (products.length === 0) {
     grid.innerHTML = '';
     noProducts?.classList.remove('hidden');
