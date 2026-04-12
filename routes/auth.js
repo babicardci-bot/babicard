@@ -339,7 +339,6 @@ router.delete('/me', authenticateToken, async (req, res) => {
       try { db.prepare('DELETE FROM refund_requests WHERE user_id = ?').run(id); } catch(e) {}
       try { db.prepare('DELETE FROM email_otp_tokens WHERE user_id = ?').run(id); } catch(e) {}
       try { db.prepare('DELETE FROM email_verification_tokens WHERE user_id = ?').run(id); } catch(e) {}
-      try { db.prepare('DELETE FROM login_otp_tokens WHERE user_id = ?').run(id); } catch(e) {}
       try { db.prepare('DELETE FROM fcm_tokens WHERE user_id = ?').run(id); } catch(e) {}
       try { db.prepare('DELETE FROM password_reset_tokens WHERE user_id = ?').run(id); } catch(e) {}
       // Anonymize orders (keep for accounting, remove personal data)

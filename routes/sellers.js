@@ -8,6 +8,7 @@ const { authenticateToken, requireSeller } = require('../middleware/auth');
 const { sendWithdrawalRequestEmail } = require('../services/email');
 const { encrypt } = require('../services/encryption');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 
 // Multer — seller document upload (one file at a time)
 const persistentBaseS = process.env.DB_PATH ? path.dirname(process.env.DB_PATH) : null;
@@ -287,22 +288,34 @@ router.post('/cards/bulk', authenticateToken, requireSeller, (req, res) => {
 
     const cardCols = db.prepare("PRAGMA table_info(cards)").all().map(c => c.name);
     const hasSellerCol = cardCols.includes('seller_id');
+    const hasCodeHash = cardCols.includes('code_hash');
     const insertCard = hasSellerCol
-      ? db.prepare(`INSERT INTO cards (product_id, seller_id, code, pin, serial, status) VALUES (?, ?, ?, ?, ?, 'available')`)
-      : db.prepare(`INSERT INTO cards (product_id, code, pin, serial, status) VALUES (?, ?, ?, ?, 'available')`);
+      ? db.prepare(`INSERT INTO cards (product_id, seller_id, code, pin, serial, status${hasCodeHash ? ', code_hash' : ''}) VALUES (?, ?, ?, ?, ?, 'available'${hasCodeHash ? ', ?' : ''})`)
+      : db.prepare(`INSERT INTO cards (product_id, code, pin, serial, status${hasCodeHash ? ', code_hash' : ''}) VALUES (?, ?, ?, ?, 'available'${hasCodeHash ? ', ?' : ''})`);
     const insertMany = db.transaction((cards) => {
       let inserted = 0, skipped = 0;
       for (const card of cards) {
         if (!card.code || !card.code.trim()) { skipped++; continue; }
         try {
+          const codeHash = hasCodeHash ? crypto.createHash('sha256').update(card.code.toUpperCase().trim()).digest('hex') : undefined;
           if (hasSellerCol) {
-            insertCard.run(product_id, req.user.id, encrypt(card.code.trim()), card.pin ? encrypt(card.pin) : null, card.serial ? encrypt(card.serial) : null);
+            hasCodeHash
+              ? insertCard.run(product_id, req.user.id, encrypt(card.code.trim()), card.pin ? encrypt(card.pin) : null, card.serial ? encrypt(card.serial) : null, codeHash)
+              : insertCard.run(product_id, req.user.id, encrypt(card.code.trim()), card.pin ? encrypt(card.pin) : null, card.serial ? encrypt(card.serial) : null);
           } else {
-            insertCard.run(product_id, encrypt(card.code.trim()), card.pin ? encrypt(card.pin) : null, card.serial ? encrypt(card.serial) : null);
+            hasCodeHash
+              ? insertCard.run(product_id, encrypt(card.code.trim()), card.pin ? encrypt(card.pin) : null, card.serial ? encrypt(card.serial) : null, codeHash)
+              : insertCard.run(product_id, encrypt(card.code.trim()), card.pin ? encrypt(card.pin) : null, card.serial ? encrypt(card.serial) : null);
           }
           inserted++;
         }
-        catch(e) { skipped++; }
+        catch(e) {
+          if (e.code === 'SQLITE_CONSTRAINT_UNIQUE' || (e.message && e.message.includes('UNIQUE constraint'))) {
+            skipped++;
+          } else {
+            skipped++;
+          }
+        }
       }
       return { inserted, skipped };
     });

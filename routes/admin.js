@@ -529,9 +529,10 @@ router.post('/cards/bulk', (req, res) => {
       return res.status(404).json({ error: 'Produit non trouvé.' });
     }
 
+    const crypto = require('crypto');
     const insertCard = db.prepare(`
-      INSERT INTO cards (product_id, code, pin, serial, status)
-      VALUES (?, ?, ?, ?, 'available')
+      INSERT INTO cards (product_id, code, pin, serial, status, code_hash)
+      VALUES (?, ?, ?, ?, 'available', ?)
     `);
 
     // Normalize and validate code format based on platform
@@ -660,14 +661,21 @@ router.post('/cards/bulk', (req, res) => {
         }
 
         try {
+          const codeHash = crypto.createHash('sha256').update(code.toUpperCase().trim()).digest('hex');
           insertCard.run(
             product_id,
             encrypt(code),
             card.pin ? encrypt(card.pin) : null,
-            card.serial ? encrypt(card.serial) : null
+            card.serial ? encrypt(card.serial) : null,
+            codeHash
           );
           inserted++;
-        } catch (e) { skipped++; }
+        } catch (e) {
+          if (e.code === 'SQLITE_CONSTRAINT_UNIQUE' || e.message?.includes('UNIQUE')) {
+            // Code en double — on l'ignore silencieusement
+          }
+          skipped++;
+        }
       }
       return { inserted, skipped, invalidCodes };
     });

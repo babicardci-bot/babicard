@@ -401,10 +401,10 @@ function migrateDatabase(db) {
   // Purge old FCM tokens (Firebase project change — new SenderID 84378128568)
   try {
     const purgeKey = 'fcm_purge_v2_babicard689e8';
-    const alreadyDone = db.prepare("SELECT value FROM settings WHERE key = ?").get(purgeKey);
+    const alreadyDone = db.prepare("SELECT value FROM site_settings WHERE key = ?").get(purgeKey);
     if (!alreadyDone) {
       const deleted = db.prepare('DELETE FROM fcm_tokens').run();
-      db.prepare("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)").run(purgeKey, '1');
+      db.prepare("INSERT OR IGNORE INTO site_settings (key, value) VALUES (?, ?)").run(purgeKey, '1');
       console.log(`[FCM] Purge anciens tokens (nouveau projet Firebase): ${deleted.changes} token(s) supprimé(s).`);
     }
   } catch(e) { console.error('Migration purge fcm_tokens:', e.message); }
@@ -510,6 +510,16 @@ function migrateDatabase(db) {
       console.log('Migration: promo columns ajoutés à orders.');
     }
   } catch(e) { console.error('Migration orders promo:', e.message); }
+
+  // code_hash column on cards (pour détecter les doublons malgré le chiffrement)
+  try {
+    const cardCols = db.prepare("PRAGMA table_info(cards)").all().map(c => c.name);
+    if (!cardCols.includes('code_hash')) {
+      db.prepare("ALTER TABLE cards ADD COLUMN code_hash TEXT DEFAULT NULL").run();
+      db.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_cards_code_hash ON cards(code_hash) WHERE code_hash IS NOT NULL").run();
+      console.log('Migration: code_hash ajouté à cards.');
+    }
+  } catch(e) { console.error('Migration cards code_hash:', e.message); }
 
   // Avatar column for users
   try {

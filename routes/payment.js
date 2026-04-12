@@ -139,7 +139,6 @@ router.get('/order-status/:orderId', authenticateToken, (req, res) => {
 
 // POST /api/payment/djamo/webhook — Djamo charge events
 router.post('/djamo/webhook', async (req, res) => {
-  console.log('[WEBHOOK] Reçu — headers:', JSON.stringify(req.headers));
   try {
     // req.rawBody capturé avant express.json() dans server.js
     const rawStr = req.rawBody || (Buffer.isBuffer(req.body) ? req.body.toString('utf8')
@@ -147,7 +146,21 @@ router.post('/djamo/webhook', async (req, res) => {
                  : JSON.stringify(req.body));
     let body;
     try { body = JSON.parse(rawStr); } catch { return res.status(400).json({ error: 'Body JSON invalide.' }); }
-    console.log('[WEBHOOK] Body brut:', rawStr.slice(0, 300));
+
+    // Vérification signature HMAC-SHA256 (Djamo envoie X-Webhook-Signature)
+    if (DJAMO_WEBHOOK_SECRET) {
+      const signature = req.headers['x-webhook-signature'] || req.headers['x-djamo-signature'];
+      if (!signature) {
+        console.warn('[DJAMO WEBHOOK] Signature manquante — rejeté');
+        return res.status(401).json({ error: 'Signature manquante.' });
+      }
+      const sigToCheck = signature.startsWith('sha256=') ? signature.slice(7) : signature;
+      const expected = crypto.createHmac('sha256', DJAMO_WEBHOOK_SECRET).update(rawStr).digest('hex');
+      if (!crypto.timingSafeEqual(Buffer.from(sigToCheck, 'hex'), Buffer.from(expected, 'hex'))) {
+        console.warn('[DJAMO WEBHOOK] Signature invalide — rejeté');
+        return res.status(401).json({ error: 'Signature invalide.' });
+      }
+    }
 
    
 
@@ -351,21 +364,28 @@ router.post('/mobilemoney/webhook', async (req, res) => {
     const webhookSecret = process.env.GENIUS_WEBHOOK_SECRET;
     console.log('[MOBILE MONEY WEBHOOK] rawBody présent:', !!req.rawBody, '| rawStr len:', rawStr.length, '| rawStr début:', rawStr.slice(0, 60));
     console.log('[MOBILE MONEY WEBHOOK] Content-Type:', req.headers['content-type']);
-    if (webhookSecret && signature) {
+    if (webhookSecret) {
+      if (!signature) {
+        console.warn('[MOBILE MONEY WEBHOOK] Signature manquante — rejeté');
+        return res.status(401).json({ error: 'Signature manquante.' });
+      }
       const sigToCheck = signature.startsWith('sha256=') ? signature.slice(7) : signature;
       const secretNoPrefix = webhookSecret.startsWith('whsec_') ? webhookSecret.slice(6) : webhookSecret;
       const payloadWithTs = timestamp ? `${timestamp}.${rawStr}` : rawStr;
       const h1 = crypto.createHmac('sha256', webhookSecret).update(payloadWithTs).digest('hex');
       const h2 = crypto.createHmac('sha256', secretNoPrefix).update(payloadWithTs).digest('hex');
-      const h3 = crypto.createHmac('sha256', Buffer.from(secretNoPrefix, 'base64')).update(payloadWithTs).digest('hex');
-      console.log('[MOBILE MONEY WEBHOOK] sigToCheck:', sigToCheck, '| h1:', h1.slice(0,16), '| h2:', h2.slice(0,16), '| h3:', h3.slice(0,16));
-      if (h1 !== sigToCheck && h2 !== sigToCheck && h3 !== sigToCheck) {
-        console.warn('[MOBILE MONEY WEBHOOK] Signature invalide — paiement traité quand même (debug)');
-      } else {
-        console.log('[MOBILE MONEY WEBHOOK] Signature valide');
+      let valid = h1 === sigToCheck || h2 === sigToCheck;
+      if (!valid) {
+        try {
+          const h3 = crypto.createHmac('sha256', Buffer.from(secretNoPrefix, 'base64')).update(payloadWithTs).digest('hex');
+          valid = h3 === sigToCheck;
+        } catch (_) {}
       }
-    } else {
-      console.warn('[MOBILE MONEY WEBHOOK] GENIUS_WEBHOOK_SECRET non défini ou pas de signature');
+      if (!valid) {
+        console.warn('[MOBILE MONEY WEBHOOK] Signature invalide — rejeté');
+        return res.status(401).json({ error: 'Signature invalide.' });
+      }
+      console.log('[MOBILE MONEY WEBHOOK] Signature valide');
     }
 
     let body;
