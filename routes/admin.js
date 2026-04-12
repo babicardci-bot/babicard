@@ -1409,4 +1409,29 @@ router.post('/send-notification', authenticateToken, requireAdmin, async (req, r
   }
 });
 
+// POST /api/admin/reset-payments — TEMPORAIRE — réinitialise toutes les données de paiement
+router.post('/reset-payments', authenticateToken, requireAdmin, (req, res) => {
+  try {
+    const db = getDb();
+    db.pragma('foreign_keys = OFF');
+    const reset = db.transaction(() => {
+      const ri = db.prepare('DELETE FROM order_items').run();
+      const ro = db.prepare('DELETE FROM orders').run();
+      const rc = db.prepare("UPDATE cards SET status = 'available', order_id = NULL, sold_at = NULL").run();
+      let se = 0, wr = 0, rr = 0;
+      try { se = db.prepare('DELETE FROM seller_earnings').run().changes; } catch(e) {}
+      try { wr = db.prepare('DELETE FROM withdrawal_requests').run().changes; } catch(e) {}
+      try { rr = db.prepare('DELETE FROM refund_requests').run().changes; } catch(e) {}
+      return { orders: ro.changes, items: ri.changes, cards_reset: rc.changes, earnings: se, withdrawals: wr, refunds: rr };
+    });
+    const result = reset();
+    db.pragma('foreign_keys = ON');
+    console.log('[ADMIN] Reset paiements effectué:', result);
+    res.json({ success: true, ...result });
+  } catch (err) {
+    console.error('Erreur reset paiements:', err);
+    res.status(500).json({ error: 'Erreur reset.' });
+  }
+});
+
 module.exports = router;
