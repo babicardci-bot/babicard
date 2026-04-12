@@ -398,23 +398,23 @@ function migrateDatabase(db) {
     `);
   } catch(e) { console.error('Migration fcm_tokens:', e.message); }
 
-  // Reset paiements pour lancement propre (une seule fois)
+  // Reset complet lancement propre v2 — supprime commandes + toutes les cartes (une seule fois)
   try {
-    const resetKey = 'payment_reset_launch_v1';
+    const resetKey = 'full_reset_launch_v2';
     const alreadyDone = db.prepare("SELECT value FROM site_settings WHERE key = ?").get(resetKey);
     if (!alreadyDone) {
       db.pragma('foreign_keys = OFF');
       db.prepare('DELETE FROM order_items').run();
       const ro = db.prepare('DELETE FROM orders').run();
-      const rc = db.prepare("UPDATE cards SET status = 'available', order_id = NULL, sold_at = NULL").run();
+      const rc = db.prepare('DELETE FROM cards').run();
       try { db.prepare('DELETE FROM seller_earnings').run(); } catch(e) {}
       try { db.prepare('DELETE FROM withdrawal_requests').run(); } catch(e) {}
       try { db.prepare('DELETE FROM refund_requests').run(); } catch(e) {}
       db.pragma('foreign_keys = ON');
       db.prepare("INSERT OR IGNORE INTO site_settings (key, value) VALUES (?, ?)").run(resetKey, '1');
-      console.log(`[RESET] Lancement propre: ${ro.changes} commandes supprimées, ${rc.changes} cartes remises à available.`);
+      console.log(`[RESET] Lancement propre v2: ${ro.changes} commandes supprimées, ${rc.changes} cartes supprimées.`);
     }
-  } catch(e) { console.error('Migration reset paiements:', e.message); }
+  } catch(e) { console.error('Migration reset complet:', e.message); }
 
   // Purge old FCM tokens (Firebase project change — new SenderID 84378128568)
   try {
