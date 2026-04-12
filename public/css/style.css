@@ -1184,6 +1184,7 @@ img { max-width: 100%; }
   flex: 1;
   justify-content: center;
   transition: var(--transition);
+  color: var(--text-primary);
 }
 .payment-option:has(input:checked) {
   border-color: var(--color-primary);
