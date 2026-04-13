@@ -60,7 +60,7 @@ router.get('/', (req, res) => {
       FROM products p
       LEFT JOIN seller_profiles sp ON p.seller_id = sp.user_id
       WHERE ${baseWhere}
-      ORDER BY p.category, p.price ASC
+      ORDER BY available_stock DESC, p.category, p.price ASC
       LIMIT ? OFFSET ?
     `;
     params.push(parseInt(limit), offset);
