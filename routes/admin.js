@@ -546,7 +546,7 @@ router.post('/cards/bulk', (req, res) => {
     const isAmazon = platform.includes('amazon');
     const psnRegex = /^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/i;
     const itunesRegex = /^[A-Z0-9]{16}$/i;
-    const xboxRegex = /^\d{25}$/;
+    const xboxRegex = /^[A-Z0-9]{5}-[A-Z0-9]{5}-[A-Z0-9]{5}-[A-Z0-9]{5}-[A-Z0-9]{5}$/i;
     const netflixRegex = /^[A-Z0-9]{11}$/i;
     const googlePlayRegex = /^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/i;
     const steamRegex = /^[A-Z0-9]{15}$/i;
@@ -565,9 +565,9 @@ router.post('/cards/bulk', (req, res) => {
     }
 
     function normalizeXboxCode(raw) {
-      const clean = raw.replace(/[\s-]/g, '');
-      if (clean.length !== 25 || !/^\d{25}$/.test(clean)) return null;
-      return clean;
+      const clean = raw.replace(/[\s-]/g, '').toUpperCase();
+      if (clean.length !== 25 || !/^[A-Z0-9]{25}$/.test(clean)) return null;
+      return `${clean.slice(0,5)}-${clean.slice(5,10)}-${clean.slice(10,15)}-${clean.slice(15,20)}-${clean.slice(20,25)}`;
     }
 
     function normalizeNetflixCode(raw) {
