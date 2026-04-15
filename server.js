@@ -177,7 +177,20 @@ app.use('/api/promos', require('./routes/promos'));
 
 // Health check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', message: 'Babicard.ci API is running', timestamp: new Date().toISOString() });
+  try {
+    const db = require('./database/db').getDb();
+    const usersCount  = db.prepare('SELECT COUNT(*) as c FROM users').get().c;
+    const ordersCount = db.prepare('SELECT COUNT(*) as c FROM orders').get().c;
+    const cardsCount  = db.prepare("SELECT COUNT(*) as c FROM cards WHERE status = 'available'").get().c;
+    res.json({
+      status: 'OK',
+      timestamp: new Date().toISOString(),
+      db: 'connected',
+      stats: { users: usersCount, orders: ordersCount, cards_available: cardsCount }
+    });
+  } catch (err) {
+    res.status(500).json({ status: 'ERROR', error: err.message, timestamp: new Date().toISOString() });
+  }
 });
 
 // SPA fallback
