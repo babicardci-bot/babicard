@@ -445,6 +445,15 @@ async function proceedToPayment() {
 
     if (paymentData.demo_mode) {
       cart = []; saveCart(); updateCartUI();
+      // Suivi conversion Google Ads
+      if (typeof gtag !== 'undefined') {
+        gtag('event', 'conversion', {
+          'send_to': 'AW-18097010927/tIt_CJz1xp0cEO_xqbVD',
+          'value': paymentData.total || 1.0,
+          'currency': 'XOF',
+          'transaction_id': paymentData.order_id || ''
+        });
+      }
       showToast('✅ Paiement confirmé ! Codes envoyés par email.', 'success');
       setTimeout(() => { window.location.href = `/dashboard#orders`; }, 1500);
     } else {
