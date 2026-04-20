@@ -147,18 +147,21 @@ router.post('/djamo/webhook', async (req, res) => {
     let body;
     try { body = JSON.parse(rawStr); } catch { return res.status(400).json({ error: 'Body JSON invalide.' }); }
 
-    // Vérification signature HMAC-SHA256 (Djamo envoie X-Webhook-Signature)
+    // Vérification signature HMAC-SHA256
     if (DJAMO_WEBHOOK_SECRET) {
-      const signature = req.headers['x-webhook-signature'] || req.headers['x-djamo-signature'];
+      const signature = req.headers['x-webhook-signature'] || req.headers['x-djamo-signature']
+        || req.headers['x-signature'] || req.headers['signature'];
       if (!signature) {
-        console.warn('[DJAMO WEBHOOK] Signature manquante — rejeté');
-        return res.status(401).json({ error: 'Signature manquante.' });
-      }
-      const sigToCheck = signature.startsWith('sha256=') ? signature.slice(7) : signature;
-      const expected = crypto.createHmac('sha256', DJAMO_WEBHOOK_SECRET).update(rawStr).digest('hex');
-      if (!crypto.timingSafeEqual(Buffer.from(sigToCheck, 'hex'), Buffer.from(expected, 'hex'))) {
-        console.warn('[DJAMO WEBHOOK] Signature invalide — rejeté');
-        return res.status(401).json({ error: 'Signature invalide.' });
+        console.warn('[DJAMO WEBHOOK] Signature absente — vérification via API Djamo obligatoire');
+        // Pas de rejet immédiat mais on vérifiera le statut via l'API avant toute livraison
+        req._djamoNoSignature = true;
+      } else {
+        const sigToCheck = signature.startsWith('sha256=') ? signature.slice(7) : signature;
+        const expected = crypto.createHmac('sha256', DJAMO_WEBHOOK_SECRET).update(rawStr).digest('hex');
+        if (!crypto.timingSafeEqual(Buffer.from(sigToCheck, 'hex'), Buffer.from(expected, 'hex'))) {
+          console.warn('[DJAMO WEBHOOK] Signature invalide — rejeté');
+          return res.status(401).json({ error: 'Signature invalide.' });
+        }
       }
     }
 
@@ -199,6 +202,23 @@ router.post('/djamo/webhook', async (req, res) => {
 
     if (status === 'paid') {
       if (order.payment_status === 'paid') return res.json({ received: true, skipped: 'already_paid' });
+
+      // Si pas de signature, vérifier le statut réel via l'API Djamo avant de livrer
+      if (req._djamoNoSignature) {
+        try {
+          const verifyRes = await axios.get(`${DJAMO_API_URL}/v1/charges/${chargeId}`, { headers: djamoHeaders() });
+          const realStatus = verifyRes.data?.data?.status || verifyRes.data?.status;
+          if (!['charged', 'completed', 'success', 'paid'].includes(realStatus)) {
+            console.warn('[DJAMO WEBHOOK] Paiement non confirmé par API — statut réel:', realStatus, '— livraison annulée');
+            return res.status(400).json({ error: 'Paiement non confirmé.' });
+          }
+          console.log('[DJAMO WEBHOOK] Paiement vérifié via API — statut:', realStatus);
+        } catch (verifyErr) {
+          console.error('[DJAMO WEBHOOK] Impossible de vérifier le paiement via API:', verifyErr.message);
+          return res.status(502).json({ error: 'Vérification paiement impossible.' });
+        }
+      }
+
       db.prepare("UPDATE orders SET payment_status = 'paid', paid_at = CURRENT_TIMESTAMP WHERE id = ?").run(order.id);
       await processDelivery(order.id);
 
