@@ -169,7 +169,8 @@ const adminLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false
 });
-app.use('/api/admin', adminLimiter, require('./routes/admin'));
+const { authenticateToken, requireAdmin } = require('./middleware/auth');
+app.use('/api/admin', adminLimiter, authenticateToken, requireAdmin, require('./routes/admin'));
 app.use('/api/sellers/withdraw', withdrawalLimiter);
 app.use('/api/sellers', require('./routes/sellers'));
 app.use('/api/settings', require('./routes/settings'));

@@ -1,10 +1,19 @@
 const express = require('express');
 const router = express.Router();
+const rateLimit = require('express-rate-limit');
 const { getDb } = require('../database/db');
 const { authenticateToken, requireAdmin } = require('../middleware/auth');
 
+const promoLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { error: 'Trop de tentatives. Réessayez dans 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
 // POST /api/promos/validate — valider un code promo
-router.post('/validate', authenticateToken, (req, res) => {
+router.post('/validate', authenticateToken, promoLimiter, (req, res) => {
   try {
     const { code, order_amount } = req.body;
     if (!code || !order_amount) {
