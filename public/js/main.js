@@ -2,6 +2,32 @@
 // Babicard.ci — Main JS (Slider + Products)
 // =============================================
 
+const REGION_WARNINGS = {
+  'google play': { flag: '🇫🇷', label: 'France', msg: 'Cette carte est valable uniquement sur un compte Google Play configuré en France. Compte ivoirien non compatible.' },
+  'psn':         { flag: '🇫🇷', label: 'France', msg: 'Cette carte PSN est valable uniquement sur un compte PlayStation configuré en France.' },
+  'xbox':        { flag: '🌍', label: 'Global',  msg: null },
+  'itunes':      { flag: '🇫🇷', label: 'France', msg: 'Cette carte iTunes/App Store est valable uniquement sur un compte Apple configuré en France.' },
+};
+
+function getProductRegion(product) {
+  const name = (product.name + ' ' + (product.platform || '')).toLowerCase();
+  for (const [key, val] of Object.entries(REGION_WARNINGS)) {
+    if (name.includes(key)) return val;
+  }
+  return null;
+}
+
+function getRegionWarning(product) {
+  const r = getProductRegion(product);
+  return r && r.msg ? `${r.flag} <strong>Région ${r.label}</strong> — ${r.msg}` : null;
+}
+
+function getRegionBadge(product) {
+  const r = getProductRegion(product);
+  if (!r) return '';
+  return `<span style="position:absolute;bottom:8px;left:8px;background:rgba(0,0,0,0.65);backdrop-filter:blur(4px);border-radius:4px;padding:2px 7px;font-size:0.7rem;color:#fbbf24;font-weight:600;">${r.flag} ${r.label}</span>`;
+}
+
 // Init thème immédiatement (évite le flash blanc/noir)
 (function() {
   const saved = localStorage.getItem('theme') || 'dark';
@@ -191,6 +217,7 @@ function renderProducts(products) {
             ${inStock ? '✓ Disponible' : '✕ Rupture'}
           </span>
           ${product.promo_price ? `<span class="badge-promo">🔥 PROMO</span>` : ''}
+          ${getRegionBadge(product)}
           ${product.image_url
             ? `<img src="${esc(product.image_url)}" alt="${esc(product.name)}" class="product-card-img-cover">`
             : `<span class="card-brand-icon">${icon}</span><span class="card-brand-name">${getCategoryLabel(product.category)}</span>`
@@ -245,7 +272,11 @@ function openProductModal(productId) {
     <div style="padding:24px;">
       <div style="color:var(--color-primary-light);font-size:0.75rem;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">${esc(product.platform)}</div>
       <h2 style="font-size:1.4rem;font-weight:700;margin-bottom:8px">${esc(product.name)}</h2>
-      <p style="color:var(--text-secondary);font-size:0.9rem;line-height:1.6;margin-bottom:20px">${esc(product.description || 'Carte cadeau numérique. Livraison immédiate par email et SMS.')}</p>
+      <p style="color:var(--text-secondary);font-size:0.9rem;line-height:1.6;margin-bottom:${getRegionWarning(product) ? '12px' : '20px'}">${esc(product.description || 'Carte cadeau numérique. Livraison immédiate par email et SMS.')}</p>
+      ${getRegionWarning(product) ? `<div style="background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.4);border-radius:8px;padding:10px 14px;margin-bottom:20px;display:flex;align-items:flex-start;gap:10px;">
+        <span style="font-size:1.1rem;flex-shrink:0;">⚠️</span>
+        <span style="font-size:0.82rem;color:#fbbf24;line-height:1.5;">${getRegionWarning(product)}</span>
+      </div>` : ''}
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
         <div style="background:var(--bg-card);padding:12px;border-radius:8px;border:1px solid var(--border-color);">
