@@ -157,7 +157,7 @@ async function adminChangePassword() {
     document.getElementById('adminNewPwd').value = '';
     document.getElementById('adminConfirmPwd').value = '';
   } else {
-    alertEl.innerHTML = `<div style="padding:10px;border-radius:6px;background:#fee;color:#c00;margin-bottom:12px;">${data.error || 'Erreur'}</div>`;
+    alertEl.innerHTML = `<div style="padding:10px;border-radius:6px;background:#fee;color:#c00;margin-bottom:12px;">${esc(data.error || 'Erreur')}</div>`;
   }
 }
 
@@ -1102,7 +1102,7 @@ async function revealCard(cardId) {
     const codeEl = document.getElementById(`card-code-${cardId}`);
     const pinEl = document.getElementById(`card-pin-${cardId}`);
     if (codeEl) codeEl.textContent = data.code || '';
-    if (pinEl && data.pin) pinEl.innerHTML = `PIN: <strong>${data.pin}</strong>`;
+    if (pinEl && data.pin) pinEl.innerHTML = `PIN: <strong>${esc(data.pin)}</strong>`;
   } catch(e) {
     showToast('Erreur réseau.', 'error');
   }
@@ -1637,9 +1637,9 @@ async function migrateEncryptCards() {
     const res = await adminFetch('/admin/migrate-encrypt-cards', { method: 'POST' });
     const data = await res.json();
     if (res.ok) {
-      resultEl.innerHTML = `<span style="color:#22c55e;font-size:0.85rem;">✅ ${data.encrypted} carte(s) chiffrée(s), ${data.already_encrypted} déjà chiffrée(s), ${data.errors} erreur(s).</span>`;
+      resultEl.innerHTML = `<span style="color:#22c55e;font-size:0.85rem;">✅ ${esc(String(data.encrypted))} carte(s) chiffrée(s), ${esc(String(data.already_encrypted))} déjà chiffrée(s), ${esc(String(data.errors))} erreur(s).</span>`;
     } else {
-      resultEl.innerHTML = `<span style="color:#ef4444;font-size:0.85rem;">❌ ${data.error}</span>`;
+      resultEl.innerHTML = `<span style="color:#ef4444;font-size:0.85rem;">❌ ${esc(data.error)}</span>`;
     }
   } catch(e) {
     resultEl.innerHTML = '<span style="color:#ef4444;font-size:0.85rem;">❌ Erreur réseau.</span>';
@@ -1666,10 +1666,10 @@ async function sendBroadcast() {
     });
     const data = await res.json();
     if (!res.ok) {
-      resultEl.innerHTML = `<span style="color:#ef4444;font-size:0.85rem;">❌ ${data.error}</span>`;
+      resultEl.innerHTML = `<span style="color:#ef4444;font-size:0.85rem;">❌ ${esc(data.error)}</span>`;
       return;
     }
-    resultEl.innerHTML = `<span style="color:#22c55e;font-size:0.85rem;">✅ ${data.message}${data.failed > 0 ? ` (${data.failed} échec(s))` : ''}</span>`;
+    resultEl.innerHTML = `<span style="color:#22c55e;font-size:0.85rem;">✅ ${esc(data.message)}${data.failed > 0 ? ` (${esc(String(data.failed))} échec(s))` : ''}</span>`;
     document.getElementById('broadcastSubject').value = '';
     document.getElementById('broadcastBody').value = '';
   } catch (e) {
@@ -1688,7 +1688,7 @@ async function downloadBackup() {
     });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      resultEl.innerHTML = `<span style="color:#ef4444;font-size:0.85rem;">❌ ${data.error || 'Erreur'}</span>`;
+      resultEl.innerHTML = `<span style="color:#ef4444;font-size:0.85rem;">❌ ${esc(data.error || 'Erreur')}</span>`;
       return;
     }
     const blob = await res.blob();
@@ -1720,9 +1720,9 @@ async function sendTestSMS() {
     });
     const data = await res.json();
     if (res.ok && data.success) {
-      resultEl.innerHTML = `<div class="alert-box success">✅ SMS envoyé à ${phone}${data.demo ? ' <em>(mode démo — variables non configurées)</em>' : ''}</div>`;
+      resultEl.innerHTML = `<div class="alert-box success">✅ SMS envoyé à ${esc(phone)}${data.demo ? ' <em>(mode démo — variables non configurées)</em>' : ''}</div>`;
     } else {
-      resultEl.innerHTML = `<div class="alert-box error">❌ Échec: ${data.error || 'Erreur inconnue'}</div>`;
+      resultEl.innerHTML = `<div class="alert-box error">❌ Échec: ${esc(data.error || 'Erreur inconnue')}</div>`;
     }
   } catch(e) {
     resultEl.innerHTML = '<div class="alert-box error">Erreur réseau.</div>';
@@ -2139,7 +2139,7 @@ async function loadRefunds() {
       </tbody>
     </table>`;
   } catch (err) {
-    container.innerHTML = `<div class="error-state"><p>Erreur: ${err.message}</p></div>`;
+    container.innerHTML = `<div class="error-state"><p>Erreur: ${esc(err.message)}</p></div>`;
   }
 }
 
