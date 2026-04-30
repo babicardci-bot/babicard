@@ -200,6 +200,7 @@ async function loadProducts() {
     const data = await response.json();
     allProducts = data.products || [];
     renderProducts(allProducts);
+    renderPromoBanner(allProducts);
   } catch (err) {
     grid.innerHTML = `
       <div class="no-products">
@@ -275,6 +276,28 @@ function getCategoryLabel(category) {
     other: 'Autre'
   };
   return labels[category] || category;
+}
+
+function renderPromoBanner(products) {
+  const section = document.getElementById('promoBannerSection');
+  const grid = document.getElementById('promoBannerGrid');
+  if (!section || !grid) return;
+  const promos = products.filter(p => p.promo_price && p.available_stock > 0);
+  if (promos.length === 0) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+  grid.innerHTML = promos.map(p => {
+    const discount = Math.round((1 - p.promo_price / p.price) * 100);
+    return `
+    <div onclick="openProductModal(${p.id})" style="flex-shrink:0;min-width:180px;background:var(--bg-card);border:1px solid rgba(108,99,255,0.25);border-radius:12px;padding:14px;cursor:pointer;position:relative;transition:transform 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+      <span style="position:absolute;top:8px;right:8px;background:#ef4444;color:white;font-size:0.68rem;font-weight:700;padding:2px 7px;border-radius:20px;">-${discount}%</span>
+      <div style="font-size:1.6rem;margin-bottom:8px;">${getCategoryIcon(p.category)}</div>
+      <div style="font-size:0.82rem;font-weight:700;color:#e0e0ff;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px;">${esc(p.name)}</div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span style="text-decoration:line-through;color:var(--text-muted);font-size:0.75rem;">${formatPrice(p.price)}</span>
+        <span style="color:#ef4444;font-weight:700;font-size:0.9rem;">${formatPrice(p.promo_price)}</span>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 function renderProducts(products) {
