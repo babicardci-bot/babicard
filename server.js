@@ -208,7 +208,11 @@ app.get('/api/health', (req, res) => {
 
 // SPA fallback
 app.get('/login', (req, res) => res.sendFile(path.join(__dirname, 'public', 'login.html')));
+app.post('/login', (req, res) => res.redirect(302, '/login'));
 app.get('/register', (req, res) => res.sendFile(path.join(__dirname, 'public', 'register.html')));
+app.post('/register', (req, res) => res.redirect(302, '/register'));
+app.post('/forgot-password', (req, res) => res.redirect(302, '/forgot-password'));
+app.post('/reset-password', (req, res) => res.redirect(302, '/reset-password'));
 app.get('/dashboard', (req, res) => res.sendFile(path.join(__dirname, 'public', 'dashboard.html')));
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
 app.get('/seller', (req, res) => res.sendFile(path.join(__dirname, 'public', 'seller-dashboard.html')));
