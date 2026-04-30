@@ -712,6 +712,51 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
+// ============ PWA INSTALL PROMPT ============
+let _deferredInstallPrompt = null;
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  _deferredInstallPrompt = e;
+  showInstallBanner();
+});
+
+function showInstallBanner() {
+  if (document.getElementById('pwaBanner')) return;
+  if (localStorage.getItem('pwaBannerDismissed')) return;
+  const banner = document.createElement('div');
+  banner.id = 'pwaBanner';
+  banner.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:9999;background:linear-gradient(135deg,#1e1b4b,#13131f);border:1px solid rgba(108,99,255,0.4);border-radius:14px;padding:14px 18px;display:flex;align-items:center;gap:12px;box-shadow:0 8px 32px rgba(0,0,0,0.4);max-width:340px;width:90%;';
+  banner.innerHTML = `
+    <img src="/icons/icon-72.png" style="width:40px;height:40px;border-radius:10px;flex-shrink:0;">
+    <div style="flex:1;">
+      <div style="font-size:0.85rem;font-weight:700;color:#e0e0ff;">Installer Babicard</div>
+      <div style="font-size:0.75rem;color:#a0a0c0;">Accès rapide depuis votre téléphone</div>
+    </div>
+    <div style="display:flex;gap:6px;flex-shrink:0;">
+      <button onclick="installPWA()" style="background:#6C63FF;color:white;border:none;border-radius:8px;padding:7px 12px;font-size:0.8rem;font-weight:600;cursor:pointer;">Installer</button>
+      <button onclick="dismissInstallBanner()" style="background:rgba(255,255,255,0.08);color:#a0a0c0;border:none;border-radius:8px;padding:7px 10px;font-size:0.8rem;cursor:pointer;">✕</button>
+    </div>
+  `;
+  document.body.appendChild(banner);
+}
+
+async function installPWA() {
+  if (!_deferredInstallPrompt) return;
+  _deferredInstallPrompt.prompt();
+  const { outcome } = await _deferredInstallPrompt.userChoice;
+  _deferredInstallPrompt = null;
+  dismissInstallBanner();
+}
+
+function dismissInstallBanner() {
+  const b = document.getElementById('pwaBanner');
+  if (b) b.remove();
+  localStorage.setItem('pwaBannerDismissed', '1');
+}
+
+window.addEventListener('appinstalled', () => dismissInstallBanner());
+
 // Register Service Worker for PWA
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {

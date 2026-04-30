@@ -1,9 +1,10 @@
-const CACHE_NAME = 'babicard-v3';
+const CACHE_NAME = 'babicard-v4';
 const STATIC_ASSETS = [
   '/',
   '/login',
   '/register',
   '/dashboard',
+  '/offline.html',
   '/css/style.css',
   '/css/admin.css',
   '/js/utils.js',
@@ -48,6 +49,6 @@ self.addEventListener('fetch', event => {
         }
         return response;
       })
-      .catch(() => caches.match(event.request))
+      .catch(() => caches.match(event.request) || caches.match('/offline.html'))
   );
 });
