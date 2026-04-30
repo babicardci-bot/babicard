@@ -254,7 +254,7 @@ function cancelExpiredOrders() {
 }
 
 // ===== CRON JOBS =====
-const { sendAbandonedCartEmail, sendReviewRequestEmail } = require('./services/email');
+const { sendAbandonedCartEmail, sendReviewRequestEmail, sendBackupEmail, sendBackupFailedEmail } = require('./services/email');
 const fs = require('fs');
 
 async function sendAbandonedCartReminders() {
@@ -301,7 +301,7 @@ async function sendReviewEmails() {
   } catch (err) { console.error('[REVIEW] Erreur:', err.message); }
 }
 
-function backupDatabase() {
+async function backupDatabase() {
   try {
     const dbPath = process.env.DB_PATH || path.join(__dirname, 'database', 'babicard.db');
     if (!fs.existsSync(dbPath)) return;
@@ -317,8 +317,13 @@ function backupDatabase() {
     if (files.length > 7) {
       files.slice(0, files.length - 7).forEach(f => fs.unlinkSync(path.join(backupDir, f)));
     }
-    console.log(`[BACKUP] Base de données sauvegardée → ${backupPath}`);
-  } catch (err) { console.error('[BACKUP] Erreur:', err.message); }
+    const sizeMb = (fs.statSync(backupPath).size / 1024 / 1024).toFixed(2);
+    console.log(`[BACKUP] Base de données sauvegardée → ${backupPath} (${sizeMb} Mo)`);
+    try { await sendBackupEmail(backupPath, date, sizeMb); } catch (e) { console.error('[BACKUP] Email erreur:', e.message); }
+  } catch (err) {
+    console.error('[BACKUP] Erreur:', err.message);
+    try { await sendBackupFailedEmail(err.message); } catch {}
+  }
 }
 
 // Initialize Firebase

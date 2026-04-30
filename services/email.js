@@ -1003,4 +1003,60 @@ async function sendStockNotificationEmail(email, productName) {
   });
 }
 
-module.exports = { sendOrderConfirmationEmail, sendLowStockEmail, sendWithdrawalRequestEmail, sendWithdrawalStatusEmail, sendPasswordResetEmail, sendWelcomeEmail, sendSellerApprovalEmail, sendEmailVerificationEmail, sendDeliveryFailedEmail, sendSellerSaleNotificationEmail, sendBroadcastEmail, sendLoginOTPEmail, sendAbandonedCartEmail, sendReviewRequestEmail, sendStockNotificationEmail };
+async function sendBackupEmail(backupPath, date, sizeMb) {
+  const adminEmail = process.env.ADMIN_EMAIL || process.env.EMAIL_USER;
+  if (!adminEmail) return;
+  const fs = require('fs');
+  const fileContent = fs.readFileSync(backupPath).toString('base64');
+
+  // SendGrid avec pièce jointe
+  if (process.env.SENDGRID_API_KEY) {
+    await axios.post('https://api.sendgrid.com/v3/mail/send', {
+      personalizations: [{ to: [{ email: adminEmail }] }],
+      from: { email: process.env.EMAIL_USER || 'noreply@babicard.ci', name: 'Babicard.ci' },
+      subject: `✅ Backup Babicard.ci — ${date}`,
+      content: [{ type: 'text/html', value: `
+        <div style="font-family:Inter,sans-serif;background:#0f0f1a;padding:32px;border-radius:12px;max-width:480px;margin:auto;">
+          <h2 style="color:#22c55e;margin:0 0 16px;">✅ Backup réussi</h2>
+          <p style="color:#a0a0c0;margin:0 0 8px;">Date : <strong style="color:#fff">${date}</strong></p>
+          <p style="color:#a0a0c0;margin:0 0 24px;">Taille : <strong style="color:#fff">${sizeMb} Mo</strong></p>
+          <p style="color:#606080;font-size:0.8rem;">La base de données babicard.db est jointe à cet email.</p>
+        </div>` }],
+      attachments: [{ content: fileContent, filename: `babicard-${date}.db`, type: 'application/octet-stream', disposition: 'attachment' }]
+    }, { headers: { 'Authorization': `Bearer ${process.env.SENDGRID_API_KEY}`, 'Content-Type': 'application/json' } });
+    console.log(`[BACKUP] Email envoyé à ${adminEmail}`);
+    return;
+  }
+
+  // SMTP fallback
+  const t = getTransporter();
+  if (!t) return;
+  await t.sendMail({
+    from: `"Babicard.ci" <${process.env.EMAIL_USER}>`,
+    to: adminEmail,
+    subject: `✅ Backup Babicard.ci — ${date}`,
+    html: `<p>Backup réussi le <strong>${date}</strong> (${sizeMb} Mo). Fichier en pièce jointe.</p>`,
+    attachments: [{ filename: `babicard-${date}.db`, path: backupPath }]
+  });
+  console.log(`[BACKUP] Email SMTP envoyé à ${adminEmail}`);
+}
+
+async function sendBackupFailedEmail(errorMsg) {
+  const adminEmail = process.env.ADMIN_EMAIL || process.env.EMAIL_USER;
+  if (!adminEmail) return;
+  await sendEmail({
+    to: adminEmail,
+    subject: `🚨 ALERTE — Backup Babicard.ci échoué`,
+    html: `
+      <div style="font-family:Inter,sans-serif;background:#0f0f1a;padding:32px;border-radius:12px;max-width:480px;margin:auto;">
+        <h2 style="color:#ef4444;margin:0 0 16px;">🚨 Backup échoué</h2>
+        <p style="color:#a0a0c0;margin:0 0 12px;">Le backup automatique de la base de données a échoué.</p>
+        <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:8px;padding:12px;margin-bottom:16px;">
+          <code style="color:#fca5a5;font-size:0.85rem;">${errorMsg}</code>
+        </div>
+        <p style="color:#606080;font-size:0.8rem;">Vérifiez le volume Railway et les logs du serveur.</p>
+      </div>`
+  });
+}
+
+module.exports = { sendOrderConfirmationEmail, sendLowStockEmail, sendWithdrawalRequestEmail, sendWithdrawalStatusEmail, sendPasswordResetEmail, sendWelcomeEmail, sendSellerApprovalEmail, sendEmailVerificationEmail, sendDeliveryFailedEmail, sendSellerSaleNotificationEmail, sendBroadcastEmail, sendLoginOTPEmail, sendAbandonedCartEmail, sendReviewRequestEmail, sendStockNotificationEmail, sendBackupEmail, sendBackupFailedEmail };
