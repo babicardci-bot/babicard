@@ -303,9 +303,11 @@ async function sendReviewEmails() {
 
 function backupDatabase() {
   try {
-    const dbPath = path.join(__dirname, 'database', 'babicard.db');
+    const dbPath = process.env.DB_PATH || path.join(__dirname, 'database', 'babicard.db');
     if (!fs.existsSync(dbPath)) return;
-    const backupDir = path.join(__dirname, 'database', 'backups');
+    const backupDir = process.env.DB_PATH
+      ? path.join(path.dirname(process.env.DB_PATH), 'backups')
+      : path.join(__dirname, 'database', 'backups');
     if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
     const date = new Date().toISOString().slice(0, 10);
     const backupPath = path.join(backupDir, `babicard-${date}.db`);
