@@ -19,19 +19,7 @@ app.set('trust proxy', 1);
 
 // Sécurité — headers HTTP
 app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc:  ["'self'"],
-      scriptSrc:   ["'self'", "'unsafe-inline'", "cdn.jsdelivr.net", "*.googleapis.com", "*.gstatic.com", "www.googletagmanager.com"],
-      styleSrc:    ["'self'", "'unsafe-inline'", "fonts.googleapis.com"],
-      fontSrc:     ["'self'", "fonts.gstatic.com"],
-      imgSrc:      ["'self'", "data:", "blob:", "https:"],
-      connectSrc:  ["'self'", "*.googleapis.com", "*.firebaseio.com", "fcm.googleapis.com"],
-      frameSrc:    ["'none'"],
-      objectSrc:   ["'none'"],
-      baseUri:     ["'self'"]
-    }
-  },
+  contentSecurityPolicy: false,
   crossOriginEmbedderPolicy: false,
   hsts: { maxAge: 31536000, includeSubDomains: true },
   frameguard: { action: 'deny' },
@@ -210,11 +198,11 @@ app.get('/api/health', (req, res) => {
 
 // SPA fallback
 app.get('/login', (req, res) => res.sendFile(path.join(__dirname, 'public', 'login.html')));
-app.post('/login', (req, res) => res.redirect(302, '/login'));
+app.post('/login', (req, res) => res.sendFile(path.join(__dirname, 'public', 'login.html')));
 app.get('/register', (req, res) => res.sendFile(path.join(__dirname, 'public', 'register.html')));
-app.post('/register', (req, res) => res.redirect(302, '/register'));
-app.post('/forgot-password', (req, res) => res.redirect(302, '/forgot-password'));
-app.post('/reset-password', (req, res) => res.redirect(302, '/reset-password'));
+app.post('/register', (req, res) => res.sendFile(path.join(__dirname, 'public', 'register.html')));
+app.post('/forgot-password', (req, res) => res.sendFile(path.join(__dirname, 'public', 'forgot-password.html')));
+app.post('/reset-password', (req, res) => res.sendFile(path.join(__dirname, 'public', 'reset-password.html')));
 app.get('/dashboard', (req, res) => res.sendFile(path.join(__dirname, 'public', 'dashboard.html')));
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
 app.get('/seller', (req, res) => res.sendFile(path.join(__dirname, 'public', 'seller-dashboard.html')));
