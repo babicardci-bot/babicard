@@ -206,7 +206,7 @@ async function loadDashboard() {
   try {
     const res = await adminFetch('/admin/stats');
     const data = await res.json();
-    const { stats, alerts, recentOrders, topProducts } = data;
+    const { stats, alerts, recentOrders, topProducts, revenueByDay } = data;
 
     // Render alerts
     const alertsContainer = document.getElementById('alertsContainer');
@@ -303,10 +303,74 @@ async function loadDashboard() {
       </div>
     `).join('') : '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:0.85rem">Aucune donnée</div>';
 
+    // Revenue chart
+    renderRevenueChart(revenueByDay || []);
+
   } catch (err) {
     console.error('Dashboard error:', err);
     showToast('Erreur chargement tableau de bord', 'error');
   }
+}
+
+let _revenueChartInstance = null;
+function renderRevenueChart(revenueByDay) {
+  const canvas = document.getElementById('revenueChart');
+  const emptyMsg = document.getElementById('revenueChartEmpty');
+  if (!canvas) return;
+
+  if (!revenueByDay || revenueByDay.length === 0) {
+    canvas.style.display = 'none';
+    emptyMsg.style.display = 'block';
+    return;
+  }
+  canvas.style.display = 'block';
+  emptyMsg.style.display = 'none';
+
+  // Build a full 7-day range so missing days show as 0
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    days.push(d.toISOString().slice(0, 10));
+  }
+  const byDate = {};
+  revenueByDay.forEach(r => { byDate[r.date] = r.revenue; });
+  const labels = days.map(d => new Date(d + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' }));
+  const values = days.map(d => byDate[d] || 0);
+
+  if (_revenueChartInstance) { _revenueChartInstance.destroy(); _revenueChartInstance = null; }
+
+  _revenueChartInstance = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Revenus (FCFA)',
+        data: values,
+        backgroundColor: 'rgba(108,99,255,0.55)',
+        borderColor: 'rgba(108,99,255,1)',
+        borderWidth: 2,
+        borderRadius: 6,
+        hoverBackgroundColor: 'rgba(108,99,255,0.8)'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => ' ' + ctx.parsed.y.toLocaleString('fr-FR') + ' FCFA'
+          }
+        }
+      },
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#a0a0c0', font: { size: 11 } } },
+        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#a0a0c0', font: { size: 11 }, callback: v => v.toLocaleString('fr-FR') }, beginAtZero: true }
+      }
+    }
+  });
 }
 
 // ============ PRODUCTS ============

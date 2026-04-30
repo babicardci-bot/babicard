@@ -5,7 +5,7 @@ const { getDb } = require('../database/db');
 const { authenticateToken, requireAdmin, logAdminAction } = require('../middleware/auth');
 const { processDelivery } = require('../services/delivery');
 const { encrypt, decrypt } = require('../services/encryption');
-const { sendWithdrawalStatusEmail, sendSellerApprovalEmail, sendBroadcastEmail } = require('../services/email');
+const { sendWithdrawalStatusEmail, sendSellerApprovalEmail, sendBroadcastEmail, sendStockNotificationEmail } = require('../services/email');
 
 // Rate limiter for card reveal — max 30 reveals per 10 minutes per IP
 const revealLimiter = rateLimit({
@@ -690,6 +690,22 @@ router.post('/cards/bulk', (req, res) => {
     const msg = result.invalidCodes && result.invalidCodes.length > 0
       ? `${result.inserted} carte(s) ajoutée(s). ${result.skipped} ignorée(s) dont ${result.invalidCodes.length} code(s) invalide(s) (${formatHint}).`
       : `${result.inserted} carte(s) ajoutée(s) avec succès. ${result.skipped} ignorée(s).`;
+
+    // Send stock notification emails asynchronously (fire-and-forget)
+    if (result.inserted > 0) {
+      setImmediate(async () => {
+        try {
+          const notifs = db.prepare('SELECT DISTINCT email FROM stock_notifications WHERE product_id = ?').all(product_id);
+          for (const n of notifs) {
+            try { await sendStockNotificationEmail(n.email, product.name); } catch {}
+          }
+          if (notifs.length > 0) {
+            db.prepare('DELETE FROM stock_notifications WHERE product_id = ?').run(product_id);
+            console.log(`[STOCK NOTIF] ${notifs.length} email(s) envoyé(s) pour "${product.name}"`);
+          }
+        } catch (e) { console.error('[STOCK NOTIF] Erreur:', e.message); }
+      });
+    }
 
     res.status(201).json({
       message: msg,

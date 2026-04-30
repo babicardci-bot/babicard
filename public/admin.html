@@ -178,6 +178,17 @@
         <div id="alertsList" style="display:flex;flex-wrap:wrap;gap:12px;"></div>
       </div>
 
+      <!-- REVENUE CHART -->
+      <div class="dashboard-widget" style="margin-bottom:24px;">
+        <div class="widget-header">
+          <h3>📈 Revenus — 7 derniers jours</h3>
+        </div>
+        <div style="position:relative;height:220px;padding:8px 0;">
+          <canvas id="revenueChart"></canvas>
+          <div id="revenueChartEmpty" style="display:none;text-align:center;padding:60px 0;color:var(--text-muted);font-size:0.85rem;">Aucune donnée pour cette période</div>
+        </div>
+      </div>
+
       <div class="dashboard-grids">
         <div class="dashboard-widget">
           <div class="widget-header">
@@ -776,6 +787,7 @@
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="/js/utils.js"></script>
   <script src="/js/auth.js"></script>
   <script src="/js/admin.js"></script>

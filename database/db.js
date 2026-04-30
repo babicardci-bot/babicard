@@ -548,6 +548,34 @@ function migrateDatabase(db) {
     }
   } catch(e) { console.error('Migration users avatar:', e.message); }
 
+  // Abandoned cart reminder + review sent tracking on orders
+  try {
+    const orderCols2 = db.prepare("PRAGMA table_info(orders)").all().map(c => c.name);
+    if (!orderCols2.includes('reminder_sent')) {
+      db.prepare("ALTER TABLE orders ADD COLUMN reminder_sent INTEGER NOT NULL DEFAULT 0").run();
+    }
+    if (!orderCols2.includes('review_sent')) {
+      db.prepare("ALTER TABLE orders ADD COLUMN review_sent INTEGER NOT NULL DEFAULT 0").run();
+    }
+  } catch(e) { console.error('Migration orders reminder/review:', e.message); }
+
+  // Stock notifications table
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS stock_notifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        product_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        email TEXT NOT NULL,
+        notified INTEGER NOT NULL DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(product_id, user_id),
+        FOREIGN KEY (product_id) REFERENCES products(id),
+        FOREIGN KEY (user_id) REFERENCES users(id)
+      );
+    `);
+  } catch(e) { console.error('Migration stock_notifications:', e.message); }
+
   console.log('Migration vérifiée.');
 }
 

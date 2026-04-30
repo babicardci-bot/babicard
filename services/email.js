@@ -927,4 +927,80 @@ async function sendLoginOTPEmail(user, code) {
   });
 }
 
-module.exports = { sendOrderConfirmationEmail, sendLowStockEmail, sendWithdrawalRequestEmail, sendWithdrawalStatusEmail, sendPasswordResetEmail, sendWelcomeEmail, sendSellerApprovalEmail, sendEmailVerificationEmail, sendDeliveryFailedEmail, sendSellerSaleNotificationEmail, sendBroadcastEmail, sendLoginOTPEmail };
+async function sendAbandonedCartEmail(user, order) {
+  const siteUrl = process.env.SITE_URL || 'https://babicard.ci';
+  return sendEmail({
+    to: user.email,
+    subject: '🛒 Votre commande vous attend — Babicard.ci',
+    html: `<div style="background:#0a0a1f;min-height:100vh;padding:32px 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+      <div style="max-width:500px;margin:0 auto;background:#13131f;border-radius:16px;overflow:hidden;border:1px solid rgba(108,99,255,0.2);">
+        <div style="background:linear-gradient(135deg,#6C63FF,#8b5cf6);padding:28px 32px;text-align:center;">
+          <h1 style="color:white;margin:0;font-size:1.4rem;">🛒 Vous avez oublié quelque chose !</h1>
+        </div>
+        <div style="padding:28px 32px;">
+          <p style="color:#e0e0ff;font-size:1rem;margin:0 0 16px;">Bonjour <strong>${escHtml(user.name)}</strong>,</p>
+          <p style="color:#a0a0c0;font-size:0.9rem;line-height:1.6;margin:0 0 24px;">Votre commande <strong style="color:#e0e0ff;">#${order.id}</strong> d'un montant de <strong style="color:#6C63FF;">${formatPrice(order.total_amount)}</strong> est en attente de paiement.</p>
+          <div style="text-align:center;margin-bottom:24px;">
+            <a href="${siteUrl}/dashboard#orders" style="background:linear-gradient(135deg,#6C63FF,#8b5cf6);color:white;text-decoration:none;padding:14px 32px;border-radius:10px;font-weight:700;font-size:1rem;">Finaliser mon paiement</a>
+          </div>
+          <p style="color:#606080;font-size:0.8rem;text-align:center;margin:0;">Cette commande sera annulée dans 24h si non payée.</p>
+        </div>
+        <div style="padding:16px 32px;border-top:1px solid rgba(255,255,255,0.06);text-align:center;">
+          <p style="color:#606080;font-size:0.75rem;margin:0;">Babicard.ci — <a href="${siteUrl}" style="color:#6C63FF;text-decoration:none;">${siteUrl}</a></p>
+        </div>
+      </div>
+    </div>`
+  });
+}
+
+async function sendReviewRequestEmail(user, order) {
+  const siteUrl = process.env.SITE_URL || 'https://babicard.ci';
+  return sendEmail({
+    to: user.email,
+    subject: '⭐ Comment s\'est passé votre achat ? — Babicard.ci',
+    html: `<div style="background:#0a0a1f;min-height:100vh;padding:32px 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+      <div style="max-width:500px;margin:0 auto;background:#13131f;border-radius:16px;overflow:hidden;border:1px solid rgba(108,99,255,0.2);">
+        <div style="background:linear-gradient(135deg,#f59e0b,#d97706);padding:28px 32px;text-align:center;">
+          <h1 style="color:white;margin:0;font-size:1.4rem;">⭐ Donnez votre avis !</h1>
+        </div>
+        <div style="padding:28px 32px;">
+          <p style="color:#e0e0ff;font-size:1rem;margin:0 0 16px;">Bonjour <strong>${escHtml(user.name)}</strong>,</p>
+          <p style="color:#a0a0c0;font-size:0.9rem;line-height:1.6;margin:0 0 24px;">Votre commande <strong style="color:#e0e0ff;">#${order.id}</strong> a été livrée. Avez-vous reçu votre code sans problème ?</p>
+          <p style="color:#a0a0c0;font-size:0.9rem;line-height:1.6;margin:0 0 24px;">Votre avis aide les autres clients à faire confiance à Babicard.ci. Cela ne prend que 30 secondes !</p>
+          <div style="text-align:center;margin-bottom:24px;">
+            <a href="${siteUrl}/dashboard#orders" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:white;text-decoration:none;padding:14px 32px;border-radius:10px;font-weight:700;font-size:1rem;">Laisser un avis</a>
+          </div>
+        </div>
+        <div style="padding:16px 32px;border-top:1px solid rgba(255,255,255,0.06);text-align:center;">
+          <p style="color:#606080;font-size:0.75rem;margin:0;">Babicard.ci — <a href="${siteUrl}" style="color:#6C63FF;text-decoration:none;">${siteUrl}</a></p>
+        </div>
+      </div>
+    </div>`
+  });
+}
+
+async function sendStockNotificationEmail(email, productName) {
+  const siteUrl = process.env.SITE_URL || 'https://babicard.ci';
+  return sendEmail({
+    to: email,
+    subject: `✅ ${productName} est de nouveau disponible — Babicard.ci`,
+    html: `<div style="background:#0a0a1f;min-height:100vh;padding:32px 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+      <div style="max-width:500px;margin:0 auto;background:#13131f;border-radius:16px;overflow:hidden;border:1px solid rgba(34,197,94,0.2);">
+        <div style="background:linear-gradient(135deg,#22c55e,#16a34a);padding:28px 32px;text-align:center;">
+          <h1 style="color:white;margin:0;font-size:1.4rem;">✅ Produit disponible !</h1>
+        </div>
+        <div style="padding:28px 32px;">
+          <p style="color:#a0a0c0;font-size:0.9rem;line-height:1.6;margin:0 0 24px;"><strong style="color:#e0e0ff;">${escHtml(productName)}</strong> est de nouveau en stock sur Babicard.ci. Commandez maintenant avant rupture !</p>
+          <div style="text-align:center;margin-bottom:24px;">
+            <a href="${siteUrl}" style="background:linear-gradient(135deg,#22c55e,#16a34a);color:white;text-decoration:none;padding:14px 32px;border-radius:10px;font-weight:700;font-size:1rem;">Commander maintenant</a>
+          </div>
+        </div>
+        <div style="padding:16px 32px;border-top:1px solid rgba(255,255,255,0.06);text-align:center;">
+          <p style="color:#606080;font-size:0.75rem;margin:0;">Babicard.ci — <a href="${siteUrl}" style="color:#6C63FF;text-decoration:none;">${siteUrl}</a></p>
+        </div>
+      </div>
+    </div>`
+  });
+}
+
+module.exports = { sendOrderConfirmationEmail, sendLowStockEmail, sendWithdrawalRequestEmail, sendWithdrawalStatusEmail, sendPasswordResetEmail, sendWelcomeEmail, sendSellerApprovalEmail, sendEmailVerificationEmail, sendDeliveryFailedEmail, sendSellerSaleNotificationEmail, sendBroadcastEmail, sendLoginOTPEmail, sendAbandonedCartEmail, sendReviewRequestEmail, sendStockNotificationEmail };

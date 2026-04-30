@@ -437,11 +437,13 @@ function openProductModal(productId) {
 
       <!-- Bouton panier -->
       <div style="display:flex;gap:12px;margin-bottom:24px;">
-        <button
-          onclick="addToCart(${product.id}); closeModal();"
-          style="flex:1;padding:14px;background:linear-gradient(135deg,var(--color-primary),#8b5cf6);border:none;border-radius:12px;color:white;font-size:1rem;font-weight:700;cursor:pointer;transition:all 0.3s"
-          ${!inStock ? 'disabled style="opacity:0.5;cursor:not-allowed"' : ''}
-        >${inStock ? '🛒 Ajouter au panier' : '❌ Stock épuisé'}</button>
+        ${inStock
+          ? `<button onclick="addToCart(${product.id}); closeModal();" style="flex:1;padding:14px;background:linear-gradient(135deg,var(--color-primary),#8b5cf6);border:none;border-radius:12px;color:white;font-size:1rem;font-weight:700;cursor:pointer;transition:all 0.3s">🛒 Ajouter au panier</button>`
+          : `<div style="flex:1;display:flex;flex-direction:column;gap:8px;">
+               <button disabled style="width:100%;padding:14px;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);border-radius:12px;color:#ef4444;font-size:1rem;font-weight:700;cursor:not-allowed;">❌ Stock épuisé</button>
+               <button id="notifyBtn-${product.id}" onclick="subscribeStockNotification(${product.id})" style="width:100%;padding:10px;background:rgba(108,99,255,0.12);border:1px solid rgba(108,99,255,0.4);border-radius:12px;color:#a78bfa;font-size:0.9rem;font-weight:600;cursor:pointer;transition:all 0.2s;">🔔 Me notifier quand disponible</button>
+             </div>`
+        }
       </div>
 
       <!-- Instructions utilisation -->
@@ -500,6 +502,34 @@ function closeModal() {
   overlay?.classList.remove('active');
   document.body.style.overflow = '';
   clearInterval(window._promoTimer);
+}
+
+async function subscribeStockNotification(productId) {
+  const token = localStorage.getItem('token');
+  if (!token) {
+    showToast('Connectez-vous pour être notifié', 'error');
+    window.location.href = '/login';
+    return;
+  }
+  const btn = document.getElementById(`notifyBtn-${productId}`);
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Inscription...'; }
+  try {
+    const res = await fetch(`/api/products/${productId}/notify`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (res.ok) {
+      if (btn) { btn.textContent = '✅ Vous serez notifié !'; btn.style.color = '#22c55e'; btn.style.borderColor = 'rgba(34,197,94,0.4)'; }
+      showToast('Notification activée — nous vous préviendrons dès le retour en stock', 'success');
+    } else {
+      if (btn) { btn.disabled = false; btn.textContent = '🔔 Me notifier quand disponible'; }
+      showToast(data.error || 'Erreur inscription', 'error');
+    }
+  } catch {
+    if (btn) { btn.disabled = false; btn.textContent = '🔔 Me notifier quand disponible'; }
+    showToast('Erreur réseau', 'error');
+  }
 }
 
 // ============ PARTICLES (CSS-based) ============

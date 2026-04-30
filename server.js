@@ -253,6 +253,72 @@ function cancelExpiredOrders() {
   }
 }
 
+// ===== CRON JOBS =====
+const { sendAbandonedCartEmail, sendReviewRequestEmail } = require('./services/email');
+const fs = require('fs');
+
+async function sendAbandonedCartReminders() {
+  try {
+    const { getDb } = require('./database/db');
+    const db = getDb();
+    const orders = db.prepare(`
+      SELECT o.*, u.name, u.email FROM orders o
+      JOIN users u ON o.user_id = u.id
+      WHERE o.payment_status = 'pending'
+        AND o.reminder_sent = 0
+        AND o.created_at <= datetime('now', '-1 hour')
+        AND o.created_at >= datetime('now', '-23 hours')
+    `).all();
+    for (const order of orders) {
+      try {
+        await sendAbandonedCartEmail({ name: order.name, email: order.email }, order);
+        db.prepare('UPDATE orders SET reminder_sent = 1 WHERE id = ?').run(order.id);
+        console.log(`[ABANDONED CART] Email envoyé — commande #${order.id}`);
+      } catch (e) { console.error('[ABANDONED CART] Erreur email:', e.message); }
+    }
+  } catch (err) { console.error('[ABANDONED CART] Erreur:', err.message); }
+}
+
+async function sendReviewEmails() {
+  try {
+    const { getDb } = require('./database/db');
+    const db = getDb();
+    const orders = db.prepare(`
+      SELECT o.*, u.name, u.email FROM orders o
+      JOIN users u ON o.user_id = u.id
+      WHERE o.payment_status = 'paid'
+        AND o.delivery_status = 'delivered'
+        AND o.review_sent = 0
+        AND o.paid_at <= datetime('now', '-30 minutes')
+    `).all();
+    for (const order of orders) {
+      try {
+        await sendReviewRequestEmail({ name: order.name, email: order.email }, order);
+        db.prepare('UPDATE orders SET review_sent = 1 WHERE id = ?').run(order.id);
+        console.log(`[REVIEW] Email envoyé — commande #${order.id}`);
+      } catch (e) { console.error('[REVIEW] Erreur email:', e.message); }
+    }
+  } catch (err) { console.error('[REVIEW] Erreur:', err.message); }
+}
+
+function backupDatabase() {
+  try {
+    const dbPath = path.join(__dirname, 'database', 'babicard.db');
+    if (!fs.existsSync(dbPath)) return;
+    const backupDir = path.join(__dirname, 'database', 'backups');
+    if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
+    const date = new Date().toISOString().slice(0, 10);
+    const backupPath = path.join(backupDir, `babicard-${date}.db`);
+    fs.copyFileSync(dbPath, backupPath);
+    // Garder seulement les 7 derniers backups
+    const files = fs.readdirSync(backupDir).filter(f => f.endsWith('.db')).sort();
+    if (files.length > 7) {
+      files.slice(0, files.length - 7).forEach(f => fs.unlinkSync(path.join(backupDir, f)));
+    }
+    console.log(`[BACKUP] Base de données sauvegardée → ${backupPath}`);
+  } catch (err) { console.error('[BACKUP] Erreur:', err.message); }
+}
+
 // Initialize Firebase
 const { initFirebase } = require('./services/notifications');
 initFirebase();
@@ -272,7 +338,17 @@ initializeDatabase()
 
     // Run every 10 minutes
     setInterval(cancelExpiredOrders, 10 * 60 * 1000);
-    cancelExpiredOrders(); // run once on startup
+    cancelExpiredOrders();
+
+    // Abandoned cart reminder — every 30 minutes
+    setInterval(sendAbandonedCartReminders, 30 * 60 * 1000);
+
+    // Review request emails — every 30 minutes
+    setInterval(sendReviewEmails, 30 * 60 * 1000);
+
+    // Nightly backup — every 24 hours
+    setInterval(backupDatabase, 24 * 60 * 60 * 1000);
+    backupDatabase();
   })
   .catch(err => {
     console.error('Erreur initialisation base de données:', err);

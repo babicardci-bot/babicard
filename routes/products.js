@@ -220,4 +220,21 @@ router.post('/:id/reviews', authenticateToken, (req, res) => {
   }
 });
 
+// POST /api/products/:id/notify — S'abonner aux alertes retour en stock
+router.post('/:id/notify', authenticateToken, (req, res) => {
+  try {
+    const db = getDb();
+    const productId = parseInt(req.params.id);
+    const product = db.prepare('SELECT id, name FROM products WHERE id = ? AND is_active = 1').get(productId);
+    if (!product) return res.status(404).json({ error: 'Produit non trouvé.' });
+    const user = db.prepare('SELECT id, email FROM users WHERE id = ?').get(req.user.id);
+    try {
+      db.prepare('INSERT OR IGNORE INTO stock_notifications (product_id, user_id, email) VALUES (?, ?, ?)').run(productId, user.id, user.email);
+    } catch(e) { /* déjà inscrit */ }
+    res.json({ message: 'Vous serez notifié quand ce produit sera disponible.' });
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur inscription notification.' });
+  }
+});
+
 module.exports = router;
