@@ -166,17 +166,18 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // Email OTP obligatoire pour admin et vendeurs
-    if (['admin', 'seller'].includes(user.role)) {
+    // Email OTP obligatoire pour admin et vendeurs (désactivable via DISABLE_ADMIN_OTP=true)
+    if (['admin', 'seller'].includes(user.role) && process.env.DISABLE_ADMIN_OTP !== 'true') {
       const db2 = getDb();
-      // Supprimer les anciens OTP non utilisés
       db2.prepare('DELETE FROM email_otp_tokens WHERE user_id = ? AND used = 0').run(user.id);
-      // Générer un code à 6 chiffres
       const otpCode = String(Math.floor(100000 + Math.random() * 900000));
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
       db2.prepare('INSERT INTO email_otp_tokens (user_id, code, expires_at) VALUES (?, ?, ?)').run(user.id, otpCode, expiresAt);
-      // Envoyer par email (non bloquant)
-      sendLoginOTPEmail(user, otpCode).catch(err => console.error('[OTP] Erreur envoi email:', err));
+      // Envoyer par email — log le code en cas d'échec (récupération via logs Railway)
+      sendLoginOTPEmail(user, otpCode).catch(err => {
+        console.error('[OTP] Erreur envoi email:', err.message);
+        console.warn(`[OTP URGENCE] Code pour ${user.email}: ${otpCode}`);
+      });
       return res.status(200).json({
         email_otp_required: true,
         message: `Code envoyé à ${user.email.replace(/(.{2}).+(@.+)/, '$1***$2')}. Valide 10 minutes.`
