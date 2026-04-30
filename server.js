@@ -22,7 +22,7 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc:  ["'self'"],
-      scriptSrc:   ["'self'", "'unsafe-inline'", "cdn.jsdelivr.net", "*.googleapis.com", "*.gstatic.com"],
+      scriptSrc:   ["'self'", "'unsafe-inline'", "cdn.jsdelivr.net", "*.googleapis.com", "*.gstatic.com", "www.googletagmanager.com"],
       styleSrc:    ["'self'", "'unsafe-inline'", "fonts.googleapis.com"],
       fontSrc:     ["'self'", "fonts.gstatic.com"],
       imgSrc:      ["'self'", "data:", "blob:", "https:"],
