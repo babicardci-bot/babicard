@@ -64,10 +64,10 @@ app.use(rateLimit({
   legacyHeaders: false
 }));
 
-// Rate limiting strict sur login — 5 tentatives par 15 minutes
+// Rate limiting sur login/register — 20 tentatives par 15 minutes
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 5,
+  max: 20,
   message: { error: 'Trop de tentatives de connexion, réessayez dans 15 minutes.' },
   standardHeaders: true,
   legacyHeaders: false
@@ -161,11 +161,13 @@ uploadDirs.forEach(dir => {
   if (!require('fs').existsSync(fullPath)) require('fs').mkdirSync(fullPath, { recursive: true });
 });
 
-// API Routes — login/register limité à 10/15min, forgot-password à 5/heure
+// API Routes — login/register limité à 20/15min, forgot-password à 5/heure
 const authRouter = require('./routes/auth');
 app.use('/api/auth/forgot-password', forgotPasswordLimiter);
 app.use('/api/auth/reset-password', forgotPasswordLimiter);
-app.use('/api/auth', authLimiter, authRouter);
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
+app.use('/api/auth', authRouter);
 app.use('/api/products', require('./routes/products'));
 app.use('/api/orders', require('./routes/orders'));
 app.use('/api/notifications', require('./routes/notifications'));
