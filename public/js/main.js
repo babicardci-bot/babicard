@@ -22,6 +22,98 @@ function getRegionWarning(product) {
   return r && r.msg ? `${r.flag} <strong>Région ${r.label}</strong> — ${r.msg}` : null;
 }
 
+function getRegionGuide(product) {
+  const name = (product.name + ' ' + (product.platform || '')).toLowerCase();
+  if (name.includes('google play')) return `
+    <div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(245,158,11,0.2);">
+      <div style="font-size:0.78rem;color:#fbbf24;font-weight:600;margin-bottom:4px;">Comment changer votre région Google :</div>
+      <ol style="margin:0;padding-left:16px;font-size:0.78rem;color:#d97706;line-height:1.8;">
+        <li>Allez sur <strong>pay.google.com</strong></li>
+        <li>Paramètres → Pays/Région → France</li>
+        <li>Entrez une adresse française</li>
+        <li>Puis entrez votre code cadeau</li>
+      </ol>
+    </div>`;
+  if (name.includes('psn')) return `
+    <div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(245,158,11,0.2);">
+      <div style="font-size:0.78rem;color:#fbbf24;font-weight:600;margin-bottom:4px;">Comment utiliser sur PSN France :</div>
+      <ol style="margin:0;padding-left:16px;font-size:0.78rem;color:#d97706;line-height:1.8;">
+        <li>Créez un compte PSN avec région France</li>
+        <li>PS5/PS4 → PlayStation Store → Entrer un code</li>
+        <li>Saisissez votre code à 12 caractères</li>
+      </ol>
+    </div>`;
+  if (name.includes('itunes')) return `
+    <div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(245,158,11,0.2);">
+      <div style="font-size:0.78rem;color:#fbbf24;font-weight:600;margin-bottom:4px;">Comment utiliser sur App Store France :</div>
+      <ol style="margin:0;padding-left:16px;font-size:0.78rem;color:#d97706;line-height:1.8;">
+        <li>Connectez-vous avec un Apple ID région France</li>
+        <li>App Store → Profil → Entrer le code cadeau</li>
+        <li>Saisissez votre code</li>
+      </ol>
+    </div>`;
+  return '';
+}
+
+function getUsageInstructions(product) {
+  const name = (product.name + ' ' + (product.platform || '')).toLowerCase();
+  if (name.includes('google play')) return [
+    'Ouvrez Google Play Store sur votre appareil',
+    'Appuyez sur votre photo de profil → Paiements → Utiliser un code',
+    'Entrez le code reçu par email',
+    'Le crédit est ajouté immédiatement'
+  ];
+  if (name.includes('psn')) return [
+    'Allez sur PlayStation Store (PS4/PS5 ou site web)',
+    'Faites défiler vers le bas → "Entrer un code"',
+    'Saisissez le code à 12 caractères reçu par email',
+    'Le crédit est ajouté à votre portefeuille PSN'
+  ];
+  if (name.includes('xbox')) return [
+    'Allez sur microsoft.com/redeem ou sur votre console Xbox',
+    'Connectez-vous à votre compte Microsoft',
+    'Entrez le code à 25 caractères reçu par email',
+    'Le crédit est ajouté à votre compte Xbox'
+  ];
+  if (name.includes('itunes') || name.includes('apple')) return [
+    'Ouvrez l\'App Store ou iTunes',
+    'Appuyez sur votre profil → "Entrer le code cadeau"',
+    'Saisissez le code reçu par email',
+    'Le crédit est ajouté à votre Apple ID'
+  ];
+  if (name.includes('nintendo')) return [
+    'Allez sur nintendo.com ou sur votre Nintendo Switch',
+    'Nintendo eShop → Entrer le code',
+    'Saisissez le code reçu par email',
+    'Le crédit est ajouté à votre compte Nintendo'
+  ];
+  return [
+    'Recevez votre code par email après paiement',
+    'Suivez les instructions spécifiques à la plateforme',
+    'Entrez le code dans la section appropriée',
+    'Le crédit est ajouté immédiatement'
+  ];
+}
+
+function getPromoCountdown(product) {
+  if (!product.promo_price) return '';
+  // Compte à rebours déterministe basé sur l'ID produit — se renouvelle toutes les 24h
+  const now = Date.now();
+  const dayMs = 24 * 60 * 60 * 1000;
+  const seed = (product.id * 3600000) % dayMs;
+  const dayStart = Math.floor(now / dayMs) * dayMs;
+  let endTime = dayStart + seed;
+  if (endTime < now) endTime += dayMs;
+  const remaining = endTime - now;
+  const h = Math.floor(remaining / 3600000);
+  const m = Math.floor((remaining % 3600000) / 60000);
+  const s = Math.floor((remaining % 60000) / 1000);
+  return `<div id="promoCountdown" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:8px;padding:8px 14px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;">
+    <span style="font-size:0.82rem;color:#ef4444;font-weight:600;">🔥 Prix promo expire dans</span>
+    <span id="cdTimer" style="font-size:1rem;font-weight:700;color:#ef4444;font-variant-numeric:tabular-nums;">${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}</span>
+  </div>`;
+}
+
 function getRegionBadge(product) {
   const r = getProductRegion(product);
   if (!r) return '';
@@ -261,23 +353,42 @@ function openProductModal(productId) {
   const inStock = product.available_stock > 0;
   const icon = getCategoryIcon(product.category);
 
+  const regionWarning = getRegionWarning(product);
+  const regionGuide = getRegionGuide(product);
+  const usageSteps = getUsageInstructions(product);
+  const similar = allProducts.filter(p => p.id !== product.id && p.category === product.category && p.available_stock > 0).slice(0, 3);
+
   content.innerHTML = `
     <div class="modal-product-image bg-${product.category || 'other'}" style="width:100%;height:200px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:4rem;overflow:hidden;position:relative;border-radius:var(--radius-lg) var(--radius-lg) 0 0;">
-      ${product.image_url
-        ? `<img src="${product.image_url}" alt="${product.name}" style="width:100%;height:100%;object-fit:cover;display:block;position:absolute;inset:0;">`
-        : icon
-      }
+      ${product.image_url ? `<img src="${product.image_url}" alt="${product.name}" style="width:100%;height:100%;object-fit:cover;display:block;position:absolute;inset:0;">` : icon}
       <button onclick="closeModal()" style="position:absolute;top:12px;right:12px;width:34px;height:34px;border-radius:50%;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);border:1px solid rgba(255,255,255,0.15);color:#fff;font-size:1rem;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:2;">✕</button>
     </div>
     <div style="padding:24px;">
       <div style="color:var(--color-primary-light);font-size:0.75rem;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">${esc(product.platform)}</div>
-      <h2 style="font-size:1.4rem;font-weight:700;margin-bottom:8px">${esc(product.name)}</h2>
-      <p style="color:var(--text-secondary);font-size:0.9rem;line-height:1.6;margin-bottom:${getRegionWarning(product) ? '12px' : '20px'}">${esc(product.description || 'Carte cadeau numérique. Livraison immédiate par email et SMS.')}</p>
-      ${getRegionWarning(product) ? `<div style="background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.4);border-radius:8px;padding:10px 14px;margin-bottom:20px;display:flex;align-items:flex-start;gap:10px;">
-        <span style="font-size:1.1rem;flex-shrink:0;">⚠️</span>
-        <span style="font-size:0.82rem;color:#fbbf24;line-height:1.5;">${getRegionWarning(product)}</span>
+      <h2 style="font-size:1.4rem;font-weight:700;margin-bottom:6px">${esc(product.name)}</h2>
+
+      <!-- Badge livraison -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+        <span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);border-radius:20px;padding:3px 10px;font-size:0.75rem;color:#22c55e;font-weight:600;">⚡ Livraison en 5 min</span>
+        <span style="background:rgba(108,99,255,0.12);border:1px solid rgba(108,99,255,0.3);border-radius:20px;padding:3px 10px;font-size:0.75rem;color:#a78bfa;font-weight:600;">📧 Envoi par email</span>
+        <span style="background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.3);border-radius:20px;padding:3px 10px;font-size:0.75rem;color:#60a5fa;font-weight:600;">🔒 Paiement sécurisé</span>
+      </div>
+
+      <p style="color:var(--text-secondary);font-size:0.9rem;line-height:1.6;margin-bottom:12px">${esc(product.description || 'Carte cadeau numérique. Livraison immédiate par email et SMS.')}</p>
+
+      <!-- Avertissement région -->
+      ${regionWarning ? `<div style="background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.4);border-radius:8px;padding:10px 14px;margin-bottom:16px;">
+        <div style="display:flex;align-items:flex-start;gap:10px;">
+          <span style="font-size:1.1rem;flex-shrink:0;">⚠️</span>
+          <span style="font-size:0.82rem;color:#fbbf24;line-height:1.5;">${regionWarning}</span>
+        </div>
+        ${regionGuide}
       </div>` : ''}
 
+      <!-- Compte à rebours promo -->
+      ${getPromoCountdown(product)}
+
+      <!-- Infos produit -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
         <div style="background:var(--bg-card);padding:12px;border-radius:8px;border:1px solid var(--border-color);">
           <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:1px">Valeur</div>
@@ -301,21 +412,62 @@ function openProductModal(productId) {
         </div>
       </div>
 
-      <div style="display:flex;gap:12px">
+      <!-- Bouton panier -->
+      <div style="display:flex;gap:12px;margin-bottom:24px;">
         <button
           onclick="addToCart(${product.id}); closeModal();"
           style="flex:1;padding:14px;background:linear-gradient(135deg,var(--color-primary),#8b5cf6);border:none;border-radius:12px;color:white;font-size:1rem;font-weight:700;cursor:pointer;transition:all 0.3s"
           ${!inStock ? 'disabled style="opacity:0.5;cursor:not-allowed"' : ''}
-        >
-          ${inStock ? '🛒 Ajouter au panier' : '❌ Stock épuisé'}
-        </button>
+        >${inStock ? '🛒 Ajouter au panier' : '❌ Stock épuisé'}</button>
       </div>
+
+      <!-- Instructions utilisation -->
+      <div style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:10px;padding:14px;margin-bottom:20px;">
+        <div style="font-size:0.82rem;font-weight:700;color:var(--color-primary-light);margin-bottom:10px;">📋 Comment utiliser votre carte</div>
+        <ol style="margin:0;padding-left:18px;font-size:0.82rem;color:var(--text-secondary);line-height:2;">
+          ${usageSteps.map(s => `<li>${s}</li>`).join('')}
+        </ol>
+      </div>
+
+      <!-- Produits similaires -->
+      ${similar.length > 0 ? `
+      <div>
+        <div style="font-size:0.82rem;font-weight:700;color:var(--text-secondary);margin-bottom:10px;">🎮 Vous aimerez aussi</div>
+        <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;">
+          ${similar.map(p => `
+            <div onclick="openProductModal(${p.id})" style="flex-shrink:0;width:110px;background:var(--bg-card);border:1px solid var(--border-color);border-radius:8px;padding:8px;cursor:pointer;text-align:center;">
+              <div style="font-size:1.4rem;margin-bottom:4px;">${getCategoryIcon(p.category)}</div>
+              <div style="font-size:0.7rem;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(p.name)}</div>
+              <div style="font-size:0.75rem;font-weight:700;color:var(--color-primary-light);margin-top:2px;">${formatPrice(p.promo_price || p.price)}</div>
+            </div>`).join('')}
+        </div>
+      </div>` : ''}
     </div>
   `;
 
   modal.classList.add('active');
   overlay.classList.add('active');
   document.body.style.overflow = 'hidden';
+
+  // Démarrer le compte à rebours promo
+  if (product.promo_price) {
+    clearInterval(window._promoTimer);
+    const dayMs = 24 * 60 * 60 * 1000;
+    const seed = (product.id * 3600000) % dayMs;
+    const dayStart = Math.floor(Date.now() / dayMs) * dayMs;
+    let endTime = dayStart + seed;
+    if (endTime < Date.now()) endTime += dayMs;
+    window._promoTimer = setInterval(() => {
+      const el = document.getElementById('cdTimer');
+      if (!el) { clearInterval(window._promoTimer); return; }
+      const rem = endTime - Date.now();
+      if (rem <= 0) { el.textContent = '00:00:00'; clearInterval(window._promoTimer); return; }
+      const h = Math.floor(rem / 3600000);
+      const m = Math.floor((rem % 3600000) / 60000);
+      const s = Math.floor((rem % 60000) / 1000);
+      el.textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    }, 1000);
+  }
 }
 
 function closeModal() {
@@ -324,6 +476,7 @@ function closeModal() {
   modal?.classList.remove('active');
   overlay?.classList.remove('active');
   document.body.style.overflow = '';
+  clearInterval(window._promoTimer);
 }
 
 // ============ PARTICLES (CSS-based) ============
