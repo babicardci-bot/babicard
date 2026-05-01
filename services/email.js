@@ -953,8 +953,10 @@ async function sendAbandonedCartEmail(user, order) {
   });
 }
 
-async function sendReviewRequestEmail(user, order) {
+async function sendReviewRequestEmail(user, order, product) {
   const siteUrl = process.env.SITE_URL || 'https://babicard.ci';
+  const reviewUrl = product ? `${siteUrl}/?product=${product.product_id}` : `${siteUrl}/dashboard#orders`;
+  const productName = product ? escHtml(product.product_name) : `commande #${order.id}`;
   return sendEmail({
     to: user.email,
     subject: '⭐ Comment s\'est passé votre achat ? — Babicard.ci',
@@ -965,10 +967,10 @@ async function sendReviewRequestEmail(user, order) {
         </div>
         <div style="padding:28px 32px;">
           <p style="color:#e0e0ff;font-size:1rem;margin:0 0 16px;">Bonjour <strong>${escHtml(user.name)}</strong>,</p>
-          <p style="color:#a0a0c0;font-size:0.9rem;line-height:1.6;margin:0 0 24px;">Votre commande <strong style="color:#e0e0ff;">#${order.id}</strong> a été livrée. Avez-vous reçu votre code sans problème ?</p>
-          <p style="color:#a0a0c0;font-size:0.9rem;line-height:1.6;margin:0 0 24px;">Votre avis aide les autres clients à faire confiance à Babicard.ci. Cela ne prend que 30 secondes !</p>
+          <p style="color:#a0a0c0;font-size:0.9rem;line-height:1.6;margin:0 0 8px;">Votre commande <strong style="color:#e0e0ff;">#${order.id}</strong> a été livrée.</p>
+          <p style="color:#a0a0c0;font-size:0.9rem;line-height:1.6;margin:0 0 24px;">Que pensez-vous de <strong style="color:#f59e0b;">${productName}</strong> ? Votre avis aide les autres clients — cela prend 30 secondes !</p>
           <div style="text-align:center;margin-bottom:24px;">
-            <a href="${siteUrl}/dashboard#orders" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:white;text-decoration:none;padding:14px 32px;border-radius:10px;font-weight:700;font-size:1rem;">Laisser un avis</a>
+            <a href="${reviewUrl}" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:white;text-decoration:none;padding:14px 32px;border-radius:10px;font-weight:700;font-size:1rem;">⭐ Laisser un avis</a>
           </div>
         </div>
         <div style="padding:16px 32px;border-top:1px solid rgba(255,255,255,0.06);text-align:center;">

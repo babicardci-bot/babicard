@@ -303,7 +303,13 @@ async function sendReviewEmails() {
     `).all();
     for (const order of orders) {
       try {
-        await sendReviewRequestEmail({ name: order.name, email: order.email }, order);
+        // Récupérer le premier produit de la commande pour le lien direct
+        const firstItem = db.prepare(`
+          SELECT oi.product_id, p.name as product_name
+          FROM order_items oi JOIN products p ON oi.product_id = p.id
+          WHERE oi.order_id = ? LIMIT 1
+        `).get(order.id);
+        await sendReviewRequestEmail({ name: order.name, email: order.email }, order, firstItem);
         db.prepare('UPDATE orders SET review_sent = 1 WHERE id = ?').run(order.id);
         console.log(`[REVIEW] Email envoyé — commande #${order.id}`);
       } catch (e) { console.error('[REVIEW] Erreur email:', e.message); }
