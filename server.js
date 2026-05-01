@@ -19,19 +19,7 @@ app.set('trust proxy', 1);
 
 // Sécurité — headers HTTP
 app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc:  ["'self'"],
-      scriptSrc:   ["'self'", "'unsafe-inline'", "cdn.jsdelivr.net", "*.googleapis.com", "*.gstatic.com", "www.googletagmanager.com"],
-      styleSrc:    ["'self'", "'unsafe-inline'", "fonts.googleapis.com"],
-      fontSrc:     ["'self'", "fonts.gstatic.com"],
-      imgSrc:      ["'self'", "data:", "blob:", "https:"],
-      connectSrc:  ["'self'", "*.googleapis.com", "*.firebaseio.com", "fcm.googleapis.com", "www.google-analytics.com"],
-      frameSrc:    ["'none'"],
-      objectSrc:   ["'none'"],
-      baseUri:     ["'self'"]
-    }
-  },
+  contentSecurityPolicy: false,
   crossOriginEmbedderPolicy: false,
   hsts: { maxAge: 31536000, includeSubDomains: true },
   frameguard: { action: 'deny' },
