@@ -96,6 +96,7 @@ function showSection(name, el) {
     sellers: 'Gestion des Vendeurs',
     'promo-requests': 'Demandes de Prix Promo',
     withdrawals: 'Demandes de Retrait',
+    'cost-prices': 'Prix de revient',
     appearance: 'Apparence du site'
   };
   document.getElementById('topbarTitle').textContent = titles[name] || name;
@@ -111,6 +112,7 @@ function showSection(name, el) {
     case 'promo-requests': loadPromoRequests(); break;
     case 'withdrawals': loadAdminWithdrawals(); break;
     case 'refunds': loadRefunds(); break;
+    case 'cost-prices': loadCostPrices(); break;
     case 'appearance': loadAppearanceSettings(); break;
   }
 
@@ -276,6 +278,7 @@ async function loadDashboard() {
     document.getElementById('stat-benefits-month').textContent = formatPrice(stats.adminBenefitsMonth);
     document.getElementById('stat-commissions').textContent = formatPrice(stats.totalCommissions);
     document.getElementById('stat-direct').textContent = formatPrice(stats.directRevenue);
+    document.getElementById('stat-profit-month').textContent = formatPrice(stats.profitMonth || 0);
 
     // Recent orders
     document.getElementById('recentOrders').innerHTML = recentOrders.length ? recentOrders.map(order => `
@@ -1742,6 +1745,119 @@ async function sendTestReviewEmail() {
     }
   } catch (e) {
     resultEl.innerHTML = '<span style="color:#ef4444;font-size:0.85rem;">❌ Erreur réseau.</span>';
+  }
+}
+
+// ============ PRIX DE REVIENT ============
+let _costPricesData = [];
+
+async function loadCostPrices() {
+  const container = document.getElementById('costPricesTable');
+  container.innerHTML = '<div class="loading-center"><div class="loading-spinner"></div></div>';
+  try {
+    const res = await adminFetch('/admin/cost-prices');
+    const data = await res.json();
+    _costPricesData = data.products || [];
+
+    if (_costPricesData.length === 0) {
+      container.innerHTML = '<div class="empty-table"><div class="empty-icon">💰</div><p>Aucun produit trouvé.</p></div>';
+      return;
+    }
+
+    // Group by category
+    const byCategory = {};
+    for (const p of _costPricesData) {
+      const cat = p.category || 'other';
+      if (!byCategory[cat]) byCategory[cat] = [];
+      byCategory[cat].push(p);
+    }
+
+    const catNames = {
+      apple: '🍎 Apple (iTunes)', playstation: '🎮 PlayStation', xbox: '🎯 Xbox',
+      google: '🔵 Google Play', steam: '💨 Steam', netflix: '🎬 Netflix',
+      amazon: '🛒 Amazon', other: '📦 Autre'
+    };
+
+    let html = '<div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Produit</th><th>Plateforme</th><th>Dénom.</th><th>Prix vente</th><th>Prix de revient (FCFA)</th><th>Marge</th></tr></thead><tbody>';
+
+    for (const [cat, products] of Object.entries(byCategory)) {
+      html += `<tr><td colspan="6" style="background:rgba(108,99,255,0.08);font-weight:700;color:#a78bfa;font-size:0.82rem;text-transform:uppercase;letter-spacing:1px;padding:8px 16px;">${catNames[cat] || cat}</td></tr>`;
+      for (const p of products) {
+        const margin = p.cost_price > 0 ? p.price - p.cost_price : null;
+        const marginPct = (p.price > 0 && p.cost_price > 0) ? Math.round((margin / p.price) * 100) : null;
+        const marginColor = margin === null ? '#888' : margin >= 0 ? '#22c55e' : '#ef4444';
+        html += `
+          <tr>
+            <td><strong>${esc(p.name)}</strong></td>
+            <td style="color:#a0a0c0;font-size:0.82rem">${esc(p.platform)}</td>
+            <td style="color:#a0a0c0;font-size:0.82rem">${esc(p.denomination)}</td>
+            <td style="color:#a78bfa;font-weight:600">${formatPrice(p.price)}</td>
+            <td>
+              <input type="number" class="admin-input cost-price-input" data-product-id="${p.id}"
+                value="${p.cost_price || 0}" min="0" max="9999999" step="100"
+                style="width:140px;padding:6px 10px;background:var(--admin-bg-secondary);border:1px solid var(--admin-border);border-radius:6px;color:var(--text-primary);font-size:0.9rem;text-align:right;"
+                placeholder="0">
+            </td>
+            <td style="color:${marginColor};font-weight:600;" id="margin-${p.id}">
+              ${margin !== null ? formatPrice(margin) + (marginPct !== null ? ` (${marginPct}%)` : '') : '—'}
+            </td>
+          </tr>`;
+      }
+    }
+
+    html += '</tbody></table></div>';
+    container.innerHTML = html;
+
+    // Live margin update on input
+    container.querySelectorAll('.cost-price-input').forEach(input => {
+      input.addEventListener('input', () => {
+        const pid = input.dataset.productId;
+        const product = _costPricesData.find(p => String(p.id) === pid);
+        if (!product) return;
+        const cost = parseInt(input.value) || 0;
+        const margin = product.price - cost;
+        const pct = product.price > 0 ? Math.round((margin / product.price) * 100) : 0;
+        const cell = document.getElementById(`margin-${pid}`);
+        if (cell) {
+          cell.textContent = formatPrice(margin) + ` (${pct}%)`;
+          cell.style.color = margin >= 0 ? '#22c55e' : '#ef4444';
+        }
+      });
+    });
+
+  } catch (err) {
+    container.innerHTML = '<div style="padding:20px;color:#ef4444">Erreur chargement.</div>';
+  }
+}
+
+async function saveCostPrices() {
+  const inputs = document.querySelectorAll('.cost-price-input');
+  if (inputs.length === 0) { showToast('Aucun prix à sauvegarder.', 'error'); return; }
+
+  const prices = Array.from(inputs).map(input => ({
+    id: parseInt(input.dataset.productId),
+    cost_price: parseInt(input.value) || 0
+  }));
+
+  try {
+    const res = await adminFetch('/admin/cost-prices', {
+      method: 'POST',
+      body: JSON.stringify({ prices })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      showToast('✅ ' + data.message, 'success');
+      // Refresh dashboard profit stat
+      const statsRes = await adminFetch('/admin/stats');
+      const statsData = await statsRes.json();
+      if (statsData.stats) {
+        document.getElementById('stat-profit-month').textContent = formatPrice(statsData.stats.profitMonth || 0);
+      }
+    } else {
+      showToast(data.error || 'Erreur.', 'error');
+    }
+  } catch (e) {
+    showToast('Erreur réseau.', 'error');
   }
 }
 

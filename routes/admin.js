@@ -169,6 +169,17 @@ router.get('/stats', (req, res) => {
       LIMIT 5
     `).all();
 
+    // Gains nets du mois (revenus - prix de revient)
+    const profitMonth = db.prepare(`
+      SELECT COALESCE(SUM(oi.unit_price - COALESCE(p.cost_price, 0)), 0) as net_profit
+      FROM order_items oi
+      JOIN products p ON oi.product_id = p.id
+      JOIN orders o ON oi.order_id = o.id
+      WHERE o.payment_status = 'paid'
+        AND strftime('%Y-%m', o.paid_at) = strftime('%Y-%m', 'now')
+        AND p.seller_id IS NULL
+    `).get();
+
     const totalOrders = orderStats.totalOrders;
     const paidOrders = orderStats.paidOrders;
     const pendingOrders = orderStats.pendingOrders;
@@ -198,7 +209,8 @@ router.get('/stats', (req, res) => {
         adminBenefits,
         adminBenefitsMonth,
         totalCommissions,
-        directRevenue
+        directRevenue,
+        profitMonth: profitMonth.net_profit
       },
       alerts: {
         pendingSellers,
@@ -1411,6 +1423,48 @@ router.put('/refunds/:id/reject', async (req, res) => {
   } catch (err) {
     console.error('Erreur reject refund:', err);
     res.status(500).json({ error: 'Erreur.' });
+  }
+});
+
+// GET /api/admin/cost-prices — Liste tous les produits avec leur prix de revient
+router.get('/cost-prices', (req, res) => {
+  try {
+    const db = getDb();
+    const products = db.prepare(`
+      SELECT id, name, category, platform, denomination, price, cost_price
+      FROM products
+      WHERE seller_id IS NULL
+      ORDER BY category, name
+    `).all();
+    res.json({ products });
+  } catch (err) {
+    console.error('Erreur cost-prices:', err);
+    res.status(500).json({ error: 'Erreur chargement prix de revient.' });
+  }
+});
+
+// POST /api/admin/cost-prices — Sauvegarder les prix de revient en masse
+router.post('/cost-prices', (req, res) => {
+  try {
+    const { prices } = req.body;
+    if (!Array.isArray(prices)) return res.status(400).json({ error: 'Format invalide.' });
+
+    const db = getDb();
+    const update = db.prepare('UPDATE products SET cost_price = ? WHERE id = ? AND seller_id IS NULL');
+    const updateAll = db.transaction(() => {
+      for (const { id, cost_price } of prices) {
+        const val = parseInt(cost_price);
+        if (isNaN(val) || val < 0) continue;
+        update.run(val, id);
+      }
+    });
+    updateAll();
+
+    logAdminAction(req, 'UPDATE_COST_PRICES', null, { count: prices.length });
+    res.json({ message: `${prices.length} prix de revient mis à jour.` });
+  } catch (err) {
+    console.error('Erreur save cost-prices:', err);
+    res.status(500).json({ error: 'Erreur sauvegarde prix de revient.' });
   }
 });
 

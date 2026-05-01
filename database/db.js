@@ -559,6 +559,15 @@ function migrateDatabase(db) {
     }
   } catch(e) { console.error('Migration orders reminder/review:', e.message); }
 
+  // Prix de revient par produit
+  try {
+    const productCols = db.prepare("PRAGMA table_info(products)").all().map(c => c.name);
+    if (!productCols.includes('cost_price')) {
+      db.prepare("ALTER TABLE products ADD COLUMN cost_price INTEGER NOT NULL DEFAULT 0").run();
+      console.log('Migration: cost_price ajouté à products.');
+    }
+  } catch(e) { console.error('Migration products cost_price:', e.message); }
+
   // Stock notifications table
   try {
     db.exec(`
