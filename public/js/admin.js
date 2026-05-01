@@ -1729,6 +1729,22 @@ async function sendTestSMS() {
   }
 }
 
+async function sendTestReviewEmail() {
+  const resultEl = document.getElementById('reviewEmailTestResult');
+  resultEl.innerHTML = '<span style="color:#a0a0c0;font-size:0.85rem;">⏳ Envoi en cours...</span>';
+  try {
+    const res = await adminFetch('/admin/test-review-email', { method: 'POST' });
+    const data = await res.json();
+    if (res.ok) {
+      resultEl.innerHTML = `<span style="color:#22c55e;font-size:0.85rem;">✅ ${esc(data.message)}</span>`;
+    } else {
+      resultEl.innerHTML = `<span style="color:#ef4444;font-size:0.85rem;">❌ ${esc(data.error)}</span>`;
+    }
+  } catch (e) {
+    resultEl.innerHTML = '<span style="color:#ef4444;font-size:0.85rem;">❌ Erreur réseau.</span>';
+  }
+}
+
 // ============ TOAST ============
 function showToast(message, type = 'info') {
   const container = document.getElementById('toastContainer');

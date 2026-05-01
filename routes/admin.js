@@ -1294,6 +1294,21 @@ router.post('/broadcast', async (req, res) => {
   }
 });
 
+// POST /api/admin/test-review-email — Envoyer un email d'avis de test à l'admin
+router.post('/test-review-email', async (req, res) => {
+  try {
+    const { sendReviewRequestEmail } = require('../services/email');
+    const adminEmail = process.env.ADMIN_EMAIL || req.user.email;
+    const fakeOrder = { id: 'TEST-001' };
+    const fakeProduct = { product_id: 1, product_name: 'iTunes Gift Card 10$' };
+    await sendReviewRequestEmail({ name: req.user.name, email: adminEmail }, fakeOrder, fakeProduct);
+    res.json({ message: `Email de test envoyé à ${adminEmail}` });
+  } catch (err) {
+    console.error('Erreur test-review-email:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/admin/refunds — List all refund requests
 router.get('/refunds', (req, res) => {
   try {
