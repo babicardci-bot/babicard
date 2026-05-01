@@ -1298,10 +1298,13 @@ router.post('/broadcast', async (req, res) => {
 router.post('/test-review-email', async (req, res) => {
   try {
     const { sendReviewRequestEmail } = require('../services/email');
+    const db = getDb();
     const adminEmail = process.env.ADMIN_EMAIL || req.user.email;
     const fakeOrder = { id: 'TEST-001' };
-    const fakeProduct = { product_id: 1, product_name: 'iTunes Gift Card 10$' };
-    await sendReviewRequestEmail({ name: req.user.name, email: adminEmail }, fakeOrder, fakeProduct);
+    // Utiliser un vrai produit de la DB
+    const realProduct = db.prepare('SELECT id, name FROM products WHERE is_active = 1 LIMIT 1').get();
+    const product = realProduct ? { product_id: realProduct.id, product_name: realProduct.name } : null;
+    await sendReviewRequestEmail({ name: req.user.name, email: adminEmail }, fakeOrder, product);
     res.json({ message: `Email de test envoyé à ${adminEmail}` });
   } catch (err) {
     console.error('Erreur test-review-email:', err);

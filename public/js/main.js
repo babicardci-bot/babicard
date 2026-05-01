@@ -201,6 +201,14 @@ async function loadProducts() {
     allProducts = data.products || [];
     renderProducts(allProducts);
     renderPromoBanner(allProducts);
+    // Ouvrir la modal directement si ?product=ID dans l'URL (lien depuis email)
+    const productParam = new URLSearchParams(window.location.search).get('product');
+    if (productParam) {
+      const pid = parseInt(productParam);
+      if (pid && allProducts.find(p => p.id === pid)) {
+        openProductModal(pid);
+      }
+    }
   } catch (err) {
     grid.innerHTML = `
       <div class="no-products">
