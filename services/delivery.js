@@ -1,5 +1,5 @@
 const { getDb } = require('../database/db');
-const { sendOrderConfirmationEmail, sendLowStockEmail, sendDeliveryFailedEmail, sendSellerSaleNotificationEmail } = require('./email');
+const { sendOrderConfirmationEmail, sendLowStockEmail, sendDeliveryFailedEmail, sendSellerSaleNotificationEmail, sendAdminSaleNotification } = require('./email');
 const { decrypt } = require('./encryption');
 const { sendToUser } = require('./notifications');
 
@@ -254,6 +254,13 @@ async function processDelivery(orderId, forceRedeliver = false) {
   } catch (emailErr) {
     console.error('[DELIVERY] Erreur email:', emailErr);
     results.email = { success: false, error: emailErr.message };
+  }
+
+  // Notifier l'admin de la vente
+  if (anyAssigned) {
+    setImmediate(() => {
+      sendAdminSaleNotification(user, order, itemsForNotification).catch(() => {});
+    });
   }
 
   // Notify user if some items failed

@@ -1061,4 +1061,32 @@ async function sendBackupFailedEmail(errorMsg) {
   });
 }
 
-module.exports = { sendOrderConfirmationEmail, sendLowStockEmail, sendWithdrawalRequestEmail, sendWithdrawalStatusEmail, sendPasswordResetEmail, sendWelcomeEmail, sendSellerApprovalEmail, sendEmailVerificationEmail, sendDeliveryFailedEmail, sendSellerSaleNotificationEmail, sendBroadcastEmail, sendLoginOTPEmail, sendAbandonedCartEmail, sendReviewRequestEmail, sendStockNotificationEmail, sendBackupEmail, sendBackupFailedEmail };
+async function sendAdminSaleNotification(user, order, items) {
+  const adminEmail = process.env.ADMIN_EMAIL || process.env.EMAIL_USER;
+  if (!adminEmail) return;
+  const total = (order.total_amount || 0).toLocaleString('fr-FR');
+  const itemsList = items.map(i => `<li style="margin-bottom:4px;">${i.quantity}x <strong>${i.product_name}</strong> — ${(i.unit_price * i.quantity).toLocaleString('fr-FR')} FCFA</li>`).join('');
+  await sendEmail({
+    to: adminEmail,
+    subject: `💰 Nouvelle vente — ${total} FCFA — Commande #${order.id}`,
+    html: `
+      <div style="font-family:Inter,sans-serif;background:#0f0f1a;padding:32px;border-radius:12px;max-width:480px;margin:auto;">
+        <h2 style="color:#22c55e;margin:0 0 4px;">💰 Nouvelle vente confirmée</h2>
+        <p style="color:#606080;font-size:0.8rem;margin:0 0 20px;">Commande #${order.id} — livrée avec succès</p>
+        <div style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.25);border-radius:10px;padding:16px;margin-bottom:16px;">
+          <div style="font-size:2rem;font-weight:800;color:#22c55e;text-align:center;">${total} FCFA</div>
+        </div>
+        <div style="margin-bottom:16px;">
+          <div style="font-size:0.78rem;color:#a0a0c0;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;">Client</div>
+          <div style="color:#e0e0f0;">${user.name} &lt;${user.email}&gt;</div>
+        </div>
+        <div style="margin-bottom:8px;">
+          <div style="font-size:0.78rem;color:#a0a0c0;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;">Articles</div>
+          <ul style="margin:0;padding-left:18px;color:#e0e0f0;font-size:0.9rem;">${itemsList}</ul>
+        </div>
+        <p style="color:#404060;font-size:0.75rem;margin-top:20px;text-align:center;">babicard.ci</p>
+      </div>`
+  });
+}
+
+module.exports = { sendOrderConfirmationEmail, sendLowStockEmail, sendWithdrawalRequestEmail, sendWithdrawalStatusEmail, sendPasswordResetEmail, sendWelcomeEmail, sendSellerApprovalEmail, sendEmailVerificationEmail, sendDeliveryFailedEmail, sendSellerSaleNotificationEmail, sendBroadcastEmail, sendLoginOTPEmail, sendAbandonedCartEmail, sendReviewRequestEmail, sendStockNotificationEmail, sendBackupEmail, sendBackupFailedEmail, sendAdminSaleNotification };
