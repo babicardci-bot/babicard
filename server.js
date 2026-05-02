@@ -231,7 +231,7 @@ app.use('/api/*', (req, res) => {
 
 // Sentry error handler (doit être avant le handler global)
 const Sentry = require('@sentry/node');
-app.use(Sentry.expressErrorHandler());
+Sentry.setupExpressErrorHandler(app);
 
 // Global error handler
 app.use((err, req, res, next) => {
