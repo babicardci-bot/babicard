@@ -1,5 +1,14 @@
-require('./instrument');
 require('dotenv').config();
+
+// Sentry — doit être initialisé le plus tôt possible, après dotenv
+const Sentry = require('@sentry/node');
+if (process.env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    sendDefaultPii: false,
+    tracesSampleRate: 0.1,
+  });
+}
 
 // Clé de chiffrement obligatoire — les codes de cartes doivent être chiffrés au repos
 if (!process.env.CARD_ENCRYPTION_KEY || !/^[0-9a-f]{64}$/i.test(process.env.CARD_ENCRYPTION_KEY)) {
@@ -230,7 +239,6 @@ app.use('/api/*', (req, res) => {
 });
 
 // Sentry error handler (doit être avant le handler global)
-const Sentry = require('@sentry/node');
 Sentry.setupExpressErrorHandler(app);
 
 // Global error handler
