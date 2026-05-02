@@ -228,11 +228,6 @@ app.get('/faq', (req, res) => res.sendFile(path.join(__dirname, 'public', 'faq.h
 app.get('/cgu', (req, res) => res.sendFile(path.join(__dirname, 'public', 'cgu.html')));
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
-// Route test Sentry — à supprimer après vérification
-app.get('/debug-sentry', function mainHandler(req, res) {
-  throw new Error('My first Sentry error!');
-});
-
 // 404 for unknown API routes
 app.use('/api/*', (req, res) => {
   res.status(404).json({ error: 'Route API non trouvée' });
