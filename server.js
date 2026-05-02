@@ -1,3 +1,4 @@
+require('./instrument');
 require('dotenv').config();
 
 // Clé de chiffrement obligatoire — les codes de cartes doivent être chiffrés au repos
@@ -222,6 +223,10 @@ app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.ht
 app.use('/api/*', (req, res) => {
   res.status(404).json({ error: 'Route API non trouvée' });
 });
+
+// Sentry error handler (doit être avant le handler global)
+const Sentry = require('@sentry/node');
+app.use(Sentry.expressErrorHandler());
 
 // Global error handler
 app.use((err, req, res, next) => {

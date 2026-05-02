@@ -8,6 +8,7 @@
     "dev": "nodemon server.js"
   },
   "dependencies": {
+    "@sentry/node": "^10.51.0",
     "axios": "^1.6.7",
     "bcryptjs": "^2.4.3",
     "better-sqlite3": "^12.8.0",
