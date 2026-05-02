@@ -173,10 +173,8 @@ router.post('/login', async (req, res) => {
       const otpCode = String(Math.floor(100000 + Math.random() * 900000));
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
       db2.prepare('INSERT INTO email_otp_tokens (user_id, code, expires_at) VALUES (?, ?, ?)').run(user.id, otpCode, expiresAt);
-      // Envoyer par email — log le code en cas d'échec (récupération via logs Railway)
       sendLoginOTPEmail(user, otpCode).catch(err => {
-        console.error('[OTP] Erreur envoi email:', err.message);
-        console.warn(`[OTP URGENCE] Code pour ${user.email}: ${otpCode}`);
+        console.error('[OTP] Erreur envoi email OTP:', err.message);
       });
       return res.status(200).json({
         email_otp_required: true,

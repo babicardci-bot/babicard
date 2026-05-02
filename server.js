@@ -32,8 +32,7 @@ const allowedOrigins = [
   'https://babicard.ci',
   'https://www.babicard.ci',
   'https://babicard-production.up.railway.app',
-  'http://localhost:3000',
-  'http://localhost:8080'
+  ...(process.env.NODE_ENV !== 'production' ? ['http://localhost:3000', 'http://localhost:8080'] : [])
 ];
 app.use(cors({
   origin: (origin, cb) => {
