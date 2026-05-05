@@ -16,10 +16,9 @@ if (!process.env.CARD_ENCRYPTION_KEY || !/^[0-9a-f]{64}$/i.test(process.env.CARD
   process.exit(1);
 }
 
-// SITE_URL obligatoire — les emails de reset/vérification doivent pointer vers le bon domaine
+// SITE_URL recommandée — sans elle les liens dans les emails pointent vers localhost
 if (!process.env.SITE_URL) {
-  console.error('[FATAL] SITE_URL manquante. Les liens dans les emails pointeraient vers localhost. Arrêt du serveur.');
-  process.exit(1);
+  console.warn('[WARNING] SITE_URL manquante. Les liens dans les emails de reset/vérification pointeront vers localhost.');
 }
 
 // Avertissement si l'OTP admin/vendeur est désactivé
