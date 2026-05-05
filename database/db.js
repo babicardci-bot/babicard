@@ -147,6 +147,8 @@ function initializeDatabase() {
     CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items(order_id);
     CREATE INDEX IF NOT EXISTS idx_seller_earnings_seller ON seller_earnings(seller_id);
     CREATE INDEX IF NOT EXISTS idx_orders_payment_status ON orders(payment_status);
+    CREATE INDEX IF NOT EXISTS idx_orders_payment_ref ON orders(payment_ref);
+    CREATE INDEX IF NOT EXISTS idx_cards_order_id ON cards(order_id);
     CREATE INDEX IF NOT EXISTS idx_seller_earnings_status ON seller_earnings(status);
   `);
 
@@ -556,6 +558,9 @@ function migrateDatabase(db) {
     }
     if (!orderCols2.includes('review_sent')) {
       db.prepare("ALTER TABLE orders ADD COLUMN review_sent INTEGER NOT NULL DEFAULT 0").run();
+    }
+    if (!orderCols2.includes('resend_count')) {
+      db.prepare("ALTER TABLE orders ADD COLUMN resend_count INTEGER NOT NULL DEFAULT 0").run();
     }
   } catch(e) { console.error('Migration orders reminder/review:', e.message); }
 

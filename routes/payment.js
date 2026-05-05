@@ -382,8 +382,6 @@ router.post('/mobilemoney/webhook', async (req, res) => {
     const signature = req.headers['x-webhook-signature'];
     const timestamp = req.headers['x-webhook-timestamp'];
     const webhookSecret = process.env.GENIUS_WEBHOOK_SECRET;
-    console.log('[MOBILE MONEY WEBHOOK] rawBody présent:', !!req.rawBody, '| rawStr len:', rawStr.length, '| rawStr début:', rawStr.slice(0, 60));
-    console.log('[MOBILE MONEY WEBHOOK] Content-Type:', req.headers['content-type']);
     if (webhookSecret) {
       if (!signature) {
         console.warn('[MOBILE MONEY WEBHOOK] Signature manquante — rejeté');
@@ -394,11 +392,13 @@ router.post('/mobilemoney/webhook', async (req, res) => {
       const payloadWithTs = timestamp ? `${timestamp}.${rawStr}` : rawStr;
       const h1 = crypto.createHmac('sha256', webhookSecret).update(payloadWithTs).digest('hex');
       const h2 = crypto.createHmac('sha256', secretNoPrefix).update(payloadWithTs).digest('hex');
-      let valid = h1 === sigToCheck || h2 === sigToCheck;
+      const sigBuf = Buffer.from(sigToCheck, 'hex');
+      const safe = (h) => { try { return h.length === sigBuf.length && crypto.timingSafeEqual(Buffer.from(h, 'hex'), sigBuf); } catch(_) { return false; } };
+      let valid = safe(h1) || safe(h2);
       if (!valid) {
         try {
           const h3 = crypto.createHmac('sha256', Buffer.from(secretNoPrefix, 'base64')).update(payloadWithTs).digest('hex');
-          valid = h3 === sigToCheck;
+          valid = safe(h3);
         } catch (_) {}
       }
       if (!valid) {
@@ -414,7 +414,6 @@ router.post('/mobilemoney/webhook', async (req, res) => {
     const event = req.headers['x-webhook-event'] || body.event;
     const data = body.data || body;
     const reference = data.reference;
-    console.log('[MOBILE MONEY WEBHOOK] Event:', event, '| Reference:', reference);
 
     const db = getDb();
     const order = db.prepare('SELECT * FROM orders WHERE payment_ref = ?').get(reference);

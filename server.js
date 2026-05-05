@@ -16,6 +16,17 @@ if (!process.env.CARD_ENCRYPTION_KEY || !/^[0-9a-f]{64}$/i.test(process.env.CARD
   process.exit(1);
 }
 
+// SITE_URL obligatoire — les emails de reset/vérification doivent pointer vers le bon domaine
+if (!process.env.SITE_URL) {
+  console.error('[FATAL] SITE_URL manquante. Les liens dans les emails pointeraient vers localhost. Arrêt du serveur.');
+  process.exit(1);
+}
+
+// Avertissement si l'OTP admin/vendeur est désactivé
+if (process.env.DISABLE_ADMIN_OTP === 'true') {
+  console.warn('[SECURITY WARNING] DISABLE_ADMIN_OTP=true — le second facteur OTP est désactivé pour les admins et vendeurs.');
+}
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -29,7 +40,20 @@ app.set('trust proxy', 1);
 
 // Sécurité — headers HTTP
 app.use(helmet({
-  contentSecurityPolicy: false,
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://www.googletagmanager.com", "https://www.gstatic.com"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'", "https://fcm.googleapis.com", "https://www.google-analytics.com", "https://region1.google-analytics.com"],
+      frameSrc: ["'none'"],
+      objectSrc: ["'none'"],
+      baseUri: ["'self'"],
+      upgradeInsecureRequests: [],
+    }
+  },
   crossOriginEmbedderPolicy: false,
   hsts: { maxAge: 31536000, includeSubDomains: true },
   frameguard: { action: 'deny' },
@@ -150,6 +174,18 @@ app.get('/robots.txt', (req, res) => {
 const persistentUploadsDir = process.env.DB_PATH
   ? require('path').join(require('path').dirname(process.env.DB_PATH), 'uploads')
   : null;
+
+// Protéger les documents KYC vendeurs — accès admin uniquement
+app.use('/uploads/seller-docs', (req, res, next) => {
+  const { authenticateToken } = require('./middleware/auth');
+  authenticateToken(req, res, () => {
+    if (!req.user || req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Accès réservé aux administrateurs.' });
+    }
+    next();
+  });
+});
+
 if (persistentUploadsDir) {
   require('fs').mkdirSync(persistentUploadsDir, { recursive: true });
   app.use('/uploads', require('express').static(persistentUploadsDir));
@@ -168,6 +204,7 @@ app.use('/api/auth/forgot-password', forgotPasswordLimiter);
 app.use('/api/auth/reset-password', forgotPasswordLimiter);
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
+app.use('/api/auth/verify-otp', authLimiter);
 app.use('/api/auth', authRouter);
 app.use('/api/products', require('./routes/products'));
 app.use('/api/orders', require('./routes/orders'));

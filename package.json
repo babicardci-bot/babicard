@@ -23,7 +23,6 @@
     "nodemailer": "^6.9.9",
     "qrcode": "^1.5.4",
     "speakeasy": "^2.0.0",
-    "sqlite3": "^6.0.1",
     "uuid": "^9.0.0"
   },
   "devDependencies": {

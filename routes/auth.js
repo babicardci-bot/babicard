@@ -170,7 +170,7 @@ router.post('/login', async (req, res) => {
     if (['admin', 'seller'].includes(user.role) && process.env.DISABLE_ADMIN_OTP !== 'true') {
       const db2 = getDb();
       db2.prepare('DELETE FROM email_otp_tokens WHERE user_id = ? AND used = 0').run(user.id);
-      const otpCode = String(Math.floor(100000 + Math.random() * 900000));
+      const otpCode = String(100000 + (parseInt(require('crypto').randomBytes(3).toString('hex'), 16) % 900000)).padStart(6, '0');
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
       db2.prepare('INSERT INTO email_otp_tokens (user_id, code, expires_at) VALUES (?, ?, ?)').run(user.id, otpCode, expiresAt);
       sendLoginOTPEmail(user, otpCode).catch(err => {
