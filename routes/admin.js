@@ -743,6 +743,11 @@ router.delete('/cards/:id', (req, res) => {
     if (card.status === 'sold') {
       return res.status(400).json({ error: 'Impossible de supprimer une carte déjà vendue.' });
     }
+    if (card.status === 'reserved') {
+      return res.status(400).json({ error: 'Impossible de supprimer une carte réservée à une commande en cours.' });
+    }
+    // Détacher les références dans order_items (commandes annulées qui pointent encore vers la carte)
+    db.prepare('UPDATE order_items SET card_id = NULL WHERE card_id = ?').run(req.params.id);
     db.prepare('DELETE FROM cards WHERE id = ?').run(req.params.id);
 
     // Update stock count
@@ -751,7 +756,8 @@ router.delete('/cards/:id', (req, res) => {
 
     res.json({ message: 'Carte supprimée.' });
   } catch (err) {
-    res.status(500).json({ error: 'Erreur lors de la suppression.' });
+    console.error('[ADMIN DELETE CARD]', err.message);
+    res.status(500).json({ error: 'Erreur lors de la suppression: ' + err.message });
   }
 });
 
