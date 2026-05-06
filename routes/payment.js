@@ -393,7 +393,12 @@ router.post('/mobilemoney/webhook', async (req, res) => {
       const h1 = crypto.createHmac('sha256', webhookSecret).update(payloadWithTs).digest('hex');
       const h2 = crypto.createHmac('sha256', secretNoPrefix).update(payloadWithTs).digest('hex');
       const sigBuf = Buffer.from(sigToCheck, 'hex');
-      const safe = (h) => { try { return h.length === sigBuf.length && crypto.timingSafeEqual(Buffer.from(h, 'hex'), sigBuf); } catch(_) { return false; } };
+      const safe = (h) => {
+        try {
+          const hBuf = Buffer.from(h, 'hex');
+          return hBuf.length === sigBuf.length && crypto.timingSafeEqual(hBuf, sigBuf);
+        } catch(_) { return false; }
+      };
       let valid = safe(h1) || safe(h2);
       if (!valid) {
         try {
