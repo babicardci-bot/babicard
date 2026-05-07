@@ -348,7 +348,7 @@ router.post('/mobilemoney/initiate', authenticateToken, async (req, res) => {
         success_url: `${siteUrl}/dashboard#orders`,
         error_url: `${siteUrl}/dashboard#orders`
       },
-      { headers: geniusHeaders() }
+      { headers: geniusHeaders(), timeout: 25000 }
     );
 
     const checkout_url = paymentRes.data?.data?.checkout_url || paymentRes.data?.checkout_url;
