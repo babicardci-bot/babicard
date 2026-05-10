@@ -1005,110 +1005,6 @@ async function sendStockNotificationEmail(email, productName) {
   });
 }
 
-async function sendCodeReplacementEmail(user, order, item, newCode, newPin, adminNote) {
-  const icon = getCategoryIcon(item.category || item.platform?.toLowerCase() || 'other');
-  const color = getCategoryColor(item.category || item.platform?.toLowerCase() || 'other');
-
-  const htmlContent = `
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Remplacement de code — Babicard.ci</title>
-</head>
-<body style="margin:0;padding:0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background-color:#f0f0f7;">
-
-  <div style="background:linear-gradient(135deg,#0a0a1f 0%,#1a1a3e 50%,#0d0d2e 100%);padding:40px 20px;text-align:center;">
-    <div style="font-size:36px;margin-bottom:8px;">🎮</div>
-    <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:800;">Babicard.ci</h1>
-    <p style="margin:8px 0 0;color:#a78bfa;font-size:14px;letter-spacing:2px;text-transform:uppercase;">Remplacement de code</p>
-  </div>
-
-  <div style="max-width:600px;margin:0 auto;padding:30px 20px;">
-
-    <!-- Excuse Banner -->
-    <div style="background:linear-gradient(135deg,#f59e0b,#d97706);border-radius:12px;padding:24px;text-align:center;margin-bottom:24px;">
-      <div style="font-size:40px;margin-bottom:8px;">🙏</div>
-      <h2 style="margin:0;color:white;font-size:22px;">Toutes nos excuses</h2>
-      <p style="margin:8px 0 0;color:rgba(255,255,255,0.9);font-size:14px;">Nous vous avons envoyé un nouveau code de remplacement.</p>
-    </div>
-
-    <!-- Message -->
-    <div style="background:white;border-radius:12px;padding:28px;margin-bottom:20px;box-shadow:0 2px 10px rgba(0,0,0,0.08);">
-      <h2 style="margin:0 0 16px;color:#1a1a2e;font-size:20px;">Bonjour ${escHtml(user.name)} 👋</h2>
-      <p style="margin:0 0 16px;color:#555;line-height:1.7;">
-        Nous sommes sincèrement désolés pour le désagrément causé avec votre commande <strong>#${order.id}</strong>.
-        Le code que vous avez reçu précédemment pour <strong>${escHtml(item.product_name)}</strong> a rencontré un problème et nous avons procédé à son remplacement immédiat.
-      </p>
-      ${adminNote ? `
-      <div style="background:#fffbeb;border-left:4px solid #f59e0b;border-radius:4px;padding:14px;margin-bottom:16px;">
-        <p style="margin:0;font-size:14px;color:#92400e;"><strong>Note de notre équipe :</strong><br>${escHtml(adminNote)}</p>
-      </div>` : ''}
-      <p style="margin:0;color:#555;line-height:1.7;">Voici votre <strong>nouveau code</strong>, valide et prêt à l'emploi :</p>
-    </div>
-
-    <!-- New Code Box -->
-    <div style="background:white;border-radius:12px;padding:24px;margin-bottom:20px;box-shadow:0 2px 10px rgba(0,0,0,0.08);">
-      <div style="display:flex;align-items:center;margin-bottom:16px;">
-        <div style="width:50px;height:50px;background:${color};border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:24px;margin-right:15px;flex-shrink:0;">${icon}</div>
-        <div>
-          <h3 style="margin:0;font-size:16px;color:#1a1a2e;">${escHtml(item.product_name)}</h3>
-          <p style="margin:4px 0 0;font-size:13px;color:#888;">${escHtml(item.platform || '')}${item.denomination ? ' • ' + escHtml(item.denomination) : ''}</p>
-        </div>
-      </div>
-      <div style="background:#f8f9fa;border:2px dashed #6C63FF;border-radius:8px;padding:20px;text-align:center;">
-        <p style="margin:0 0 8px;font-size:12px;color:#666;text-transform:uppercase;letter-spacing:1px;">Nouveau code de la carte</p>
-        <p style="margin:0;font-size:22px;font-weight:bold;color:#1a1a2e;letter-spacing:3px;font-family:'Courier New',monospace;">${escHtml(newCode)}</p>
-        ${newPin ? `<p style="margin:10px 0 0;font-size:14px;color:#555;">PIN : <strong>${escHtml(newPin)}</strong></p>` : ''}
-      </div>
-    </div>
-
-    <!-- Instructions -->
-    <div style="background:#fffbeb;border:1px solid #fbbf24;border-radius:12px;padding:20px;margin-bottom:24px;">
-      <h4 style="margin:0 0 12px;color:#92400e;font-size:15px;">⚠️ Instructions importantes</h4>
-      <ul style="margin:0;padding-left:20px;color:#78350f;font-size:14px;line-height:1.8;">
-        <li>Conservez ce code en lieu sûr — il ne peut pas être récupéré si perdu.</li>
-        <li>Ne partagez jamais votre code avec qui que ce soit.</li>
-        <li>Le code est à usage unique.</li>
-        <li>Si vous rencontrez encore un problème, contactez notre support immédiatement.</li>
-      </ul>
-    </div>
-
-    <!-- Support -->
-    <div style="background:linear-gradient(135deg,#1a1a3e,#0d0d2e);border-radius:12px;padding:24px;text-align:center;color:white;">
-      <p style="margin:0 0 8px;font-size:16px;font-weight:bold;">Besoin d'aide ? 🤝</p>
-      <p style="margin:0 0 16px;font-size:14px;color:#a78bfa;">Notre équipe est disponible 7j/7 pour vous accompagner</p>
-      <p style="margin:0;font-size:14px;">📧 <a href="mailto:${process.env.ADMIN_EMAIL || 'support@babicard.ci'}" style="color:#60a5fa;">${process.env.ADMIN_EMAIL || 'support@babicard.ci'}</a></p>
-      <p style="margin:8px 0 0;font-size:14px;">📱 WhatsApp: +225 07 08 59 80 80</p>
-    </div>
-
-  </div>
-
-  <div style="text-align:center;padding:20px;color:#999;font-size:12px;">
-    <p style="margin:0;">© ${new Date().getFullYear()} Babicard.ci — Abidjan, Côte d'Ivoire</p>
-    <p style="margin:4px 0 0;">Merci de votre compréhension et de votre fidélité. 🙏</p>
-  </div>
-
-</body>
-</html>`;
-
-  const mailOptions = {
-    from: `"Babicard.ci 🎮" <${process.env.EMAIL_USER || 'noreply@babicard.ci'}>`,
-    to: user.email,
-    subject: `🔄 [Babicard.ci] Remplacement de votre code — Commande #${order.id}`,
-    html: htmlContent,
-    text: `Babicard.ci — Remplacement de code\n\nBonjour ${user.name},\n\nNous vous prions de nous excuser pour le désagrément lié à votre commande #${order.id}.\n\nVoici votre nouveau code pour ${item.product_name} :\n${newCode}${newPin ? '\nPIN : ' + newPin : ''}\n\n${adminNote ? 'Note : ' + adminNote + '\n\n' : ''}Contactez-nous si besoin : ${process.env.ADMIN_EMAIL || 'support@babicard.ci'}`
-  };
-
-  try {
-    return await sendEmail(mailOptions);
-  } catch (err) {
-    console.error('Erreur envoi email remplacement code:', err.message);
-    return { success: false, error: err.message };
-  }
-}
-
 async function sendBackupEmail(backupPath, date, sizeMb) {
   const adminEmail = process.env.ADMIN_EMAIL || process.env.EMAIL_USER;
   if (!adminEmail) return;
@@ -1193,4 +1089,4 @@ async function sendAdminSaleNotification(user, order, items) {
   });
 }
 
-module.exports = { sendOrderConfirmationEmail, sendLowStockEmail, sendWithdrawalRequestEmail, sendWithdrawalStatusEmail, sendPasswordResetEmail, sendWelcomeEmail, sendSellerApprovalEmail, sendEmailVerificationEmail, sendDeliveryFailedEmail, sendSellerSaleNotificationEmail, sendBroadcastEmail, sendLoginOTPEmail, sendAbandonedCartEmail, sendReviewRequestEmail, sendStockNotificationEmail, sendBackupEmail, sendBackupFailedEmail, sendAdminSaleNotification, sendCodeReplacementEmail };
+module.exports = { sendOrderConfirmationEmail, sendLowStockEmail, sendWithdrawalRequestEmail, sendWithdrawalStatusEmail, sendPasswordResetEmail, sendWelcomeEmail, sendSellerApprovalEmail, sendEmailVerificationEmail, sendDeliveryFailedEmail, sendSellerSaleNotificationEmail, sendBroadcastEmail, sendLoginOTPEmail, sendAbandonedCartEmail, sendReviewRequestEmail, sendStockNotificationEmail, sendBackupEmail, sendBackupFailedEmail, sendAdminSaleNotification };
