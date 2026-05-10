@@ -1032,16 +1032,8 @@ async function viewOrderDetail(orderId) {
 
     const simContainer = document.getElementById('simulateBtns');
     if (simContainer) {
-      if (['pending', 'failed'].includes(order.payment_status)) {
-        simContainer.style.display = 'inline-flex';
-        simContainer.innerHTML = `
-          <button onclick="simulatePayment(${order.id}, true)" style="background:rgba(34,197,94,0.15);color:#22c55e;border:1px solid rgba(34,197,94,0.3);padding:6px 14px;border-radius:6px;cursor:pointer;font-size:0.82rem;">✅ Simuler succès</button>
-          <button onclick="simulatePayment(${order.id}, false)" style="background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid rgba(239,68,68,0.3);padding:6px 14px;border-radius:6px;cursor:pointer;font-size:0.82rem;">❌ Simuler échec</button>
-        `;
-      } else {
-        simContainer.style.display = 'none';
-        simContainer.innerHTML = '';
-      }
+      simContainer.style.display = 'none';
+      simContainer.innerHTML = '';
     }
 
     document.getElementById('orderDetailBody').innerHTML = `
