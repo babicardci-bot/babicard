@@ -51,10 +51,11 @@ async function processDelivery(orderId, forceRedeliver = false) {
   // Transaction unique : assignation des cartes + création des gains vendeur (atomique)
   const assignCardsAndEarnings = db.transaction(() => {
     for (const item of orderItems) {
-      // Skip only if card was already fully delivered (status = sold)
+      // Skip only if card was already fully delivered FOR THIS EXACT ORDER (status = sold AND order_id matches)
+      // Sans la vérification order_id, une carte vendue à une AUTRE commande serait considérée comme livrée → doublon
       if (item.card_id) {
         const existingCard = db.prepare('SELECT * FROM cards WHERE id = ?').get(item.card_id);
-        if (existingCard && existingCard.status === 'sold') {
+        if (existingCard && existingCard.status === 'sold' && existingCard.order_id === orderId) {
           results.cards_assigned.push({
             order_item_id: item.id,
             product_name: item.product_name,
@@ -64,6 +65,11 @@ async function processDelivery(orderId, forceRedeliver = false) {
             card_serial: decrypt(existingCard.serial)
           });
           continue;
+        }
+        // Si la carte appartient à une autre commande, on détache la référence pour forcer la réassignation
+        if (existingCard && existingCard.order_id !== orderId) {
+          db.prepare('UPDATE order_items SET card_id = NULL WHERE id = ?').run(item.id);
+          item.card_id = null;
         }
       }
 

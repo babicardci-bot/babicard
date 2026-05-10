@@ -288,6 +288,9 @@ function cancelExpiredOrders() {
       for (const order of orders) {
         db.prepare("UPDATE orders SET payment_status = 'failed' WHERE id = ?").run(order.id);
         db.prepare("UPDATE cards SET status = 'available', order_id = NULL WHERE order_id = ? AND status = 'reserved'").run(order.id);
+        // Détacher la référence de carte des order_items pour éviter qu'une réactivation tardive
+        // ne livre une carte déjà attribuée à une autre commande (bug doublon de codes)
+        db.prepare("UPDATE order_items SET card_id = NULL WHERE order_id = ?").run(order.id);
       }
     });
 
