@@ -5,7 +5,7 @@ const { getDb } = require('../database/db');
 const { authenticateToken, requireAdmin, logAdminAction } = require('../middleware/auth');
 const { processDelivery } = require('../services/delivery');
 const { encrypt, decrypt } = require('../services/encryption');
-const { sendWithdrawalStatusEmail, sendSellerApprovalEmail, sendBroadcastEmail, sendStockNotificationEmail } = require('../services/email');
+const { sendWithdrawalStatusEmail, sendSellerApprovalEmail, sendBroadcastEmail, sendStockNotificationEmail, sendCodeReplacementEmail } = require('../services/email');
 
 // Rate limiter for card reveal — max 30 reveals per 10 minutes per IP
 const revealLimiter = rateLimit({
@@ -965,6 +965,56 @@ router.post('/orders/:id/redeliver', async (req, res) => {
   } catch (err) {
     console.error('Erreur redeliver:', err);
     res.status(500).json({ error: 'Erreur lors de la re-livraison.' });
+  }
+});
+
+// POST /api/admin/orders/:id/items/:itemId/replace-code
+// Remplace le code d'un article de commande et envoie un email d'excuse au client
+router.post('/orders/:id/items/:itemId/replace-code', async (req, res) => {
+  try {
+    const { new_card_id, admin_note } = req.body;
+    const db = getDb();
+
+    const order = db.prepare(`
+      SELECT o.*, u.name as user_name, u.email as user_email
+      FROM orders o JOIN users u ON o.user_id = u.id
+      WHERE o.id = ?
+    `).get(req.params.id);
+    if (!order) return res.status(404).json({ error: 'Commande non trouvée.' });
+    if (order.payment_status !== 'paid') return res.status(400).json({ error: 'La commande doit être payée.' });
+
+    const item = db.prepare(`
+      SELECT oi.*, p.name as product_name, p.platform, p.denomination, p.category
+      FROM order_items oi JOIN products p ON oi.product_id = p.id
+      WHERE oi.id = ? AND oi.order_id = ?
+    `).get(req.params.itemId, req.params.id);
+    if (!item) return res.status(404).json({ error: 'Article non trouvé dans cette commande.' });
+
+    const newCard = db.prepare("SELECT * FROM cards WHERE id = ? AND status = 'available'").get(new_card_id);
+    if (!newCard) return res.status(400).json({ error: 'La nouvelle carte est introuvable ou non disponible.' });
+    if (newCard.product_id !== item.product_id) return res.status(400).json({ error: 'La carte ne correspond pas au produit de l\'article.' });
+
+    // Libérer l'ancienne carte si elle existe
+    if (item.card_id) {
+      db.prepare("UPDATE cards SET status = 'available', order_id = NULL WHERE id = ?").run(item.card_id);
+    }
+
+    // Affecter la nouvelle carte à l'article
+    db.prepare("UPDATE cards SET status = 'sold', order_id = ? WHERE id = ?").run(order.id, newCard.id);
+    db.prepare("UPDATE order_items SET card_id = ? WHERE id = ?").run(newCard.id, item.id);
+
+    const newCode = decrypt(newCard.code);
+    const newPin = decrypt(newCard.pin);
+
+    // Envoyer l'email d'excuse avec le nouveau code
+    const user = { name: order.user_name, email: order.user_email };
+    await sendCodeReplacementEmail(user, order, item, newCode, newPin, admin_note);
+
+    logAdminAction(req, 'replace_card_code', `order:${order.id} item:${item.id} old_card:${item.card_id} new_card:${newCard.id}`);
+    res.json({ message: 'Code remplacé et email d\'excuse envoyé au client.' });
+  } catch (err) {
+    console.error('Erreur replace-code:', err);
+    res.status(500).json({ error: 'Erreur lors du remplacement du code.' });
   }
 });
 
