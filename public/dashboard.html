@@ -575,15 +575,6 @@
             <div class="detail-row"><span>Total:</span><strong class="amount-large">${formatPrice(order?.total_amount || 0)}</strong></div>
           </div>
 
-          ${!isPaid && order?.payment_status === 'pending' ? `
-          <div class="detail-section">
-            <h4>Finaliser le paiement</h4>
-            <p style="color:#a78bfa;font-size:14px;">Votre paiement est en attente. Voulez-vous simuler un paiement réussi?</p>
-            <button onclick="simulatePayment('${order.payment_ref}')" class="btn-primary-small" style="margin-top:8px">
-              🧪 Simuler paiement (Test)
-            </button>
-          </div>
-          ` : ''}
 
           <div class="detail-section">
             <h4>Articles ${isPaid ? '& Codes' : ''}</h4>
