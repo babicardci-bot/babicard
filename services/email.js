@@ -1089,4 +1089,62 @@ async function sendAdminSaleNotification(user, order, items) {
   });
 }
 
-module.exports = { sendOrderConfirmationEmail, sendLowStockEmail, sendWithdrawalRequestEmail, sendWithdrawalStatusEmail, sendPasswordResetEmail, sendWelcomeEmail, sendSellerApprovalEmail, sendEmailVerificationEmail, sendDeliveryFailedEmail, sendSellerSaleNotificationEmail, sendBroadcastEmail, sendLoginOTPEmail, sendAbandonedCartEmail, sendReviewRequestEmail, sendStockNotificationEmail, sendBackupEmail, sendBackupFailedEmail, sendAdminSaleNotification };
+async function sendDailyReportEmail({ date, revenue, orders_count, net_profit, top_products }) {
+  const adminEmail = process.env.ADMIN_EMAIL || process.env.EMAIL_USER;
+  if (!adminEmail) return;
+
+  const dateLabel = new Date(date + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const topRows = top_products.length
+    ? top_products.map((p, i) => `
+        <tr>
+          <td style="padding:8px 12px;color:#a0a0c0;">${i + 1}</td>
+          <td style="padding:8px 12px;color:#e0e0f0;">${escHtml(p.name)}</td>
+          <td style="padding:8px 12px;color:#e0e0f0;text-align:center;">${p.sales}</td>
+          <td style="padding:8px 12px;color:#22c55e;text-align:right;">${formatPrice(p.revenue)}</td>
+        </tr>`).join('')
+    : `<tr><td colspan="4" style="padding:12px;text-align:center;color:#606080;">Aucune vente</td></tr>`;
+
+  await sendEmail({
+    to: adminEmail,
+    subject: `📊 Rapport journalier Babicard — ${dateLabel}`,
+    html: `
+      <div style="font-family:Inter,sans-serif;background:#0f0f1a;padding:32px;border-radius:12px;max-width:520px;margin:auto;">
+        <h2 style="color:#6c63ff;margin:0 0 4px;">📊 Rapport journalier</h2>
+        <p style="color:#606080;font-size:0.85rem;margin:0 0 24px;">${dateLabel}</p>
+
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px;">
+          <div style="background:rgba(108,99,255,0.12);border:1px solid rgba(108,99,255,0.3);border-radius:10px;padding:14px;text-align:center;">
+            <div style="font-size:0.7rem;color:#a0a0c0;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">CA du jour</div>
+            <div style="font-size:1.2rem;font-weight:800;color:#6c63ff;">${formatPrice(revenue)}</div>
+          </div>
+          <div style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);border-radius:10px;padding:14px;text-align:center;">
+            <div style="font-size:0.7rem;color:#a0a0c0;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Commandes</div>
+            <div style="font-size:1.2rem;font-weight:800;color:#22c55e;">${orders_count}</div>
+          </div>
+          <div style="background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.3);border-radius:10px;padding:14px;text-align:center;">
+            <div style="font-size:0.7rem;color:#a0a0c0;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Bénéfice net</div>
+            <div style="font-size:1.2rem;font-weight:800;color:#fbbf24;">${formatPrice(net_profit)}</div>
+          </div>
+        </div>
+
+        <div style="background:#1a1a2e;border-radius:10px;overflow:hidden;margin-bottom:16px;">
+          <div style="padding:10px 12px;background:rgba(108,99,255,0.15);font-size:0.8rem;color:#a0a0c0;text-transform:uppercase;letter-spacing:1px;">Top produits</div>
+          <table style="width:100%;border-collapse:collapse;font-size:0.85rem;">
+            <thead>
+              <tr style="border-bottom:1px solid rgba(255,255,255,0.07);">
+                <th style="padding:8px 12px;color:#606080;text-align:left;font-weight:500;">#</th>
+                <th style="padding:8px 12px;color:#606080;text-align:left;font-weight:500;">Produit</th>
+                <th style="padding:8px 12px;color:#606080;text-align:center;font-weight:500;">Ventes</th>
+                <th style="padding:8px 12px;color:#606080;text-align:right;font-weight:500;">Revenus</th>
+              </tr>
+            </thead>
+            <tbody>${topRows}</tbody>
+          </table>
+        </div>
+
+        <p style="color:#404060;font-size:0.75rem;text-align:center;margin:0;">babicard.ci — rapport automatique quotidien</p>
+      </div>`
+  });
+}
+
+module.exports = { sendOrderConfirmationEmail, sendLowStockEmail, sendWithdrawalRequestEmail, sendWithdrawalStatusEmail, sendPasswordResetEmail, sendWelcomeEmail, sendSellerApprovalEmail, sendEmailVerificationEmail, sendDeliveryFailedEmail, sendSellerSaleNotificationEmail, sendBroadcastEmail, sendLoginOTPEmail, sendAbandonedCartEmail, sendReviewRequestEmail, sendStockNotificationEmail, sendBackupEmail, sendBackupFailedEmail, sendAdminSaleNotification, sendDailyReportEmail };

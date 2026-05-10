@@ -302,7 +302,7 @@ function cancelExpiredOrders() {
 }
 
 // ===== CRON JOBS =====
-const { sendAbandonedCartEmail, sendReviewRequestEmail, sendBackupEmail, sendBackupFailedEmail } = require('./services/email');
+const { sendAbandonedCartEmail, sendReviewRequestEmail, sendBackupEmail, sendBackupFailedEmail, sendDailyReportEmail } = require('./services/email');
 const fs = require('fs');
 
 async function sendAbandonedCartReminders() {
@@ -380,6 +380,54 @@ async function backupDatabase() {
   }
 }
 
+function scheduleDailyReport() {
+  const now = new Date();
+  const next8am = new Date(now);
+  next8am.setHours(8, 0, 0, 0);
+  if (next8am <= now) next8am.setDate(next8am.getDate() + 1);
+  const msUntil8am = next8am - now;
+
+  setTimeout(async function tick() {
+    try {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const date = yesterday.toISOString().slice(0, 10);
+
+      const db = require('./database/db').getDb();
+      const revenue = db.prepare(`
+        SELECT COALESCE(SUM(total_amount), 0) as total, COUNT(*) as orders
+        FROM orders WHERE payment_status = 'paid' AND DATE(paid_at) = ?
+      `).get(date);
+
+      const top_products = db.prepare(`
+        SELECT p.name, COUNT(oi.id) as sales, SUM(oi.unit_price) as revenue
+        FROM order_items oi
+        JOIN products p ON oi.product_id = p.id
+        JOIN orders o ON oi.order_id = o.id
+        WHERE o.payment_status = 'paid' AND DATE(o.paid_at) = ?
+        GROUP BY p.id ORDER BY sales DESC LIMIT 5
+      `).all(date);
+
+      const net_profit = db.prepare(`
+        SELECT COALESCE(SUM(oi.unit_price - COALESCE(p.cost_price, 0)), 0) as profit
+        FROM order_items oi
+        JOIN products p ON oi.product_id = p.id
+        JOIN orders o ON oi.order_id = o.id
+        WHERE o.payment_status = 'paid' AND DATE(o.paid_at) = ? AND p.seller_id IS NULL
+      `).get(date).profit;
+
+      await sendDailyReportEmail({ date, revenue: revenue.total, orders_count: revenue.orders, net_profit, top_products });
+      console.log(`[DAILY REPORT] Rapport envoyé pour ${date}`);
+    } catch (err) {
+      console.error('[DAILY REPORT] Erreur:', err.message);
+    }
+    // Replanifier pour le lendemain à 08:00
+    setTimeout(tick, 24 * 60 * 60 * 1000);
+  }, msUntil8am);
+
+  console.log(`[DAILY REPORT] Prochain rapport dans ${Math.round(msUntil8am / 60000)} min`);
+}
+
 // Initialize Firebase
 const { initFirebase } = require('./services/notifications');
 initFirebase();
@@ -410,6 +458,9 @@ initializeDatabase()
     // Nightly backup — every 24 hours
     setInterval(backupDatabase, 24 * 60 * 60 * 1000);
     backupDatabase();
+
+    // Daily sales report — every morning at 08:00
+    scheduleDailyReport();
   })
   .catch(err => {
     console.error('Erreur initialisation base de données:', err);
