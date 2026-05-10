@@ -230,6 +230,55 @@ router.get('/stats', (req, res) => {
   }
 });
 
+// GET /api/admin/stats/daily?date=YYYY-MM-DD
+router.get('/stats/daily', authenticateToken, requireAdmin, (req, res) => {
+  try {
+    const db = getDb();
+    const date = req.query.date;
+    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return res.status(400).json({ error: 'Paramètre date requis (format YYYY-MM-DD).' });
+    }
+
+    const revenue = db.prepare(`
+      SELECT COALESCE(SUM(total_amount), 0) as total, COUNT(*) as orders
+      FROM orders
+      WHERE payment_status = 'paid' AND DATE(paid_at) = ?
+    `).get(date);
+
+    const topProducts = db.prepare(`
+      SELECT p.name, p.platform, COUNT(oi.id) as sales, SUM(oi.unit_price) as revenue
+      FROM order_items oi
+      JOIN products p ON oi.product_id = p.id
+      JOIN orders o ON oi.order_id = o.id
+      WHERE o.payment_status = 'paid' AND DATE(o.paid_at) = ?
+      GROUP BY p.id
+      ORDER BY sales DESC
+      LIMIT 5
+    `).all(date);
+
+    const orders = db.prepare(`
+      SELECT o.id, o.total_amount, o.payment_method, o.paid_at, u.name as user_name, u.email as user_email
+      FROM orders o
+      JOIN users u ON o.user_id = u.id
+      WHERE o.payment_status = 'paid' AND DATE(o.paid_at) = ?
+      ORDER BY o.paid_at DESC
+    `).all(date);
+
+    const netProfit = db.prepare(`
+      SELECT COALESCE(SUM(oi.unit_price - COALESCE(p.cost_price, 0)), 0) as profit
+      FROM order_items oi
+      JOIN products p ON oi.product_id = p.id
+      JOIN orders o ON oi.order_id = o.id
+      WHERE o.payment_status = 'paid' AND DATE(o.paid_at) = ? AND p.seller_id IS NULL
+    `).get(date);
+
+    res.json({ date, revenue: revenue.total, orders_count: revenue.orders, net_profit: netProfit.profit, top_products: topProducts, orders });
+  } catch (err) {
+    console.error('Erreur admin stats/daily:', err);
+    res.status(500).json({ error: 'Erreur lors du chargement des stats journalières.' });
+  }
+});
+
 // GET /api/admin/users
 router.get('/users', (req, res) => {
   try {

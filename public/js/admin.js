@@ -376,6 +376,61 @@ function renderRevenueChart(revenueByDay) {
   });
 }
 
+// ============ STATS JOURNALIÈRES ============
+async function loadDailyStats() {
+  const picker = document.getElementById('dailyDatePicker');
+  const date = picker.value;
+  if (!date) { alert('Sélectionne une date.'); return; }
+
+  const result  = document.getElementById('dailyStatsResult');
+  const empty   = document.getElementById('dailyStatsEmpty');
+  const loading = document.getElementById('dailyStatsLoading');
+  result.style.display = 'none';
+  empty.style.display = 'none';
+  loading.style.display = 'block';
+
+  try {
+    const res = await adminFetch(`/admin/stats/daily?date=${date}`);
+    const data = await res.json();
+    loading.style.display = 'none';
+
+    if (!res.ok) { alert(data.error || 'Erreur'); return; }
+
+    if (data.orders_count === 0) {
+      empty.style.display = 'block';
+      return;
+    }
+
+    document.getElementById('daily-revenue').textContent = formatPrice(data.revenue);
+    document.getElementById('daily-orders').textContent = data.orders_count;
+    document.getElementById('daily-profit').textContent = formatPrice(data.net_profit);
+
+    const rows = data.orders.map(o => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+        <div>
+          <span style="color:var(--text-secondary);">#${o.id}</span>
+          <span style="color:var(--text-muted);margin-left:8px;">${o.user_name}</span>
+        </div>
+        <div style="display:flex;gap:12px;align-items:center;">
+          <span style="color:var(--text-muted);font-size:0.8rem;">${o.payment_method === 'mobile_money' ? '📱 Mobile Money' : '💳 Djamo'}</span>
+          <span style="color:#22c55e;font-weight:600;">${formatPrice(o.total_amount)}</span>
+        </div>
+      </div>`).join('');
+
+    document.getElementById('dailyOrdersList').innerHTML = rows;
+    result.style.display = 'block';
+  } catch (err) {
+    loading.style.display = 'none';
+    alert('Erreur lors du chargement.');
+  }
+}
+
+// Initialiser le date picker à aujourd'hui
+(function initDailyPicker() {
+  const picker = document.getElementById('dailyDatePicker');
+  if (picker) picker.value = new Date().toISOString().slice(0, 10);
+})();
+
 // ============ PRODUCTS ============
 async function loadAdminProducts() {
   document.getElementById('productsTable').innerHTML = `<div class="loading-center"><div class="loading-spinner"></div></div>`;
