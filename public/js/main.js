@@ -389,89 +389,92 @@ function openProductModal(productId) {
   const usageSteps = getUsageInstructions(product);
   const similar = allProducts.filter(p => p.id !== product.id && p.category === product.category && p.available_stock > 0).slice(0, 3);
 
+  const avgRating = product.reviews_avg ? parseFloat(product.reviews_avg) : 4.5;
+  const reviewCount = product.reviews_count || 0;
+  const starsHtml = Array.from({length: 5}, (_, i) => i < Math.round(avgRating) ? '★' : '☆').join('');
+  const displayPrice = product.promo_price || product.price;
+
   content.innerHTML = `
-    <div class="modal-product-image bg-${product.category || 'other'}" style="width:100%;height:200px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:4rem;overflow:hidden;position:relative;border-radius:var(--radius-lg) var(--radius-lg) 0 0;">
-      ${product.image_url ? `<img src="${product.image_url}" alt="${product.name}" style="width:100%;height:100%;object-fit:cover;display:block;position:absolute;inset:0;">` : icon}
-      <button onclick="closeModal()" style="position:absolute;top:12px;right:12px;width:34px;height:34px;border-radius:50%;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);border:1px solid rgba(255,255,255,0.15);color:#fff;font-size:1rem;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:2;">✕</button>
-    </div>
-    <div style="padding:24px;">
-      <div style="color:var(--color-primary-light);font-size:0.75rem;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">${esc(product.platform)}</div>
-      <h2 style="font-size:1.4rem;font-weight:700;margin-bottom:6px">${esc(product.name)}</h2>
-
-      <!-- Badge livraison -->
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
-        <span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);border-radius:20px;padding:3px 10px;font-size:0.75rem;color:#22c55e;font-weight:600;">⚡ Livraison en 5 min</span>
-        <span style="background:rgba(108,99,255,0.12);border:1px solid rgba(108,99,255,0.3);border-radius:20px;padding:3px 10px;font-size:0.75rem;color:#a78bfa;font-weight:600;">📧 Envoi par email</span>
-        <span style="background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.3);border-radius:20px;padding:3px 10px;font-size:0.75rem;color:#60a5fa;font-weight:600;">🔒 Paiement sécurisé</span>
-      </div>
-
-      <p style="color:var(--text-secondary);font-size:0.9rem;line-height:1.6;margin-bottom:12px">${esc(product.description || 'Carte cadeau numérique. Livraison immédiate par email et SMS.')}</p>
-
-      <!-- Avertissement région -->
-      ${regionWarning ? `<div style="background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.4);border-radius:8px;padding:10px 14px;margin-bottom:16px;">
-        <div style="display:flex;align-items:flex-start;gap:10px;">
-          <span style="font-size:1.1rem;flex-shrink:0;">⚠️</span>
-          <span style="font-size:0.82rem;color:#fbbf24;line-height:1.5;">${regionWarning}</span>
+    <div style="position:relative;">
+      <button onclick="closeModal()" class="pm-close-btn">✕</button>
+      <div class="pm-layout">
+        <!-- Colonne image -->
+        <div class="pm-image-col">
+          ${product.image_url
+            ? `<img src="${product.image_url}" alt="${esc(product.name)}">`
+            : `<div class="pm-image-icon">${icon}</div>`}
+          <div class="pm-denomination-badge">${esc(product.denomination)}</div>
         </div>
-        ${regionGuide}
-      </div>` : ''}
 
-      <!-- Compte à rebours promo -->
-      ${getPromoCountdown(product)}
+        <!-- Colonne info -->
+        <div class="pm-info-col">
+          <div class="pm-region-row">
+            <span class="pm-region-badge">${esc(product.platform).toUpperCase()}</span>
+            <span class="pm-stock-badge ${inStock ? '' : 'out'}">
+              ${inStock ? '✓ En stock' : '✕ Rupture de stock'}
+            </span>
+          </div>
 
-      <!-- Infos produit -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
-        <div style="background:var(--bg-card);padding:12px;border-radius:8px;border:1px solid var(--border-color);">
-          <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:1px">Valeur</div>
-          <div style="font-size:1.1rem;font-weight:700;color:var(--color-primary-light)">${product.denomination}</div>
-        </div>
-        <div style="background:var(--bg-card);padding:12px;border-radius:8px;border:1px solid var(--border-color);">
-          <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:1px">Prix</div>
-          ${product.promo_price
-            ? `<div><span style="text-decoration:line-through;color:var(--text-muted);font-size:0.85rem;">${formatPrice(product.price)}</span></div>
-               <div style="font-size:1.1rem;font-weight:700;color:#ef4444;">${formatPrice(product.promo_price)} 🔥</div>`
-            : `<div style="font-size:1.1rem;font-weight:700;color:var(--color-primary-light)">${formatPrice(product.price)}</div>`
-          }
-        </div>
-        <div style="background:var(--bg-card);padding:12px;border-radius:8px;border:1px solid var(--border-color);">
-          <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:1px">Plateforme</div>
-          <div style="font-size:0.9rem;font-weight:600">${esc(product.platform)}</div>
-        </div>
-        <div style="background:var(--bg-card);padding:12px;border-radius:8px;border:1px solid var(--border-color);">
-          <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:1px">Disponibilité</div>
-          <div style="font-size:0.9rem;font-weight:600;color:${inStock ? 'var(--color-green)' : '#ef4444'}">${inStock ? '✓ En stock' : '✕ Rupture de stock'}</div>
-        </div>
-      </div>
+          <h2 class="pm-title">${esc(product.name)}</h2>
+          <div class="pm-denom">${esc(product.denomination)}</div>
 
-      <!-- Bouton panier -->
-      <div style="display:flex;gap:12px;margin-bottom:24px;">
-        ${inStock
-          ? `<button onclick="addToCart(${product.id}); closeModal();" style="flex:1;padding:14px;background:linear-gradient(135deg,var(--color-primary),#8b5cf6);border:none;border-radius:12px;color:white;font-size:1rem;font-weight:700;cursor:pointer;transition:all 0.3s">🛒 Ajouter au panier</button>`
-          : `<div style="flex:1;display:flex;flex-direction:column;gap:8px;">
-               <button disabled style="width:100%;padding:14px;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);border-radius:12px;color:#ef4444;font-size:1rem;font-weight:700;cursor:not-allowed;">❌ Stock épuisé</button>
-               <button id="notifyBtn-${product.id}" onclick="subscribeStockNotification(${product.id})" style="width:100%;padding:10px;background:rgba(108,99,255,0.12);border:1px solid rgba(108,99,255,0.4);border-radius:12px;color:#a78bfa;font-size:0.9rem;font-weight:600;cursor:pointer;transition:all 0.2s;">🔔 Me notifier quand disponible</button>
-             </div>`
-        }
-      </div>
+          <div class="pm-stars">
+            <span class="pm-stars-icons">${starsHtml}</span>
+            ${reviewCount > 0 ? `<span class="pm-stars-count">(${reviewCount} avis)</span>` : ''}
+          </div>
 
-      <!-- Instructions utilisation -->
-      <div style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:10px;padding:14px;margin-bottom:20px;">
-        <div style="font-size:0.82rem;font-weight:700;color:var(--color-primary-light);margin-bottom:10px;">📋 Comment utiliser votre carte</div>
-        <ol style="margin:0;padding-left:18px;font-size:0.82rem;color:var(--text-secondary);line-height:2;">
-          ${usageSteps.map(s => `<li>${s}</li>`).join('')}
-        </ol>
+          ${product.promo_price ? `<div class="pm-price-old">${formatPrice(product.price)}</div>` : ''}
+          <div class="pm-price">${formatPrice(displayPrice)}</div>
+
+          ${regionWarning ? `<div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.35);border-radius:8px;padding:9px 12px;margin-bottom:12px;font-size:0.82rem;color:#f59e0b;line-height:1.5;">⚠️ ${regionWarning}</div>` : ''}
+
+          <p class="pm-desc">${esc(product.description || 'Carte cadeau numérique. Livraison immédiate par email.')}</p>
+
+          <ul class="pm-features">
+            <li>Livraison par email : Instantanée</li>
+            <li>Code valable pour votre région</li>
+            <li>Aucune inscription requise</li>
+            <li>Support client disponible</li>
+          </ul>
+
+          ${getPromoCountdown(product)}
+
+          <!-- Boutons -->
+          ${inStock ? `
+          <div class="pm-buttons">
+            <button class="pm-btn-cart" onclick="addToCart(${product.id}); closeModal();">
+              🛒 Ajouter au panier
+            </button>
+            <button class="pm-btn-buy" onclick="addToCart(${product.id}); closeModal(); setTimeout(()=>document.getElementById('cartBtn')?.click(),100);">
+              ⚡ Acheter maintenant
+            </button>
+          </div>` : `
+          <div class="pm-buttons" style="flex-direction:column;">
+            <button disabled style="width:100%;padding:13px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:10px;color:#ef4444;font-size:0.95rem;font-weight:700;cursor:not-allowed;">Stock épuisé</button>
+            <button id="notifyBtn-${product.id}" onclick="subscribeStockNotification(${product.id})" style="width:100%;padding:11px;background:rgba(108,99,255,0.1);border:1px solid rgba(108,99,255,0.4);border-radius:10px;color:#a78bfa;font-size:0.88rem;font-weight:600;cursor:pointer;">🔔 Me notifier quand disponible</button>
+          </div>`}
+
+          <!-- Trust icons -->
+          <div class="pm-trust">
+            <div class="pm-trust-item"><span class="icon">⚡</span>Instantané</div>
+            <div class="pm-trust-item"><span class="icon">🔒</span>Sécurisé</div>
+            <div class="pm-trust-item"><span class="icon">✅</span>Garanti</div>
+          </div>
+        </div>
       </div>
 
       <!-- Produits similaires -->
       ${similar.length > 0 ? `
-      <div>
-        <div style="font-size:0.82rem;font-weight:700;color:var(--text-secondary);margin-bottom:10px;">🎮 Vous aimerez aussi</div>
-        <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;">
+      <div class="pm-similar">
+        <h3>Produits similaires</h3>
+        <div class="pm-similar-grid">
           ${similar.map(p => `
-            <div onclick="openProductModal(${p.id})" style="flex-shrink:0;width:110px;background:var(--bg-card);border:1px solid var(--border-color);border-radius:8px;padding:8px;cursor:pointer;text-align:center;">
-              <div style="font-size:1.4rem;margin-bottom:4px;">${getCategoryIcon(p.category)}</div>
-              <div style="font-size:0.7rem;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(p.name)}</div>
-              <div style="font-size:0.75rem;font-weight:700;color:var(--color-primary-light);margin-top:2px;">${formatPrice(p.promo_price || p.price)}</div>
+            <div class="pm-similar-card" onclick="openProductModal(${p.id})">
+              ${p.image_url
+                ? `<img src="${p.image_url}" alt="${esc(p.name)}" style="width:100%;height:60px;object-fit:contain;margin-bottom:6px;border-radius:6px;">`
+                : `<div class="icon">${getCategoryIcon(p.category)}</div>`}
+              <div class="name">${esc(p.name)}</div>
+              <div class="price">${formatPrice(p.promo_price || p.price)}</div>
             </div>`).join('')}
         </div>
       </div>` : ''}
