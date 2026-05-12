@@ -214,7 +214,7 @@ img { max-width: 100%; }
 }
 .slider-container {
   position: relative;
-  height: 100vh;
+  height: 65vh;
   overflow: hidden;
 }
 .slide {
@@ -2358,7 +2358,7 @@ img { max-width: 100%; }
   .btn-logout-nav { padding: 7px 12px; font-size: 0.8rem; }
 
   /* Hero slider mobile */
-  .hero-section, .slider-container { min-height: 100svh; height: 100svh; }
+  .hero-section, .slider-container { min-height: 55svh; height: 55svh; }
   .slide-content { padding: 80px 16px 40px; gap: 20px; }
   .slide-title { font-size: 2rem; line-height: 1.2; }
   .slide-desc { font-size: 0.9rem; }
