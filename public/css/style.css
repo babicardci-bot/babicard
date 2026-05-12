@@ -203,7 +203,7 @@ img { max-width: 100%; }
    ============================================= */
 .hero-section {
   position: relative;
-  min-height: 100vh;
+  min-height: 55vh;
   overflow: hidden;
 }
 .particles-bg {
