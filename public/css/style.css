@@ -402,7 +402,20 @@ img { max-width: 100%; }
 
 /* Scroll indicator */
 .scroll-indicator {
-  display: none;
+  position: absolute;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  z-index: 10;
+  color: rgba(255,255,255,0.5);
+  font-size: 0.75rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  animation: fadeInUp 1s ease 2s both;
 }
 .scroll-arrow {
   width: 20px; height: 30px;
