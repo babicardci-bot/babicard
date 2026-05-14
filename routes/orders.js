@@ -39,6 +39,12 @@ router.post('/', authenticateToken, (req, res) => {
       db.prepare("UPDATE orders SET payment_status = 'failed' WHERE id = ?").run(old.id);
       db.prepare("UPDATE cards SET status = 'available', order_id = NULL WHERE order_id = ? AND status = 'reserved'").run(old.id);
       db.prepare("UPDATE order_items SET card_id = NULL WHERE order_id = ?").run(old.id);
+      // Restaurer le quota promo si utilisé
+      const promoUse = db.prepare('SELECT promo_code_id FROM promo_code_uses WHERE order_id = ?').get(old.id);
+      if (promoUse) {
+        db.prepare('DELETE FROM promo_code_uses WHERE order_id = ?').run(old.id);
+        db.prepare('UPDATE promo_codes SET uses_count = MAX(0, uses_count - 1) WHERE id = ?').run(promoUse.promo_code_id);
+      }
     }
 
     // Reserve cards + create order atomically to prevent race conditions
@@ -142,7 +148,7 @@ router.post('/', authenticateToken, (req, res) => {
 
       // Enregistrer l'utilisation du code promo
       if (validatedPromoId) {
-        db.prepare('INSERT INTO promo_code_uses (promo_code_id, user_id, order_id) VALUES (?, ?, ?)').run(validatedPromoId, req.user.id, newOrderId);
+        db.prepare('INSERT INTO promo_code_uses (promo_code_id, user_id, order_id, discount_amount) VALUES (?, ?, ?, ?)').run(validatedPromoId, req.user.id, newOrderId, discountAmount);
         db.prepare('UPDATE promo_codes SET uses_count = uses_count + 1 WHERE id = ?').run(validatedPromoId);
       }
 
@@ -187,6 +193,11 @@ router.delete('/:id/cancel', authenticateToken, (req, res) => {
     db.prepare("UPDATE cards SET status = 'available', order_id = NULL WHERE order_id = ? AND status = 'reserved'").run(order.id);
     db.prepare("UPDATE order_items SET card_id = NULL WHERE order_id = ?").run(order.id);
     db.prepare("UPDATE orders SET payment_status = 'cancelled' WHERE id = ?").run(order.id);
+    const promoUse = db.prepare('SELECT promo_code_id FROM promo_code_uses WHERE order_id = ?').get(order.id);
+    if (promoUse) {
+      db.prepare('DELETE FROM promo_code_uses WHERE order_id = ?').run(order.id);
+      db.prepare('UPDATE promo_codes SET uses_count = MAX(0, uses_count - 1) WHERE id = ?').run(promoUse.promo_code_id);
+    }
     res.json({ message: 'Commande annulée.' });
   } catch (err) {
     console.error('Erreur cancel order:', err);
@@ -317,7 +328,7 @@ router.post('/:id/refund', authenticateToken, (req, res) => {
       html: `<p>Une demande de remboursement a été soumise.</p>
              <p><b>Client :</b> ${user?.name} (${user?.email})</p>
              <p><b>Commande :</b> #${order.id} — ${order.total_amount} FCFA</p>
-             <p><b>Raison :</b> ${reason.trim()}</p>
+             <p><b>Raison :</b> ${reason.trim().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</p>
              <p><a href="${process.env.SITE_URL}/admin#refunds">Voir dans l'admin →</a></p>`
     }).catch(() => {});
 
@@ -367,41 +378,26 @@ router.post('/:id/resend-codes', authenticateToken, async (req, res) => {
        ${c.pin ? `<td style="padding:8px;border-bottom:1px solid #333">PIN: ${c.pin}</td>` : '<td></td>'}</tr>`
     ).join('');
 
-    // Utiliser nodemailer si configuré, sinon logger
-    const nodemailer = require('nodemailer');
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || 'smtp.gmail.com',
-      port: parseInt(process.env.SMTP_PORT || '587'),
-      secure: false,
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    });
-
-    const mailOptions = {
-      from: `"Babicard" <${process.env.SMTP_USER || 'noreply@babicard.ci'}>`,
-      to: email,
-      subject: `🎮 Vos codes — Commande #${order.id}`,
-      html: `
-        <div style="background:#0A0A0F;color:#fff;padding:32px;font-family:sans-serif;max-width:600px;margin:0 auto">
-          <h1 style="color:#6C63FF;margin-bottom:8px">Babicard</h1>
-          <p style="color:#aaa">Voici vos codes pour la commande <b>#${order.id}</b></p>
-          <table style="width:100%;border-collapse:collapse;margin:16px 0">
-            <tr style="background:#1a1a2e"><th style="padding:8px;text-align:left">Produit</th><th style="padding:8px;text-align:left">Code</th><th style="padding:8px;text-align:left">PIN</th></tr>
-            ${codesHtml}
-          </table>
-          <p style="color:#aaa;font-size:12px">Ne partagez pas ces codes. Toute utilisation est sous votre responsabilité.</p>
-          <p style="color:#555;font-size:11px">Babicard.ci — Votre marketplace de cartes cadeaux</p>
-        </div>
-      `,
-    };
-
+    const { sendEmail } = require('../services/email');
     try {
-      await transporter.sendMail(mailOptions);
+      await sendEmail({
+        to: email,
+        subject: `🎮 Vos codes — Commande #${order.id}`,
+        html: `
+          <div style="background:#0A0A0F;color:#fff;padding:32px;font-family:sans-serif;max-width:600px;margin:0 auto">
+            <h1 style="color:#6C63FF;margin-bottom:8px">Babicard</h1>
+            <p style="color:#aaa">Voici vos codes pour la commande <b>#${order.id}</b></p>
+            <table style="width:100%;border-collapse:collapse;margin:16px 0">
+              <tr style="background:#1a1a2e"><th style="padding:8px;text-align:left">Produit</th><th style="padding:8px;text-align:left">Code</th><th style="padding:8px;text-align:left">PIN</th></tr>
+              ${codesHtml}
+            </table>
+            <p style="color:#aaa;font-size:12px">Ne partagez pas ces codes. Toute utilisation est sous votre responsabilité.</p>
+            <p style="color:#555;font-size:11px">Babicard.ci — Votre marketplace de cartes cadeaux</p>
+          </div>
+        `
+      });
     } catch (mailErr) {
       console.error('[RESEND CODES] Erreur email:', mailErr.message);
-      // Ne pas bloquer si l'email échoue — logger et continuer
     }
 
     // Incrémenter le compteur de renvois

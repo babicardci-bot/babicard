@@ -288,9 +288,13 @@ function cancelExpiredOrders() {
       for (const order of orders) {
         db.prepare("UPDATE orders SET payment_status = 'failed' WHERE id = ?").run(order.id);
         db.prepare("UPDATE cards SET status = 'available', order_id = NULL WHERE order_id = ? AND status = 'reserved'").run(order.id);
-        // Détacher la référence de carte des order_items pour éviter qu'une réactivation tardive
-        // ne livre une carte déjà attribuée à une autre commande (bug doublon de codes)
         db.prepare("UPDATE order_items SET card_id = NULL WHERE order_id = ?").run(order.id);
+        // Restaurer le quota promo si utilisé
+        const promoUse = db.prepare('SELECT promo_code_id FROM promo_code_uses WHERE order_id = ?').get(order.id);
+        if (promoUse) {
+          db.prepare('DELETE FROM promo_code_uses WHERE order_id = ?').run(order.id);
+          db.prepare('UPDATE promo_codes SET uses_count = MAX(0, uses_count - 1) WHERE id = ?').run(promoUse.promo_code_id);
+        }
       }
     });
 
