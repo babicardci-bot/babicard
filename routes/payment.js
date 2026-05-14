@@ -344,6 +344,7 @@ router.post('/mobilemoney/initiate', authenticateToken, async (req, res) => {
         currency: 'XOF',
         description: `Commande Babicard #${order_id}`,
         reference,
+        gateway: 'cinetpay',
         callback_url: `${siteUrl}/api/payment/mobilemoney/webhook`,
         success_url: `${siteUrl}/dashboard#orders`,
         error_url: `${siteUrl}/dashboard#orders`
