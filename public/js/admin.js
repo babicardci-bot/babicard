@@ -989,7 +989,7 @@ async function loadAdminOrders() {
                   <strong>${esc(o.user_name)}</strong>
                   <div style="font-size:0.72rem;color:var(--text-muted)">${esc(o.user_email)}</div>
                 </td>
-                <td>💳 Djamo</td>
+                <td>${o.payment_method === 'mobile_money' ? '📱 Mobile Money' : o.payment_method === 'wave' ? '🌊 Wave CI' : o.payment_method === 'orange_money' ? '🟠 Orange Money' : '💳 Djamo'}</td>
                 <td><strong style="color:#a78bfa">${formatPrice(o.total_amount)}</strong></td>
                 <td><span class="badge badge-${o.payment_status}">${statusLabel(o.payment_status)}</span></td>
                 <td><span class="badge badge-${o.delivery_status}">${statusLabel(o.delivery_status)}</span></td>
