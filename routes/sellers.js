@@ -10,6 +10,13 @@ const { encrypt } = require('../services/encryption');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 
+// Cache PRAGMA table_info — évite de l'exécuter à chaque requête
+let _cardColsCache = null;
+function getCardCols() {
+  if (!_cardColsCache) _cardColsCache = getDb().prepare("PRAGMA table_info(cards)").all().map(c => c.name);
+  return _cardColsCache;
+}
+
 // Multer — seller document upload (one file at a time)
 const persistentBaseS = process.env.DB_PATH ? path.dirname(process.env.DB_PATH) : null;
 const docUpload = multer({
@@ -41,6 +48,29 @@ router.post('/upload-doc', authenticateToken, (req, res) => {
   docUpload.single('file')(req, res, (err) => {
     if (err) return res.status(400).json({ error: err.message });
     if (!req.file) return res.status(400).json({ error: 'Aucun fichier reçu.' });
+
+    // Vérification magic bytes
+    const filePath = req.file.path;
+    const buf = Buffer.alloc(8);
+    let fd;
+    try {
+      fd = fs.openSync(filePath, 'r');
+      fs.readSync(fd, buf, 0, 8, 0);
+    } catch (e) {
+      fs.unlinkSync(filePath);
+      return res.status(400).json({ error: 'Impossible de lire le fichier.' });
+    } finally {
+      if (fd !== undefined) try { fs.closeSync(fd); } catch(_) {}
+    }
+    const isJpeg = buf[0] === 0xFF && buf[1] === 0xD8 && buf[2] === 0xFF;
+    const isPng  = buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4E && buf[3] === 0x47;
+    const isWebp = buf[0] === 0x52 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x46 && buf[8-4] === 0x57;
+    const isPdf  = buf[0] === 0x25 && buf[1] === 0x50 && buf[2] === 0x44 && buf[3] === 0x46;
+    if (!isJpeg && !isPng && !isWebp && !isPdf) {
+      fs.unlinkSync(filePath);
+      return res.status(400).json({ error: 'Contenu du fichier invalide. JPG, PNG, WEBP ou PDF uniquement.' });
+    }
+
     res.json({ url: `/uploads/seller-docs/${req.file.filename}` });
   });
 });
@@ -180,7 +210,7 @@ router.get('/products', authenticateToken, requireSeller, (req, res) => {
   try {
     const db = getDb();
     // Vérifier si seller_id existe sur cards
-    const cardCols = db.prepare("PRAGMA table_info(cards)").all().map(c => c.name);
+    const cardCols = getCardCols();
     const hasSellerCol = cardCols.includes('seller_id');
 
     const query = hasSellerCol
@@ -286,8 +316,8 @@ router.post('/cards/bulk', authenticateToken, requireSeller, (req, res) => {
     const product = db.prepare('SELECT * FROM products WHERE id = ? AND seller_id IS NULL AND is_active = 1').get(product_id);
     if (!product) return res.status(404).json({ error: 'Produit non trouvé ou non autorisé.' });
 
-    const cardCols = db.prepare("PRAGMA table_info(cards)").all().map(c => c.name);
-    const hasSellerCol = cardCols.includes('seller_id');
+    const cardCols = getCardCols();
+    const hasSellerCol = true;
     const hasCodeHash = cardCols.includes('code_hash');
     const insertCard = hasSellerCol
       ? db.prepare(`INSERT INTO cards (product_id, seller_id, code, pin, serial, status${hasCodeHash ? ', code_hash' : ''}) VALUES (?, ?, ?, ?, ?, 'available'${hasCodeHash ? ', ?' : ''})`)

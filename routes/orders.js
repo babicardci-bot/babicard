@@ -6,7 +6,7 @@ const { authenticateToken } = require('../middleware/auth');
 // POST /api/orders - Create order (protected)
 router.post('/', authenticateToken, (req, res) => {
   try {
-    const { items, payment_method, delivery_email, delivery_phone } = req.body;
+    const { items, payment_method, delivery_email, delivery_phone, promo_code_id } = req.body;
     const db = getDb();
 
     if (!items || !Array.isArray(items) || items.length === 0) {
@@ -105,10 +105,30 @@ router.post('/', authenticateToken, (req, res) => {
         throw Object.assign(new Error('Commande trop importante. Montant maximum: 5 000 000 FCFA.'), { statusCode: 400 });
       }
 
+      // Appliquer le code promo si fourni
+      let discountAmount = 0;
+      let validatedPromoId = null;
+      if (promo_code_id) {
+        const promo = db.prepare(`
+          SELECT * FROM promo_codes WHERE id = ? AND is_active = 1
+            AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)
+            AND (max_uses IS NULL OR uses_count < max_uses)
+        `).get(promo_code_id);
+        if (!promo) throw Object.assign(new Error('Code promo invalide ou expiré.'), { statusCode: 400 });
+        const alreadyUsed = db.prepare('SELECT id FROM promo_code_uses WHERE promo_code_id = ? AND user_id = ?').get(promo.id, req.user.id);
+        if (alreadyUsed) throw Object.assign(new Error('Vous avez déjà utilisé ce code promo.'), { statusCode: 400 });
+        if (total_amount < promo.min_order_amount) throw Object.assign(new Error(`Montant minimum ${promo.min_order_amount} FCFA requis.`), { statusCode: 400 });
+        discountAmount = promo.discount_type === 'percent'
+          ? Math.round(total_amount * promo.discount_value / 100)
+          : Math.min(promo.discount_value, total_amount);
+        validatedPromoId = promo.id;
+        total_amount = Math.max(0, total_amount - discountAmount);
+      }
+
       const orderResult = db.prepare(`
-        INSERT INTO orders (user_id, total_amount, payment_method, payment_status, delivery_status, delivery_email, delivery_phone)
-        VALUES (?, ?, ?, 'pending', 'pending', ?, ?)
-      `).run(req.user.id, total_amount, payment_method, delivery_email || '', delivery_phone || '');
+        INSERT INTO orders (user_id, total_amount, payment_method, payment_status, delivery_status, delivery_email, delivery_phone, promo_code_id, discount_amount)
+        VALUES (?, ?, ?, 'pending', 'pending', ?, ?, ?, ?)
+      `).run(req.user.id, total_amount, payment_method, delivery_email || '', delivery_phone || '', validatedPromoId, discountAmount);
 
       const newOrderId = orderResult.lastInsertRowid;
 
@@ -118,6 +138,12 @@ router.post('/', authenticateToken, (req, res) => {
           INSERT INTO order_items (order_id, product_id, card_id, quantity, unit_price)
           VALUES (?, ?, ?, 1, ?)
         `).run(newOrderId, productId, cardId, effectivePrice);
+      }
+
+      // Enregistrer l'utilisation du code promo
+      if (validatedPromoId) {
+        db.prepare('INSERT INTO promo_code_uses (promo_code_id, user_id, order_id) VALUES (?, ?, ?)').run(validatedPromoId, req.user.id, newOrderId);
+        db.prepare('UPDATE promo_codes SET uses_count = uses_count + 1 WHERE id = ?').run(validatedPromoId);
       }
 
       return newOrderId;

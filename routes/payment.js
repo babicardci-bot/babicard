@@ -445,7 +445,9 @@ router.post('/mobilemoney/webhook', async (req, res) => {
 
     if (event === 'payment.success') {
       if (targetOrder.payment_status === 'paid') return res.json({ received: true, skipped: 'already_paid' });
-      db.prepare("UPDATE orders SET payment_status = 'paid', paid_at = CURRENT_TIMESTAMP WHERE id = ?").run(targetOrder.id);
+      const markPaid = db.prepare("UPDATE orders SET payment_status = 'paid', paid_at = CURRENT_TIMESTAMP WHERE id = ? AND payment_status != 'paid'");
+      const result = markPaid.run(targetOrder.id);
+      if (result.changes === 0) return res.json({ received: true, skipped: 'already_paid' });
       await processDelivery(targetOrder.id);
       console.log('[MOBILE MONEY WEBHOOK] Commande', targetOrder.id, 'payée et livrée.');
 

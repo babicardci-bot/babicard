@@ -81,6 +81,9 @@ router.get('/verify-email', (req, res) => {
     db.prepare('UPDATE users SET email_verified = 1 WHERE id = ?').run(record.user_id);
     db.prepare('UPDATE email_verification_tokens SET used = 1 WHERE id = ?').run(record.id);
 
+    const newUser = db.prepare('SELECT id, name, email FROM users WHERE id = ?').get(record.user_id);
+    if (newUser) sendWelcomeEmail(newUser).catch(() => {});
+
     res.redirect('/login?verified=1');
   } catch (err) {
     console.error('Erreur verify-email:', err);
@@ -426,6 +429,9 @@ router.post('/reset-password', async (req, res) => {
     const { token, new_password } = req.body;
     if (!token || !new_password) return res.status(400).json({ error: 'Token et nouveau mot de passe obligatoires.' });
     if (new_password.length < 8) return res.status(400).json({ error: 'Le mot de passe doit contenir au moins 8 caractères.' });
+    if (!/[A-Z]/.test(new_password)) return res.status(400).json({ error: 'Le mot de passe doit contenir au moins une majuscule.' });
+    if (!/[a-z]/.test(new_password)) return res.status(400).json({ error: 'Le mot de passe doit contenir au moins une minuscule.' });
+    if (!/[0-9]/.test(new_password)) return res.status(400).json({ error: 'Le mot de passe doit contenir au moins un chiffre.' });
 
     const db = getDb();
     const record = db.prepare('SELECT * FROM password_reset_tokens WHERE token = ? AND used = 0').get(token);

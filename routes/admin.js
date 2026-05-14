@@ -7,6 +7,13 @@ const { processDelivery } = require('../services/delivery');
 const { encrypt, decrypt } = require('../services/encryption');
 const { sendWithdrawalStatusEmail, sendSellerApprovalEmail, sendBroadcastEmail, sendStockNotificationEmail } = require('../services/email');
 
+// Cache PRAGMA table_info — évite de l'exécuter à chaque requête
+let _cardColsCache = null;
+function getCardCols() {
+  if (!_cardColsCache) _cardColsCache = getDb().prepare("PRAGMA table_info(cards)").all().map(c => c.name);
+  return _cardColsCache;
+}
+
 // Rate limiter for card reveal — max 30 reveals per 10 minutes per IP
 const revealLimiter = rateLimit({
   windowMs: 10 * 60 * 1000,
@@ -470,7 +477,7 @@ router.get('/cards', (req, res) => {
     const { product_id, status, page = 1, limit = 50 } = req.query;
 
     // Check if seller_id exists on cards
-    const cardCols = db.prepare("PRAGMA table_info(cards)").all().map(c => c.name);
+    const cardCols = getCardCols();
     const hasSellerCol = cardCols.includes('seller_id');
 
     let query = hasSellerCol
@@ -822,7 +829,7 @@ router.get('/orders/:id', (req, res) => {
 
     if (!order) return res.status(404).json({ error: 'Commande non trouvée.' });
 
-    const cardCols = db.prepare("PRAGMA table_info(cards)").all().map(c => c.name);
+    const cardCols = getCardCols();
     const hasSellerCol = cardCols.includes('seller_id');
 
     const itemsQuery = hasSellerCol
@@ -954,7 +961,7 @@ router.post('/orders/:id/refund', async (req, res) => {
           <p>Bonjour <b>${client.name}</b>,</p>
           <p>Votre demande de remboursement pour la commande <b>#${order.id}</b> (${order.total_amount} FCFA) a été approuvée.</p>
           <p>Le remboursement sera crédité sur votre moyen de paiement initial sous 2 à 5 jours ouvrés.</p>
-          ${admin_note ? `<p><b>Note de l'équipe :</b> ${admin_note}</p>` : ''}
+          ${admin_note ? `<p><b>Note de l'équipe :</b> ${admin_note.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</p>` : ''}
           <p style="color:#666;font-size:0.85rem;">Pour toute question : support@babicard.ci</p>
         </div>`
       }).catch(() => {});
@@ -992,7 +999,8 @@ router.post('/orders/:id/redeliver', async (req, res) => {
 router.get('/sellers', (req, res) => {
   try {
     const db = getDb();
-    const { status } = req.query;
+    const { status, page = 1, limit = 50 } = req.query;
+    const offset = (parseInt(page) - 1) * parseInt(limit);
     let query = `
       SELECT sp.*, u.name, u.email, u.phone,
         (SELECT COUNT(*) FROM products WHERE seller_id = sp.user_id AND is_active = 1) as product_count,
@@ -1002,9 +1010,11 @@ router.get('/sellers', (req, res) => {
     `;
     const params = [];
     if (status) { query += ' WHERE sp.status = ?'; params.push(status); }
-    query += ' ORDER BY sp.created_at DESC';
+    query += ' ORDER BY sp.created_at DESC LIMIT ? OFFSET ?';
+    params.push(parseInt(limit), offset);
     const sellers = db.prepare(query).all(...params);
-    res.json({ sellers });
+    const total = db.prepare(`SELECT COUNT(*) as c FROM seller_profiles${status ? ' WHERE status = ?' : ''}`).get(...(status ? [status] : [])).c;
+    res.json({ sellers, total, page: parseInt(page), limit: parseInt(limit) });
   } catch(err) {
     res.status(500).json({ error: 'Erreur chargement vendeurs.' });
   }
@@ -1059,7 +1069,8 @@ router.put('/sellers/:id/status', (req, res) => {
 router.get('/withdrawals', (req, res) => {
   try {
     const db = getDb();
-    const { status } = req.query;
+    const { status, page = 1, limit = 50 } = req.query;
+    const offset = (parseInt(page) - 1) * parseInt(limit);
     let query = `
       SELECT wr.*, u.name as seller_name, u.email as seller_email, sp.shop_name
       FROM withdrawal_requests wr
@@ -1068,9 +1079,11 @@ router.get('/withdrawals', (req, res) => {
     `;
     const params = [];
     if (status) { query += ' WHERE wr.status = ?'; params.push(status); }
-    query += ' ORDER BY wr.created_at DESC';
+    query += ' ORDER BY wr.created_at DESC LIMIT ? OFFSET ?';
+    params.push(parseInt(limit), offset);
     const withdrawals = db.prepare(query).all(...params);
-    res.json({ withdrawals });
+    const total = db.prepare(`SELECT COUNT(*) as c FROM withdrawal_requests${status ? ' WHERE status = ?' : ''}`).get(...(status ? [status] : [])).c;
+    res.json({ withdrawals, total, page: parseInt(page), limit: parseInt(limit) });
   } catch(err) {
     res.status(500).json({ error: 'Erreur chargement retraits.' });
   }
@@ -1202,7 +1215,7 @@ router.post('/migrate-encrypt-cards', (req, res) => {
 router.get('/backup', (req, res) => {
   try {
     const db = getDb();
-    const dbPath = process.env.DB_PATH || path.join(__dirname, '../database/giftcard.db');
+    const dbPath = process.env.DB_PATH || path.join(__dirname, '../database/babicard.db');
 
     if (!fs.existsSync(dbPath)) {
       return res.status(404).json({ error: 'Fichier base de données introuvable.' });
@@ -1352,15 +1365,18 @@ router.post('/test-review-email', async (req, res) => {
 router.get('/refunds', (req, res) => {
   try {
     const db = getDb();
+    const { page = 1, limit = 50 } = req.query;
+    const offset = (parseInt(page) - 1) * parseInt(limit);
     const refunds = db.prepare(`
       SELECT rr.*, u.name as user_name, u.email as user_email,
         o.total_amount, o.payment_method, o.created_at as order_date
       FROM refund_requests rr
       JOIN users u ON rr.user_id = u.id
       JOIN orders o ON rr.order_id = o.id
-      ORDER BY rr.created_at DESC
-    `).all();
-    res.json({ refunds });
+      ORDER BY rr.created_at DESC LIMIT ? OFFSET ?
+    `).all(parseInt(limit), offset);
+    const total = db.prepare('SELECT COUNT(*) as c FROM refund_requests').get().c;
+    res.json({ refunds, total, page: parseInt(page), limit: parseInt(limit) });
   } catch (err) {
     console.error('Erreur get refunds:', err);
     res.status(500).json({ error: 'Erreur.' });
@@ -1392,16 +1408,11 @@ router.put('/refunds/:id/approve', async (req, res) => {
     const user = db.prepare('SELECT name, email FROM users WHERE id = ?').get(refund.user_id);
     const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(refund.order_id);
     if (user && user.email) {
-      const nodemailer = require('nodemailer');
-      const transporter = nodemailer.createTransport({
-        host: process.env.EMAIL_HOST, port: parseInt(process.env.EMAIL_PORT || '465'),
-        secure: true, auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
-      });
-      transporter.sendMail({
-        from: `"Babicard.ci" <${process.env.EMAIL_USER}>`,
+      const { sendEmail, escHtml } = require('../services/email');
+      sendEmail({
         to: user.email,
         subject: `✅ Remboursement approuvé — Commande #${refund.order_id}`,
-        html: `<p>Bonjour ${user.name},</p><p>Votre demande de remboursement pour la commande <strong>#${refund.order_id}</strong> (${new Intl.NumberFormat('fr-FR').format(order.total_amount)} FCFA) a été <strong>approuvée</strong>.</p>${admin_note ? `<p>Note: ${admin_note}</p>` : ''}<p>Le remboursement sera effectué via votre méthode de paiement initiale sous 3-5 jours ouvrables.</p><p>Babicard.ci</p>`
+        html: `<p>Bonjour ${escHtml(user.name)},</p><p>Votre demande de remboursement pour la commande <strong>#${refund.order_id}</strong> (${new Intl.NumberFormat('fr-FR').format(order.total_amount)} FCFA) a été <strong>approuvée</strong>.</p>${admin_note ? `<p>Note: ${escHtml(admin_note)}</p>` : ''}<p>Le remboursement sera effectué via votre méthode de paiement initiale sous 3-5 jours ouvrables.</p><p>Babicard.ci</p>`
       }).catch(() => {});
     }
 
@@ -1429,16 +1440,11 @@ router.put('/refunds/:id/reject', async (req, res) => {
     // Notify user
     const user = db.prepare('SELECT name, email FROM users WHERE id = ?').get(refund.user_id);
     if (user && user.email) {
-      const nodemailer = require('nodemailer');
-      const transporter = nodemailer.createTransport({
-        host: process.env.EMAIL_HOST, port: parseInt(process.env.EMAIL_PORT || '465'),
-        secure: true, auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
-      });
-      transporter.sendMail({
-        from: `"Babicard.ci" <${process.env.EMAIL_USER}>`,
+      const { sendEmail, escHtml } = require('../services/email');
+      sendEmail({
         to: user.email,
         subject: `❌ Remboursement refusé — Commande #${refund.order_id}`,
-        html: `<p>Bonjour ${user.name},</p><p>Votre demande de remboursement pour la commande <strong>#${refund.order_id}</strong> a été <strong>refusée</strong>.</p><p>Raison: ${admin_note}</p><p>Contactez-nous: ${process.env.ADMIN_EMAIL || 'support@babicard.ci'}</p>`
+        html: `<p>Bonjour ${escHtml(user.name)},</p><p>Votre demande de remboursement pour la commande <strong>#${refund.order_id}</strong> a été <strong>refusée</strong>.</p><p>Raison: ${escHtml(admin_note)}</p><p>Contactez-nous: ${process.env.ADMIN_EMAIL || 'support@babicard.ci'}</p>`
       }).catch(() => {});
     }
 

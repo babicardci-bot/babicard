@@ -1010,7 +1010,13 @@ async function sendBackupEmail(backupPath, date, sizeMb) {
   const adminEmail = process.env.ADMIN_EMAIL || process.env.EMAIL_USER;
   if (!adminEmail) return;
   const fs = require('fs');
-  const fileContent = fs.readFileSync(backupPath).toString('base64');
+  const fileContent = await new Promise((resolve, reject) => {
+    const chunks = [];
+    fs.createReadStream(backupPath)
+      .on('data', chunk => chunks.push(chunk))
+      .on('end', () => resolve(Buffer.concat(chunks).toString('base64')))
+      .on('error', reject);
+  });
 
   // SendGrid avec pièce jointe
   if (process.env.SENDGRID_API_KEY) {
