@@ -196,7 +196,7 @@ async function sendOrderConfirmationEmail(user, order, items) {
         <tr>
           <td style="padding: 8px 0; color: #666; font-size: 14px;">Méthode de paiement</td>
           <td style="padding: 8px 0; color: #1a1a2e; font-size: 14px; text-align: right;">
-            ${order.payment_method === 'wave' ? '🌊 Wave CI' : '🟠 Orange Money'}
+            ${order.payment_method === 'djamo' ? '💳 Djamo' : order.payment_method === 'mobile_money' ? '📱 Mobile Money' : order.payment_method === 'wave' ? '🌊 Wave CI' : order.payment_method === 'orange_money' ? '🟠 Orange Money' : order.payment_method || 'N/A'}
           </td>
         </tr>
         <tr>
@@ -902,6 +902,7 @@ async function sendLoginOTPEmail(user, code) {
   const siteUrl = process.env.SITE_URL || 'https://babicard.ci';
   return sendEmail({
     to: user.email,
+    from: `"Babicard" <${process.env.EMAIL_USER || process.env.SMTP_USER || 'noreply@babicard.ci'}>`,
     subject: `${code} — Votre code de connexion Babicard.ci`,
     html: `
     <div style="font-family:Inter,Arial,sans-serif;background:#0d0d1a;padding:40px 0;min-height:100vh;">

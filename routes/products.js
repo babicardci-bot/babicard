@@ -196,6 +196,15 @@ router.post('/:id/reviews', authenticateToken, (req, res) => {
     const product = db.prepare('SELECT id FROM products WHERE id = ? AND is_active = 1').get(productId);
     if (!product) return res.status(404).json({ error: 'Produit non trouvé.' });
 
+    // Vérifier que l'utilisateur a acheté ce produit
+    const hasPurchased = db.prepare(`
+      SELECT oi.id FROM order_items oi
+      JOIN orders o ON oi.order_id = o.id
+      WHERE oi.product_id = ? AND o.user_id = ? AND o.payment_status = 'paid'
+      LIMIT 1
+    `).get(productId, userId);
+    if (!hasPurchased) return res.status(403).json({ error: 'Vous devez avoir acheté ce produit pour laisser un avis.' });
+
     // Check if user already reviewed this product
     const existing = db.prepare('SELECT id FROM product_reviews WHERE product_id = ? AND user_id = ?').get(productId, userId);
     if (existing) {

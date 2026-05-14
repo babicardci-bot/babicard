@@ -338,6 +338,7 @@ async function sendReviewEmails() {
         AND o.delivery_status = 'delivered'
         AND o.review_sent = 0
         AND o.paid_at <= datetime('now', '-30 minutes')
+      LIMIT 50
     `).all();
     for (const order of orders) {
       try {

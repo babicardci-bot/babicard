@@ -942,7 +942,25 @@ router.post('/orders/:id/refund', async (req, res) => {
     });
     processRefund();
 
-    logAdminAction(req, 'refund_order', `order:${order.id}`, { admin_note, chargeId });
+    // Email de confirmation au client
+    const client = db.prepare('SELECT name, email FROM users WHERE id = ?').get(order.user_id);
+    if (client?.email) {
+      const { sendEmail } = require('../services/email');
+      sendEmail({
+        to: client.email,
+        subject: `✅ Votre remboursement a été approuvé — Commande #${order.id}`,
+        html: `<div style="font-family:Arial,sans-serif;max-width:500px;margin:0 auto;padding:32px;background:#f9f9f9;border-radius:12px;">
+          <h2 style="color:#16a34a;">✅ Remboursement approuvé</h2>
+          <p>Bonjour <b>${client.name}</b>,</p>
+          <p>Votre demande de remboursement pour la commande <b>#${order.id}</b> (${order.total_amount} FCFA) a été approuvée.</p>
+          <p>Le remboursement sera crédité sur votre moyen de paiement initial sous 2 à 5 jours ouvrés.</p>
+          ${admin_note ? `<p><b>Note de l'équipe :</b> ${admin_note}</p>` : ''}
+          <p style="color:#666;font-size:0.85rem;">Pour toute question : support@babicard.ci</p>
+        </div>`
+      }).catch(() => {});
+    }
+
+    logAdminAction(req, 'refund_order', `order:${order.id} client:${client?.email}`, { admin_note, chargeId });
     res.json({ message: 'Remboursement effectué avec succès.' });
   } catch (err) {
     console.error('Erreur refund order:', err);

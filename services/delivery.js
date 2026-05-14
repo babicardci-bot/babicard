@@ -224,7 +224,7 @@ async function processDelivery(orderId, forceRedeliver = false) {
   }
 
   // Update delivery status
-  const deliveryStatus = allAssigned ? 'delivered' : (anyAssigned ? 'delivered' : 'failed');
+  const deliveryStatus = allAssigned ? 'delivered' : (anyAssigned ? 'partial' : 'failed');
   db.prepare(`UPDATE orders SET delivery_status = ? WHERE id = ?`).run(deliveryStatus, orderId);
 
   // Build items list for email/SMS with full card info

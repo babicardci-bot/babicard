@@ -434,7 +434,7 @@ router.post('/reset-password', async (req, res) => {
     if (new Date(record.expires_at) < new Date()) return res.status(400).json({ error: 'Ce lien a expiré. Veuillez faire une nouvelle demande.' });
 
     const new_hash = await bcrypt.hash(new_password, 12);
-    db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(new_hash, record.user_id);
+    db.prepare('UPDATE users SET password_hash = ?, token_version = token_version + 1 WHERE id = ?').run(new_hash, record.user_id);
     db.prepare('UPDATE password_reset_tokens SET used = 1 WHERE id = ?').run(record.id);
 
     res.json({ message: 'Mot de passe réinitialisé avec succès. Vous pouvez maintenant vous connecter.' });

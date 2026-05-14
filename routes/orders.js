@@ -159,6 +159,7 @@ router.delete('/:id/cancel', authenticateToken, (req, res) => {
       return res.status(400).json({ error: 'Cette commande ne peut pas être annulée.' });
     }
     db.prepare("UPDATE cards SET status = 'available', order_id = NULL WHERE order_id = ? AND status = 'reserved'").run(order.id);
+    db.prepare("UPDATE order_items SET card_id = NULL WHERE order_id = ?").run(order.id);
     db.prepare("UPDATE orders SET payment_status = 'cancelled' WHERE id = ?").run(order.id);
     res.json({ message: 'Commande annulée.' });
   } catch (err) {
@@ -236,11 +237,12 @@ router.get('/:id', authenticateToken, (req, res) => {
       WHERE oi.order_id = ?
     `).all(order.id);
 
+    const { decrypt } = require('../services/encryption');
     const safeItems = items.map(item => ({
       ...item,
-      card_code: order.payment_status === 'paid' ? item.card_code : null,
-      card_pin: order.payment_status === 'paid' ? item.card_pin : null,
-      card_serial: order.payment_status === 'paid' ? item.card_serial : null
+      card_code: order.payment_status === 'paid' && item.card_code ? decrypt(item.card_code) : null,
+      card_pin: order.payment_status === 'paid' && item.card_pin ? decrypt(item.card_pin) : null,
+      card_serial: order.payment_status === 'paid' && item.card_serial ? decrypt(item.card_serial) : null
     }));
 
     res.json({ order: { ...order, items: safeItems } });
@@ -279,6 +281,20 @@ router.post('/:id/refund', authenticateToken, (req, res) => {
     }
 
     db.prepare('INSERT INTO refund_requests (order_id, user_id, reason) VALUES (?, ?, ?)').run(order.id, req.user.id, reason.trim());
+
+    // Notifier l'admin par email
+    const user = db.prepare('SELECT name, email FROM users WHERE id = ?').get(req.user.id);
+    const { sendEmail } = require('../services/email');
+    sendEmail({
+      to: process.env.ADMIN_EMAIL || 'support@babicard.ci',
+      subject: `[REMBOURSEMENT] Nouvelle demande — Commande #${order.id}`,
+      html: `<p>Une demande de remboursement a été soumise.</p>
+             <p><b>Client :</b> ${user?.name} (${user?.email})</p>
+             <p><b>Commande :</b> #${order.id} — ${order.total_amount} FCFA</p>
+             <p><b>Raison :</b> ${reason.trim()}</p>
+             <p><a href="${process.env.SITE_URL}/admin#refunds">Voir dans l'admin →</a></p>`
+    }).catch(() => {});
+
     res.status(201).json({ message: 'Demande de remboursement soumise. L\'équipe vous contactera sous 24h.' });
   } catch (err) {
     console.error('Erreur refund request:', err);
@@ -299,13 +315,18 @@ router.post('/:id/resend-codes', authenticateToken, async (req, res) => {
     if (resendCount >= 3) return res.status(429).json({ error: 'Limite de renvoi atteinte (3 max). Contactez le support.' });
 
     // Récupérer les codes
+    const { decrypt: decryptCode } = require('../services/encryption');
     const cards = db.prepare(`
       SELECT c.code, c.pin, p.name as product_name
       FROM order_items oi
       JOIN cards c ON oi.card_id = c.id
       JOIN products p ON oi.product_id = p.id
       WHERE oi.order_id = ? AND c.code IS NOT NULL
-    `).all(order.id);
+    `).all(order.id).map(c => ({
+      ...c,
+      code: c.code ? decryptCode(c.code) : null,
+      pin: c.pin ? decryptCode(c.pin) : null
+    }));
 
     if (cards.length === 0) return res.status(400).json({ error: 'Aucun code disponible pour cette commande.' });
 

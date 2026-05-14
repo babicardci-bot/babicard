@@ -63,9 +63,10 @@ async function sendToUser(db, userId, title, body, data = {}) {
 async function sendToAll(db, title, body, data = {}) {
   const tokens = db.prepare('SELECT DISTINCT token, user_id FROM fcm_tokens').all();
   if (!tokens.length) return { sent: 0, failed: 0 };
+  const results = await Promise.allSettled(tokens.map(t => sendPushNotification(t.token, title, body, data)));
   let sent = 0, failed = 0;
-  for (const t of tokens) {
-    const r = await sendPushNotification(t.token, title, body, data);
+  results.forEach((res, i) => {
+    const r = res.status === 'fulfilled' ? res.value : { success: false, error: res.reason?.message };
     if (r.success) {
       sent++;
     } else {
@@ -73,11 +74,10 @@ async function sendToAll(db, title, body, data = {}) {
       if (r.error?.includes('registration-token') || r.error?.includes('not-registered') ||
           r.error?.includes('SenderIdMismatch') || r.error?.includes('sender-id-mismatch') ||
           r.error?.includes('mismatched-credential') || r.error?.includes('invalid-argument')) {
-        db.prepare('DELETE FROM fcm_tokens WHERE token = ?').run(t.token);
-        console.log(`[FCM] Token invalide supprimé: ${t.token.substring(0, 20)}...`);
+        db.prepare('DELETE FROM fcm_tokens WHERE token = ?').run(tokens[i].token);
       }
     }
-  }
+  });
   console.log(`[FCM] Broadcast: ${sent} envoyés, ${failed} échoués.`);
   return { sent, failed };
 }

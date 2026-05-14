@@ -116,7 +116,7 @@ function initializeDatabase() {
       sale_amount INTEGER NOT NULL,
       commission_amount INTEGER NOT NULL,
       net_amount INTEGER NOT NULL,
-      status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','available','withdrawn')),
+      status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','available','withdrawn','reversed')),
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (seller_id) REFERENCES users(id),
       FOREIGN KEY (order_id) REFERENCES orders(id)

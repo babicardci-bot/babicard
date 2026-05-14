@@ -293,8 +293,14 @@ async function confirmDeliveryAndPay() {
   }
   document.getElementById('deliveryEmail').style.borderColor = '';
 
+  // Protection double-clic
+  const btn = document.querySelector('#deliveryModal button[onclick*="confirmDeliveryAndPay"]');
+  if (btn) { btn.disabled = true; btn.textContent = 'Traitement...'; }
+
   closeDeliveryModal();
   await checkout(email, phone);
+
+  if (btn) { btn.disabled = false; btn.textContent = 'Confirmer et payer'; }
 }
 
 // ============ CHECKOUT ============
