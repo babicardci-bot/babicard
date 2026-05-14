@@ -116,141 +116,44 @@
     </div>
   </nav>
 
-  <!-- HERO SLIDER -->
-  <section class="hero-section" id="home">
-    <div class="particles-bg" id="particles"></div>
-
-    <div class="slider-container" id="heroSlider">
-      <!-- Slide 1: PlayStation -->
-      <div class="slide active" data-slide="0">
-        <div class="slide-bg slide-ps"></div>
-        <div class="slide-content">
-          <div class="slide-brand">
-            <div class="brand-badge ps-badge">
-              <svg viewBox="0 0 100 100" width="60" height="60"><circle cx="50" cy="50" r="45" fill="#003087"/><text x="50" y="65" text-anchor="middle" fill="white" font-size="50" font-weight="bold">P</text></svg>
-            </div>
-          </div>
-          <div class="slide-text">
-            <span class="slide-tag">🎮 Gaming</span>
-            <h1 class="slide-title">PlayStation<br><span class="slide-title-accent">Network Cards</span></h1>
-            <p class="slide-desc">Rechargez votre PSN. Achetez des jeux, DLC, PS Plus directement depuis votre PS4/PS5.</p>
-            <div class="slide-prices">
-              <span class="price-tag">10$ → 6 500 FCFA</span>
-              <span class="price-tag">20$ → 12 500 FCFA</span>
-              <span class="price-tag">50$ → 30 500 FCFA</span>
-            </div>
-            <a href="#products" class="slide-cta">Acheter maintenant →</a>
-          </div>
-        </div>
+  <!-- HERO SECTION STATIQUE -->
+  <section class="hero-static" id="home">
+    <div class="hero-static-bg"></div>
+    <div class="hero-static-content">
+      <div class="hero-static-text">
+        <span class="hero-static-tag">⚡ Livraison instantanée</span>
+        <h1 class="hero-static-title">Cartes cadeaux livrées<br><span class="hero-static-accent">en moins de 2 minutes</span></h1>
+        <p class="hero-static-sub">PlayStation · Xbox · iTunes · Google Play · Steam · Netflix</p>
+        <a href="#products" class="hero-static-cta" onclick="document.getElementById('products').scrollIntoView({behavior:'smooth'});return false;">
+          Voir toutes les cartes →
+        </a>
       </div>
-
-      <!-- Slide 2: Xbox -->
-      <div class="slide" data-slide="1">
-        <div class="slide-bg slide-xbox"></div>
-        <div class="slide-content">
-          <div class="slide-brand">
-            <div class="brand-badge xbox-badge">
-              <svg viewBox="0 0 100 100" width="60" height="60"><circle cx="50" cy="50" r="45" fill="#107C10"/><text x="50" y="65" text-anchor="middle" fill="white" font-size="40" font-weight="bold">X</text></svg>
-            </div>
-          </div>
-          <div class="slide-text">
-            <span class="slide-tag">🟢 Microsoft</span>
-            <h1 class="slide-title">Xbox<br><span class="slide-title-accent">Gift Cards</span></h1>
-            <p class="slide-desc">Alimentez votre Xbox Wallet. Jeux, add-ons, Xbox Game Pass Ultimate à portée de main.</p>
-            <div class="slide-prices">
-              <span class="price-tag">10$ → 6 500 FCFA</span>
-              <span class="price-tag">25$ → 15 500 FCFA</span>
-            </div>
-            <a href="#products" class="slide-cta">Découvrir →</a>
-          </div>
-        </div>
+      <div class="hero-platforms">
+        <button class="hero-platform-btn" onclick="filterProducts('playstation');document.getElementById('products').scrollIntoView({behavior:'smooth'})">
+          <div class="hero-platform-icon" style="background:linear-gradient(135deg,#003087,#0055a5)">P</div>
+          <span>PlayStation</span>
+        </button>
+        <button class="hero-platform-btn" onclick="filterProducts('xbox');document.getElementById('products').scrollIntoView({behavior:'smooth'})">
+          <div class="hero-platform-icon" style="background:linear-gradient(135deg,#107C10,#1db31d)">X</div>
+          <span>Xbox</span>
+        </button>
+        <button class="hero-platform-btn" onclick="filterProducts('apple');document.getElementById('products').scrollIntoView({behavior:'smooth'})">
+          <div class="hero-platform-icon" style="background:linear-gradient(135deg,#555,#888)">🍎</div>
+          <span>iTunes</span>
+        </button>
+        <button class="hero-platform-btn" onclick="filterProducts('google');document.getElementById('products').scrollIntoView({behavior:'smooth'})">
+          <div class="hero-platform-icon" style="background:linear-gradient(135deg,#4285F4,#34A853)">▶</div>
+          <span>Google Play</span>
+        </button>
+        <button class="hero-platform-btn" onclick="filterProducts('steam');document.getElementById('products').scrollIntoView({behavior:'smooth'})">
+          <div class="hero-platform-icon" style="background:linear-gradient(135deg,#1b2838,#2a475e)">🖥</div>
+          <span>Steam</span>
+        </button>
+        <button class="hero-platform-btn" onclick="filterProducts('netflix');document.getElementById('products').scrollIntoView({behavior:'smooth'})">
+          <div class="hero-platform-icon" style="background:linear-gradient(135deg,#E50914,#b20710)">N</div>
+          <span>Netflix</span>
+        </button>
       </div>
-
-      <!-- Slide 3: iTunes -->
-      <div class="slide" data-slide="2">
-        <div class="slide-bg slide-itunes"></div>
-        <div class="slide-content">
-          <div class="slide-brand">
-            <div class="brand-badge itunes-badge">
-              <svg viewBox="0 0 100 100" width="60" height="60"><circle cx="50" cy="50" r="45" fill="#555"/><text x="50" y="65" text-anchor="middle" fill="white" font-size="40" font-weight="bold">🍎</text></svg>
-            </div>
-          </div>
-          <div class="slide-text">
-            <span class="slide-tag">🍎 Apple</span>
-            <h1 class="slide-title">iTunes &<br><span class="slide-title-accent">App Store Cards</span></h1>
-            <p class="slide-desc">Achetez apps, musiques, films, séries sur l'App Store et iTunes. Valable pour les comptes US.</p>
-            <div class="slide-prices">
-              <span class="price-tag">5$ → 3 200 FCFA</span>
-              <span class="price-tag">10$ → 6 200 FCFA</span>
-              <span class="price-tag">25$ → 15 200 FCFA</span>
-            </div>
-            <a href="#products" class="slide-cta">Acheter →</a>
-          </div>
-        </div>
-      </div>
-
-      <!-- Slide 4: Steam -->
-      <div class="slide" data-slide="3">
-        <div class="slide-bg slide-steam"></div>
-        <div class="slide-content">
-          <div class="slide-brand">
-            <div class="brand-badge steam-badge">
-              <svg viewBox="0 0 100 100" width="60" height="60"><circle cx="50" cy="50" r="45" fill="#1b2838"/><text x="50" y="65" text-anchor="middle" fill="white" font-size="40">🖥️</text></svg>
-            </div>
-          </div>
-          <div class="slide-text">
-            <span class="slide-tag">🖥️ PC Gaming</span>
-            <h1 class="slide-title">Steam<br><span class="slide-title-accent">Wallet Cards</span></h1>
-            <p class="slide-desc">Des milliers de jeux PC sur Steam. Rechargez votre wallet et profitez des meilleures promos.</p>
-            <div class="slide-prices">
-              <span class="price-tag">10$ → 6 500 FCFA</span>
-              <span class="price-tag">20$ → 12 500 FCFA</span>
-            </div>
-            <a href="#products" class="slide-cta">Explorer →</a>
-          </div>
-        </div>
-      </div>
-
-      <!-- Slide 5: Google Play -->
-      <div class="slide" data-slide="4">
-        <div class="slide-bg slide-google"></div>
-        <div class="slide-content">
-          <div class="slide-brand">
-            <div class="brand-badge google-badge">
-              <svg viewBox="0 0 100 100" width="60" height="60"><circle cx="50" cy="50" r="45" fill="#4285F4"/><text x="50" y="65" text-anchor="middle" fill="white" font-size="40">▶</text></svg>
-            </div>
-          </div>
-          <div class="slide-text">
-            <span class="slide-tag">🎯 Android</span>
-            <h1 class="slide-title">Google Play<br><span class="slide-title-accent">Gift Cards</span></h1>
-            <p class="slide-desc">Apps, jeux, films, livres sur le Google Play Store. Compatible avec tout appareil Android.</p>
-            <div class="slide-prices">
-              <span class="price-tag">10$ → 6 200 FCFA</span>
-              <span class="price-tag">25$ → 15 200 FCFA</span>
-            </div>
-            <a href="#products" class="slide-cta">Acheter →</a>
-          </div>
-        </div>
-      </div>
-
-      <!-- Slider Controls -->
-      <button class="slider-arrow slider-prev" onclick="changeSlide(-1)">&#8249;</button>
-      <button class="slider-arrow slider-next" onclick="changeSlide(1)">&#8250;</button>
-
-      <!-- Dots -->
-      <div class="slider-dots">
-        <button class="dot active" onclick="goToSlide(0)"></button>
-        <button class="dot" onclick="goToSlide(1)"></button>
-        <button class="dot" onclick="goToSlide(2)"></button>
-        <button class="dot" onclick="goToSlide(3)"></button>
-        <button class="dot" onclick="goToSlide(4)"></button>
-      </div>
-    </div>
-
-    <!-- Scroll indicator -->
-    <div class="scroll-indicator">
-      <span>Défiler</span>
-      <div class="scroll-arrow"></div>
     </div>
   </section>
 
