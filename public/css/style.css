@@ -306,11 +306,31 @@ img { max-width: 100%; }
   box-shadow: 0 4px 12px rgba(0,0,0,0.3);
 }
 @media (max-width: 768px) {
-  .hero-static { padding: 80px 16px 32px; }
-  .hero-static-content { flex-direction: column; gap: 28px; }
-  .hero-platforms { grid-template-columns: repeat(3, 1fr); width: 100%; }
-  .hero-platform-btn { padding: 12px 8px; }
-  .hero-platform-icon { width: 40px; height: 40px; font-size: 1rem; }
+  .hero-static { padding: 72px 16px 28px; }
+  .hero-static-content { flex-direction: column; gap: 20px; text-align: center; }
+  .hero-static-title { font-size: 1.5rem; }
+  .hero-static-sub { font-size: 0.78rem; margin-bottom: 18px; }
+  .hero-static-cta { padding: 11px 26px; font-size: 0.88rem; }
+  /* Plateformes en ligne horizontale défilante sur mobile */
+  .hero-platforms {
+    display: flex;
+    flex-direction: row;
+    overflow-x: auto;
+    gap: 10px;
+    width: 100%;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .hero-platforms::-webkit-scrollbar { display: none; }
+  .hero-platform-btn {
+    flex-shrink: 0;
+    padding: 10px 14px;
+    min-width: 72px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+  }
+  .hero-platform-icon { width: 36px; height: 36px; font-size: 0.9rem; border-radius: 10px; }
 }
 
 /* =============================================
