@@ -389,6 +389,16 @@ function openProductModal(productId) {
   const usageSteps = getUsageInstructions(product);
   const similar = allProducts.filter(p => p.id !== product.id && p.category === product.category && p.available_stock > 0).slice(0, 3);
 
+  // Étoiles
+  const avg = parseFloat(product.reviews_avg) || 0;
+  const reviewCount = parseInt(product.reviews_count) || 0;
+  const starsHtml = avg > 0
+    ? `<div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
+        <span style="color:#f59e0b;font-size:1rem;letter-spacing:1px">${Array.from({length:5},(_,i)=>i<Math.round(avg)?'★':'☆').join('')}</span>
+        <span style="font-size:0.82rem;color:var(--text-muted)">${avg.toFixed(1)} (${reviewCount} avis)</span>
+      </div>`
+    : '';
+
   content.innerHTML = `
     <div class="modal-product-image bg-${product.category || 'other'}" style="width:100%;height:200px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:4rem;overflow:hidden;position:relative;border-radius:var(--radius-lg) var(--radius-lg) 0 0;">
       ${product.image_url ? `<img src="${product.image_url}" alt="${product.name}" style="width:100%;height:100%;object-fit:cover;display:block;position:absolute;inset:0;">` : icon}
@@ -397,6 +407,7 @@ function openProductModal(productId) {
     <div style="padding:24px;">
       <div style="color:var(--color-primary-light);font-size:0.75rem;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">${esc(product.platform)}</div>
       <h2 style="font-size:1.4rem;font-weight:700;margin-bottom:6px">${esc(product.name)}</h2>
+      ${starsHtml}
 
       <!-- Badge livraison -->
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
@@ -475,12 +486,25 @@ function openProductModal(productId) {
             </div>`).join('')}
         </div>
       </div>` : ''}
+
+      <!-- Section avis -->
+      <div class="reviews-section" id="reviewsSection-${product.id}">
+        <div class="reviews-header">
+          <h3>⭐ Avis clients</h3>
+          ${reviewCount > 0 ? `<div class="reviews-avg-badge"><span class="score">${avg.toFixed(1)}</span><span class="stars">${Array.from({length:5},(_,i)=>i<Math.round(avg)?'★':'☆').join('')}</span></div>` : ''}
+        </div>
+        <div id="reviewsList-${product.id}"><div style="color:var(--text-muted);font-size:0.82rem;text-align:center;padding:12px 0;">Chargement des avis...</div></div>
+        <div id="reviewFormContainer-${product.id}"></div>
+      </div>
     </div>
   `;
 
   modal.classList.add('active');
   overlay.classList.add('active');
   document.body.style.overflow = 'hidden';
+
+  // Charger les avis de manière asynchrone
+  loadProductReviews(product.id);
 
   // Démarrer le compte à rebours promo
   if (product.promo_price) {
@@ -510,6 +534,83 @@ function closeModal() {
   overlay?.classList.remove('active');
   document.body.style.overflow = '';
   clearInterval(window._promoTimer);
+}
+
+async function loadProductReviews(productId) {
+  const listEl = document.getElementById(`reviewsList-${productId}`);
+  const formEl = document.getElementById(`reviewFormContainer-${productId}`);
+  if (!listEl) return;
+
+  try {
+    const res = await fetch(`/api/products/${productId}/reviews`);
+    const data = await res.json();
+    const { reviews, stats } = data;
+
+    if (!reviews || reviews.length === 0) {
+      listEl.innerHTML = `<p style="color:var(--text-muted);font-size:0.82rem;text-align:center;padding:8px 0;">Aucun avis pour le moment. Soyez le premier !</p>`;
+    } else {
+      listEl.innerHTML = reviews.map(r => `
+        <div class="review-item">
+          <div class="review-item-header">
+            <span class="review-item-name">${esc(r.user_name)}</span>
+            <span class="review-item-date">${new Date(r.created_at).toLocaleDateString('fr-FR')}</span>
+          </div>
+          <div class="review-item-stars">${Array.from({length:5},(_,i)=>i<r.rating?'★':'☆').join('')}</div>
+          ${r.comment ? `<div class="review-item-comment">${esc(r.comment)}</div>` : ''}
+        </div>
+      `).join('');
+    }
+
+    // Formulaire d'avis si connecté
+    const token = localStorage.getItem('token');
+    if (token && formEl) {
+      formEl.innerHTML = `
+        <div class="review-form" id="reviewForm-${productId}">
+          <h4>Laisser un avis</h4>
+          <div class="star-picker" id="starPicker-${productId}">
+            ${[1,2,3,4,5].map(i => `<span data-val="${i}" onclick="setReviewStar(${productId},${i})">★</span>`).join('')}
+          </div>
+          <textarea id="reviewComment-${productId}" placeholder="Votre commentaire (optionnel)..."></textarea>
+          <button onclick="submitReview(${productId})">Publier l'avis</button>
+        </div>
+      `;
+    }
+  } catch(e) {
+    if (listEl) listEl.innerHTML = `<p style="color:var(--text-muted);font-size:0.82rem;text-align:center;">Impossible de charger les avis.</p>`;
+  }
+}
+
+let _reviewStars = {};
+function setReviewStar(productId, val) {
+  _reviewStars[productId] = val;
+  const picker = document.getElementById(`starPicker-${productId}`);
+  if (!picker) return;
+  picker.querySelectorAll('span').forEach((s, i) => {
+    s.classList.toggle('active', i < val);
+  });
+}
+
+async function submitReview(productId) {
+  const rating = _reviewStars[productId];
+  if (!rating) { showToast('Sélectionnez une note', 'error'); return; }
+  const comment = document.getElementById(`reviewComment-${productId}`)?.value.trim() || '';
+  const token = localStorage.getItem('token');
+  const btn = document.querySelector(`#reviewForm-${productId} button`);
+  if (btn) { btn.disabled = true; btn.textContent = 'Envoi...'; }
+  try {
+    const res = await fetch(`/api/products/${productId}/reviews`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ rating, comment })
+    });
+    const data = await res.json();
+    if (!res.ok) { showToast(data.error || 'Erreur', 'error'); if (btn) { btn.disabled = false; btn.textContent = 'Publier l\'avis'; } return; }
+    showToast('Avis publié ! Merci.', 'success');
+    loadProductReviews(productId);
+  } catch(e) {
+    showToast('Erreur réseau', 'error');
+    if (btn) { btn.disabled = false; btn.textContent = 'Publier l\'avis'; }
+  }
 }
 
 async function subscribeStockNotification(productId) {

@@ -1222,6 +1222,54 @@ img { max-width: 100%; }
 .btn-checkout:disabled { opacity: 0.6; cursor: not-allowed; }
 
 /* =============================================
+   WHATSAPP FLOATING BUTTON
+   ============================================= */
+.whatsapp-float {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  width: 56px;
+  height: 56px;
+  background: #25D366;
+  color: #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 20px rgba(37,211,102,0.45);
+  z-index: 999;
+  transition: transform 0.2s, box-shadow 0.2s;
+  text-decoration: none;
+}
+.whatsapp-float:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 28px rgba(37,211,102,0.6);
+}
+
+/* =============================================
+   AVIS PRODUIT
+   ============================================= */
+.reviews-section { padding: 0 24px 24px; border-top: 1px solid var(--border-color); }
+.reviews-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 0 12px; }
+.reviews-header h3 { font-size: 0.95rem; font-weight: 700; margin: 0; }
+.reviews-avg-badge { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; }
+.reviews-avg-badge .score { font-size: 1.2rem; font-weight: 800; color: #f59e0b; }
+.reviews-avg-badge .stars { color: #f59e0b; letter-spacing: 1px; }
+.review-item { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; }
+.review-item-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.review-item-name { font-size: 0.82rem; font-weight: 700; }
+.review-item-date { font-size: 0.72rem; color: var(--text-muted); }
+.review-item-stars { color: #f59e0b; font-size: 0.85rem; margin-bottom: 4px; }
+.review-item-comment { font-size: 0.82rem; color: var(--text-secondary); line-height: 1.5; }
+.review-form { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px; margin-top: 12px; }
+.review-form h4 { font-size: 0.85rem; font-weight: 700; margin: 0 0 10px; }
+.star-picker { display: flex; gap: 6px; margin-bottom: 10px; }
+.star-picker span { font-size: 1.4rem; cursor: pointer; transition: transform 0.1s; color: #ccc; }
+.star-picker span.active, .star-picker span:hover { color: #f59e0b; transform: scale(1.2); }
+.review-form textarea { width: 100%; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; color: var(--text-primary); font-size: 0.82rem; resize: vertical; min-height: 70px; box-sizing: border-box; }
+.review-form button { margin-top: 8px; padding: 8px 20px; background: var(--color-primary); border: none; border-radius: 8px; color: #fff; font-size: 0.82rem; font-weight: 600; cursor: pointer; }
+
+/* =============================================
    TOAST NOTIFICATIONS
    ============================================= */
 .toast-container {

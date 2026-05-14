@@ -44,6 +44,8 @@ router.get('/', (req, res) => {
     const query = `
       SELECT p.*,
         (SELECT COUNT(*) FROM cards WHERE product_id = p.id AND status = 'available') as available_stock,
+        (SELECT ROUND(AVG(rating),1) FROM product_reviews WHERE product_id = p.id) as reviews_avg,
+        (SELECT COUNT(*) FROM product_reviews WHERE product_id = p.id) as reviews_count,
         (SELECT COUNT(*) FROM cards c2
           LEFT JOIN seller_product_promos spp2 ON spp2.seller_id = c2.seller_id AND spp2.product_id = p.id AND spp2.status = 'approved'
           WHERE c2.product_id = p.id AND c2.status = 'available'
