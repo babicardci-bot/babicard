@@ -148,6 +148,10 @@ router.post('/djamo/webhook', async (req, res) => {
     try { body = JSON.parse(rawStr); } catch { return res.status(400).json({ error: 'Body JSON invalide.' }); }
 
     // Vérification signature HMAC-SHA256
+    if (!DJAMO_WEBHOOK_SECRET) {
+      console.error('[DJAMO WEBHOOK] DJAMO_WEBHOOK_SECRET manquant — webhook rejeté');
+      return res.status(401).json({ error: 'Webhook non configuré.' });
+    }
     if (DJAMO_WEBHOOK_SECRET) {
       const signature = req.headers['x-webhook-signature'] || req.headers['x-djamo-signature']
         || req.headers['x-signature'] || req.headers['signature'];
