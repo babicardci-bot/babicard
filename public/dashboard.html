@@ -404,13 +404,25 @@
 
       if (orderId && status) {
         if (status === 'success') {
-          notif.innerHTML = `✅ <strong>Paiement confirmé!</strong> Commande #${orderId} — Vos codes ont été envoyés par email et SMS.`;
+          notif.innerHTML = `✅ <strong>Paiement confirmé !</strong> Commande #${orderId} — Vos codes ont été envoyés par email.`;
           notif.className = 'payment-notif payment-success';
+          notif.classList.remove('hidden');
+          // Ouvrir automatiquement le détail de la commande
+          const tryOpenOrder = (attempts = 0) => {
+            if (attempts > 10) return;
+            const orderCard = document.querySelector(`[data-order-id="${orderId}"]`);
+            if (orderCard) {
+              setTimeout(() => viewOrderDetail(parseInt(orderId)), 300);
+            } else {
+              setTimeout(() => tryOpenOrder(attempts + 1), 600);
+            }
+          };
+          tryOpenOrder();
         } else {
-          notif.innerHTML = `❌ <strong>Paiement échoué.</strong> Votre commande #${orderId} n'a pas été finalisée. Veuillez réessayer.`;
+          notif.innerHTML = `❌ <strong>Paiement non finalisé.</strong> Votre commande #${orderId} est en attente. Réessayez si nécessaire.`;
           notif.className = 'payment-notif payment-failed';
+          notif.classList.remove('hidden');
         }
-        notif.classList.remove('hidden');
         // Clean URL
         window.history.replaceState({}, '', '/dashboard');
       }
@@ -505,7 +517,7 @@
       const payMethod = order.payment_method === 'mobile_money' ? '📱 Mobile Money' : '💳 Djamo';
 
       return `
-        <div class="order-card" onclick="viewOrderDetail(${order.id})">
+        <div class="order-card" data-order-id="${order.id}" onclick="viewOrderDetail(${order.id})">
           <div class="order-card-header">
             <div>
               <span class="order-number">Commande #${order.id}</span>
