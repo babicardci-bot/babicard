@@ -201,6 +201,7 @@ async function loadProducts() {
     allProducts = data.products || [];
     renderProducts(allProducts);
     renderPromoBanner(allProducts);
+    updateHeroPlatformImages(allProducts);
     // Ouvrir la modal directement si ?product=ID dans l'URL (lien depuis email)
     const productParam = new URLSearchParams(window.location.search).get('product');
     if (productParam) {
@@ -256,6 +257,29 @@ function searchProducts(query) {
     return matchSearch && matchCategory;
   });
   renderProducts(filtered);
+}
+
+function updateHeroPlatformImages(products) {
+  const categoryMap = {
+    playstation: 'playstation',
+    xbox: 'xbox',
+    apple: 'apple',
+    google: 'google',
+    steam: 'steam',
+    netflix: 'netflix'
+  };
+  const btns = document.querySelectorAll('.hero-platform-btn');
+  btns.forEach(btn => {
+    const onclick = btn.getAttribute('onclick') || '';
+    const match = onclick.match(/filterProducts\('([^']+)'\)/);
+    if (!match) return;
+    const cat = match[1];
+    const product = products.find(p => p.category === cat && p.image_url);
+    if (!product) return;
+    const iconEl = btn.querySelector('.hero-platform-icon');
+    if (!iconEl) return;
+    iconEl.innerHTML = `<img src="${product.image_url}" alt="${cat}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;">`;
+  });
 }
 
 function getCategoryIcon(category) {
