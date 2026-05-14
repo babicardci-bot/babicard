@@ -382,6 +382,10 @@ router.post('/mobilemoney/webhook', async (req, res) => {
     const signature = req.headers['x-webhook-signature'];
     const timestamp = req.headers['x-webhook-timestamp'];
     const webhookSecret = process.env.GENIUS_WEBHOOK_SECRET;
+    if (!webhookSecret) {
+      console.error('[MOBILE MONEY WEBHOOK] GENIUS_WEBHOOK_SECRET manquant — webhook rejeté');
+      return res.status(401).json({ error: 'Webhook non configuré.' });
+    }
     if (webhookSecret) {
       if (!signature) {
         console.warn('[MOBILE MONEY WEBHOOK] Signature manquante — rejeté');
