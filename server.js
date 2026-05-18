@@ -162,8 +162,13 @@ const persistentUploadsDir = process.env.DB_PATH
   : null;
 
 // Protéger les documents KYC vendeurs — accès admin uniquement
+// Accepte le token en query param (?token=...) car les balises <img> et <a>
+// ne peuvent pas envoyer de header Authorization.
 app.use('/uploads/seller-docs', (req, res, next) => {
   const { authenticateToken } = require('./middleware/auth');
+  if (req.query.token && !req.headers['authorization']) {
+    req.headers['authorization'] = `Bearer ${req.query.token}`;
+  }
   authenticateToken(req, res, () => {
     if (!req.user || req.user.role !== 'admin') {
       return res.status(403).json({ error: 'Accès réservé aux administrateurs.' });

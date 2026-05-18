@@ -1353,18 +1353,20 @@ function openSellerModal(userId, status, commission, note, shopName, idDocUrl, a
   const docsEl = document.getElementById('sellerModalDocs');
   if (docsEl) {
     const isImg = url => /\.(jpg|jpeg|png|webp)$/i.test(url);
+    const withToken = url => url ? `${url}?token=${encodeURIComponent(authToken)}` : url;
     const docLink = (label, url) => {
       if (!url) return `<div class="doc-item doc-missing">📄 ${label} — <em>Non fourni</em></div>`;
+      const authedUrl = withToken(url);
       if (isImg(url)) {
         return `<div class="doc-item">
           <span class="doc-label">📄 ${label}</span>
-          <a href="${url}" target="_blank"><img src="${url}" class="doc-thumb" alt="${label}"></a>
-          <a href="${url}" target="_blank" class="doc-link">Voir en grand ↗</a>
+          <a href="${authedUrl}" target="_blank"><img src="${authedUrl}" class="doc-thumb" alt="${label}"></a>
+          <a href="${authedUrl}" target="_blank" class="doc-link">Voir en grand ↗</a>
         </div>`;
       }
       return `<div class="doc-item">
         <span class="doc-label">📄 ${label}</span>
-        <a href="${url}" target="_blank" class="doc-link">📎 Ouvrir le fichier ↗</a>
+        <a href="${authedUrl}" target="_blank" class="doc-link">📎 Ouvrir le fichier ↗</a>
       </div>`;
     };
     docsEl.innerHTML =
