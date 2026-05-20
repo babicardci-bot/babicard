@@ -2,16 +2,24 @@ const nodemailer = require('nodemailer');
 const axios = require('axios');
 
 // Envoi via SendGrid HTTP API (contourne le blocage SMTP de Railway)
-async function sendViaSendGrid(mailOptions) {
+async function sendViaSendGrid(mailOptions, bypassSuppressions = false) {
   const apiKey = process.env.SENDGRID_API_KEY;
   if (!apiKey) return null;
 
-  const response = await axios.post('https://api.sendgrid.com/v3/mail/send', {
+  const payload = {
     personalizations: [{ to: [{ email: mailOptions.to }] }],
     from: { email: process.env.EMAIL_USER || 'noreply@babicard.ci', name: 'Babicard.ci' },
     subject: mailOptions.subject,
     content: [{ type: 'text/html', value: mailOptions.html }]
-  }, {
+  };
+
+  if (bypassSuppressions) {
+    payload.mail_settings = {
+      bypass_list_management: { enable: true }
+    };
+  }
+
+  const response = await axios.post('https://api.sendgrid.com/v3/mail/send', payload, {
     headers: {
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json'
@@ -47,10 +55,10 @@ function getTransporter() {
   return transporter;
 }
 
-async function sendEmail(mailOptions) {
+async function sendEmail(mailOptions, bypassSuppressions = false) {
   // Priorité : SendGrid si dispo, sinon SMTP
   if (process.env.SENDGRID_API_KEY) {
-    return sendViaSendGrid(mailOptions);
+    return sendViaSendGrid(mailOptions, bypassSuppressions);
   }
   const t = getTransporter();
   if (!t) {
@@ -895,7 +903,7 @@ async function sendBroadcastEmail(user, subject, htmlBody) {
     subject,
     html: htmlContent,
     text: `Bonjour ${user.name},\n\n${htmlBody.replace(/<[^>]+>/g, '')}\n\nBabicard.ci`
-  });
+  }, true);
 }
 
 async function sendLoginOTPEmail(user, code) {
