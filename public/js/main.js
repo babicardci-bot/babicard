@@ -323,7 +323,7 @@ function renderPromoBanner(products) {
     <div onclick="openProductModal(${p.id})" style="flex-shrink:0;min-width:180px;background:var(--bg-card);border:1px solid rgba(108,99,255,0.25);border-radius:12px;padding:14px;cursor:pointer;position:relative;transition:transform 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
       <span style="position:absolute;top:8px;right:8px;background:#ef4444;color:white;font-size:0.68rem;font-weight:700;padding:2px 7px;border-radius:20px;">-${discount}%</span>
       <div style="font-size:1.6rem;margin-bottom:8px;">${getCategoryIcon(p.category)}</div>
-      <div style="font-size:0.82rem;font-weight:700;color:#e0e0ff;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px;">${esc(p.name)}</div>
+      <div style="font-size:0.82rem;font-weight:700;color:var(--text-primary, #1a1a2e);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px;">${esc(p.name)}</div>
       <div style="display:flex;align-items:center;gap:6px;">
         <span style="text-decoration:line-through;color:var(--text-muted);font-size:0.75rem;">${formatPrice(p.price)}</span>
         <span style="color:#ef4444;font-weight:700;font-size:0.9rem;">${formatPrice(p.promo_price)}</span>
