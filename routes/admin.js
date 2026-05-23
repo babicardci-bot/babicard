@@ -242,19 +242,22 @@ router.get('/users', (req, res) => {
   try {
     const db = getDb();
     const { page = 1, limit = 20, search } = req.query;
+    const escapeLike = (s) => s.replace(/[%_\\]/g, '\\$&');
 
     let query = 'SELECT id, name, email, phone, role, created_at FROM users WHERE 1=1';
     const params = [];
 
     if (search) {
-      query += ' AND (name LIKE ? OR email LIKE ? OR phone LIKE ?)';
-      params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+      const s = escapeLike(search);
+      query += " AND (name LIKE ? OR email LIKE ? OR phone LIKE ? ESCAPE '\\')";
+      params.push(`%${s}%`, `%${s}%`, `%${s}%`);
     }
 
     query += ' ORDER BY created_at DESC';
 
-    const countQuery = 'SELECT COUNT(*) as total FROM users WHERE 1=1' + (search ? ' AND (name LIKE ? OR email LIKE ? OR phone LIKE ?)' : '');
-    const total = db.prepare(countQuery).get(...(search ? [`%${search}%`, `%${search}%`, `%${search}%`] : [])).total;
+    const countQuery = 'SELECT COUNT(*) as total FROM users WHERE 1=1' + (search ? " AND (name LIKE ? OR email LIKE ? OR phone LIKE ? ESCAPE '\\')" : '');
+    const s0 = search ? escapeLike(search) : null;
+    const total = db.prepare(countQuery).get(...(s0 ? [`%${s0}%`, `%${s0}%`, `%${s0}%`] : [])).total;
 
     const offset = (parseInt(page) - 1) * parseInt(limit);
 
@@ -269,8 +272,9 @@ router.get('/users', (req, res) => {
     `;
     const enrichParams = [];
     if (search) {
-      enrichQuery += ' AND (u.name LIKE ? OR u.email LIKE ? OR u.phone LIKE ?)';
-      enrichParams.push(`%${search}%`, `%${search}%`, `%${search}%`);
+      const s = escapeLike(search);
+      enrichQuery += " AND (u.name LIKE ? OR u.email LIKE ? OR u.phone LIKE ? ESCAPE '\\')";
+      enrichParams.push(`%${s}%`, `%${s}%`, `%${s}%`);
     }
     enrichQuery += ' GROUP BY u.id ORDER BY u.created_at DESC LIMIT ? OFFSET ?';
     enrichParams.push(parseInt(limit), offset);
@@ -359,9 +363,10 @@ router.get('/products', (req, res) => {
     const { page = 1, limit = 50, search, category } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
 
+    const escapeLikeAdmin = (s) => s.replace(/[%_\\]/g, '\\$&');
     let where = 'WHERE 1=1';
     const params = [];
-    if (search) { where += ' AND (p.name LIKE ? OR p.platform LIKE ?)'; params.push(`%${search}%`, `%${search}%`); }
+    if (search) { const s = escapeLikeAdmin(search); where += " AND (p.name LIKE ? OR p.platform LIKE ? ESCAPE '\\')"; params.push(`%${s}%`, `%${s}%`); }
     if (category) { where += ' AND p.category = ?'; params.push(category); }
 
     const total = db.prepare(`SELECT COUNT(*) as count FROM products p ${where}`).get(...params).count;

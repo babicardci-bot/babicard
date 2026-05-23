@@ -8,6 +8,7 @@ router.get('/', (req, res) => {
   try {
     const db = getDb();
     const { category, platform, min_price, max_price, search, page = 1, limit = 20 } = req.query;
+    const escapeLike = (s) => s.replace(/[%_\\]/g, '\\$&');
 
     let baseWhere = `p.is_active = 1 AND (p.seller_id IS NULL OR sp.status = 'approved')`;
     const params = [];
@@ -18,8 +19,8 @@ router.get('/', (req, res) => {
     }
 
     if (platform) {
-      baseWhere += ' AND p.platform LIKE ?';
-      params.push(`%${platform}%`);
+      baseWhere += " AND p.platform LIKE ? ESCAPE '\\'";
+      params.push(`%${escapeLike(platform)}%`);
     }
 
     if (min_price) {
@@ -33,8 +34,9 @@ router.get('/', (req, res) => {
     }
 
     if (search) {
-      baseWhere += ' AND (p.name LIKE ? OR p.description LIKE ? OR p.platform LIKE ?)';
-      params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+      const s = escapeLike(search);
+      baseWhere += " AND (p.name LIKE ? OR p.description LIKE ? OR p.platform LIKE ? ESCAPE '\\')";
+      params.push(`%${s}%`, `%${s}%`, `%${s}%`);
     }
 
     const countQuery = `SELECT COUNT(*) as total FROM products p LEFT JOIN seller_profiles sp ON p.seller_id = sp.user_id WHERE ${baseWhere}`;

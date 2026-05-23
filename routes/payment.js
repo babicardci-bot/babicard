@@ -219,7 +219,9 @@ router.post('/djamo/webhook', async (req, res) => {
         }
       }
 
-      db.prepare("UPDATE orders SET payment_status = 'paid', paid_at = CURRENT_TIMESTAMP WHERE id = ?").run(order.id);
+      const markPaidDjamo = db.prepare("UPDATE orders SET payment_status = 'paid', paid_at = CURRENT_TIMESTAMP WHERE id = ? AND payment_status != 'paid'");
+      const paidResult = markPaidDjamo.run(order.id);
+      if (paidResult.changes === 0) return res.json({ received: true, skipped: 'already_paid' });
       await processDelivery(order.id);
 
     } else if (status === 'dropped' || status === 'cancelled') {
