@@ -251,6 +251,7 @@ app.get('/seller-register', (req, res) => res.sendFile(path.join(__dirname, 'pub
 app.get('/forgot-password', (req, res) => res.sendFile(path.join(__dirname, 'public', 'forgot-password.html')));
 app.get('/reset-password', (req, res) => res.sendFile(path.join(__dirname, 'public', 'reset-password.html')));
 app.get('/2fa-setup', (_req, res) => res.sendFile(path.join(__dirname, 'public', '2fa-setup.html')));
+app.get('/suivi/:orderId/:token', (req, res) => res.sendFile(path.join(__dirname, 'public', 'suivi.html')));
 app.get('/about', (req, res) => res.sendFile(path.join(__dirname, 'public', 'about.html')));
 app.get('/faq', (req, res) => res.sendFile(path.join(__dirname, 'public', 'faq.html')));
 app.get('/cgu', (req, res) => res.sendFile(path.join(__dirname, 'public', 'cgu.html')));

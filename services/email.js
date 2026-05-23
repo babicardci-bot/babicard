@@ -106,7 +106,7 @@ function getCategoryIcon(category) {
   return icons[category] || '🎁';
 }
 
-async function sendOrderConfirmationEmail(user, order, items) {
+async function sendOrderConfirmationEmail(user, order, items, trackingUrl = null) {
 
   const itemsHtml = items.map(item => {
     const icon = getCategoryIcon(item.category || 'other');
@@ -230,6 +230,14 @@ async function sendOrderConfirmationEmail(user, order, items) {
         <li>Les codes sont à usage unique et non remboursables.</li>
         <li>En cas de problème, contactez notre support avec votre N° de commande.</li>
       </ul>
+    </div>
+    ` : ''}
+
+    ${trackingUrl ? `
+    <!-- Tracking -->
+    <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); text-align: center;">
+      <p style="margin: 0 0 12px; font-size: 14px; color: #555;">Suivez l'état de votre commande en temps réel</p>
+      <a href="${trackingUrl}" style="display: inline-block; background: linear-gradient(135deg, #6C63FF, #5a52d5); color: white; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px;">🔍 Suivre ma commande</a>
     </div>
     ` : ''}
 

@@ -425,4 +425,33 @@ router.get('/:id/refund', authenticateToken, (req, res) => {
   }
 });
 
+// GET /api/orders/track/:orderId/:token — Public order tracking (no auth)
+router.get('/track/:orderId/:token', (req, res) => {
+  try {
+    const crypto = require('crypto');
+    const { orderId, token } = req.params;
+    const db = getDb();
+
+    const order = db.prepare('SELECT id, user_id, total_amount, payment_method, payment_status, delivery_status, created_at FROM orders WHERE id = ?').get(parseInt(orderId));
+    if (!order) return res.status(404).json({ error: 'Commande introuvable.' });
+
+    const expected = crypto.createHmac('sha256', process.env.JWT_SECRET || 'secret')
+      .update(`track:${order.id}:${order.user_id}`)
+      .digest('hex').substring(0, 32);
+
+    if (token !== expected) return res.status(404).json({ error: 'Lien invalide.' });
+
+    const items = db.prepare(`
+      SELECT oi.product_name, oi.unit_price, p.category
+      FROM order_items oi
+      LEFT JOIN products p ON p.id = oi.product_id
+      WHERE oi.order_id = ?
+    `).all(order.id);
+
+    res.json({ order, items });
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur.' });
+  }
+});
+
 module.exports = router;

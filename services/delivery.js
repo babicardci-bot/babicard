@@ -2,6 +2,8 @@ const { getDb } = require('../database/db');
 const { sendOrderConfirmationEmail, sendLowStockEmail, sendDeliveryFailedEmail, sendSellerSaleNotificationEmail, sendAdminSaleNotification } = require('./email');
 const { decrypt } = require('./encryption');
 const { sendToUser } = require('./notifications');
+const { sendWhatsApp, buildDeliveryMessage } = require('./whatsapp');
+const crypto = require('crypto');
 
 async function processDelivery(orderId, forceRedeliver = false) {
   const db = getDb();
@@ -238,9 +240,15 @@ async function processDelivery(orderId, forceRedeliver = false) {
     };
   });
 
+  // Generate tracking URL
+  const trackToken = crypto.createHmac('sha256', process.env.JWT_SECRET || 'secret')
+    .update(`track:${order.id}:${user.id}`)
+    .digest('hex').substring(0, 32);
+  const trackingUrl = `${process.env.SITE_URL || 'https://babicard.ci'}/suivi/${order.id}/${trackToken}`;
+
   // Send email with card codes
   try {
-    results.email = await sendOrderConfirmationEmail(user, order, itemsForNotification);
+    results.email = await sendOrderConfirmationEmail(user, order, itemsForNotification, trackingUrl);
     console.log(`[DELIVERY] Email ${results.email.success ? 'envoyé' : 'échoué'} à ${user.email}`);
     if (!results.email.success) {
       // Alert admin that delivery email failed — user won't receive their codes
@@ -267,6 +275,21 @@ async function processDelivery(orderId, forceRedeliver = false) {
     setImmediate(() => {
       sendAdminSaleNotification(user, order, itemsForNotification).catch(() => {});
     });
+  }
+
+  // WhatsApp via UltraMsg
+  const userPhone = user.phone || order.delivery_phone;
+  if (anyAssigned && userPhone) {
+    try {
+      const trackToken = crypto.createHmac('sha256', process.env.JWT_SECRET || 'secret')
+        .update(`track:${order.id}:${user.id}`)
+        .digest('hex').substring(0, 32);
+      const trackingUrl = `${process.env.SITE_URL || 'https://babicard.ci'}/suivi/${order.id}/${trackToken}`;
+      const msg = buildDeliveryMessage(user, order, trackingUrl);
+      sendWhatsApp(userPhone, msg).catch(() => {});
+    } catch (waErr) {
+      console.error('[DELIVERY] Erreur WhatsApp:', waErr.message);
+    }
   }
 
   // Notify user if some items failed

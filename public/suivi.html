@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Suivi de commande — Babicard.ci</title>
+  <link rel="icon" href="/favicon.ico">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0a0a1f; color: #e0e0ff; min-height: 100vh; padding: 24px 16px; }
+    .container { max-width: 560px; margin: 0 auto; }
+    .header { text-align: center; padding: 32px 0 24px; }
+    .logo { font-size: 2rem; font-weight: 800; color: #fff; }
+    .logo span { color: #a78bfa; }
+    .subtitle { color: #a78bfa; font-size: 0.85rem; letter-spacing: 2px; text-transform: uppercase; margin-top: 4px; }
+    .card { background: #13131f; border: 1px solid rgba(108,99,255,0.2); border-radius: 16px; padding: 28px; margin-bottom: 16px; }
+    .status-badge { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 20px; font-weight: 700; font-size: 0.9rem; margin-bottom: 20px; }
+    .status-delivered { background: rgba(34,197,94,0.15); color: #22c55e; border: 1px solid rgba(34,197,94,0.3); }
+    .status-paid { background: rgba(108,99,255,0.15); color: #a78bfa; border: 1px solid rgba(108,99,255,0.3); }
+    .status-pending { background: rgba(251,191,36,0.15); color: #fbbf24; border: 1px solid rgba(251,191,36,0.3); }
+    .status-failed { background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); }
+    .order-title { font-size: 1.1rem; font-weight: 700; color: #fff; margin-bottom: 4px; }
+    .order-date { font-size: 0.8rem; color: #606080; margin-bottom: 20px; }
+    .info-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 0.88rem; }
+    .info-row:last-child { border-bottom: none; }
+    .info-label { color: #808090; }
+    .info-value { font-weight: 600; color: #e0e0ff; }
+    .items-title { font-size: 0.78rem; color: #808090; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+    .item { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
+    .item:last-child { border-bottom: none; }
+    .item-icon { font-size: 1.4rem; }
+    .item-name { font-size: 0.9rem; font-weight: 600; color: #e0e0ff; }
+    .item-price { font-size: 0.82rem; color: #a78bfa; margin-left: auto; font-weight: 700; }
+    .alert { background: rgba(108,99,255,0.1); border: 1px solid rgba(108,99,255,0.25); border-radius: 10px; padding: 14px 16px; font-size: 0.85rem; color: #a78bfa; line-height: 1.6; margin-top: 16px; }
+    .support { text-align: center; padding: 20px; color: #606080; font-size: 0.82rem; }
+    .support a { color: #6C63FF; text-decoration: none; }
+    .loader { text-align: center; padding: 60px 0; color: #606080; }
+    .spinner { width: 36px; height: 36px; border: 3px solid rgba(108,99,255,0.2); border-top-color: #6C63FF; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .error-msg { text-align: center; padding: 60px 0; }
+    .error-msg .icon { font-size: 3rem; margin-bottom: 12px; }
+    .error-msg p { color: #606080; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo">Babi<span>Card</span>.ci</div>
+      <div class="subtitle">Suivi de commande</div>
+    </div>
+
+    <div id="content">
+      <div class="loader">
+        <div class="spinner"></div>
+        <p>Chargement...</p>
+      </div>
+    </div>
+
+    <div class="support">
+      Besoin d'aide ? <a href="mailto:support@babicard.ci">support@babicard.ci</a> · WhatsApp <a href="https://wa.me/2250708598080">+225 07 08 59 80 80</a>
+    </div>
+  </div>
+
+  <script>
+    function formatPrice(n) {
+      return new Intl.NumberFormat('fr-FR').format(n) + ' FCFA';
+    }
+
+    function formatDate(d) {
+      return new Date(d).toLocaleString('fr-FR', { dateStyle: 'long', timeStyle: 'short' });
+    }
+
+    function getStatusInfo(payStatus, delStatus) {
+      if (delStatus === 'delivered') return { cls: 'status-delivered', label: '✅ Livré' };
+      if (delStatus === 'partial')   return { cls: 'status-paid',      label: '⚠️ Partiellement livré' };
+      if (delStatus === 'failed')    return { cls: 'status-failed',    label: '❌ Échec de livraison' };
+      if (payStatus === 'paid')      return { cls: 'status-paid',      label: '💳 Payé — Livraison en cours' };
+      if (payStatus === 'failed')    return { cls: 'status-failed',    label: '❌ Paiement échoué' };
+      return { cls: 'status-pending', label: '⏳ En attente de paiement' };
+    }
+
+    function getCategoryIcon(cat) {
+      const icons = { apple:'🍎', playstation:'🎮', xbox:'🟢', google:'🎯', steam:'🖥️', netflix:'🎬', amazon:'📦' };
+      return icons[cat] || '🎁';
+    }
+
+    function getPaymentLabel(m) {
+      const labels = { djamo:'💳 Djamo', mobile_money:'📱 Mobile Money', wave:'🌊 Wave CI', orange_money:'🟠 Orange Money' };
+      return labels[m] || m;
+    }
+
+    async function load() {
+      const parts = window.location.pathname.split('/').filter(Boolean);
+      const orderId = parts[1];
+      const token = parts[2];
+
+      if (!orderId || !token) { showError(); return; }
+
+      try {
+        const res = await fetch(`/api/orders/track/${orderId}/${token}`);
+        if (!res.ok) { showError(); return; }
+        const data = await res.json();
+        render(data);
+      } catch(e) {
+        showError();
+      }
+    }
+
+    function showError() {
+      document.getElementById('content').innerHTML = `
+        <div class="error-msg">
+          <div class="icon">🔍</div>
+          <p>Commande introuvable ou lien invalide.</p>
+        </div>`;
+    }
+
+    function render(d) {
+      const { order, items } = d;
+      const st = getStatusInfo(order.payment_status, order.delivery_status);
+      const itemsHtml = items.map(i => `
+        <div class="item">
+          <span class="item-icon">${getCategoryIcon(i.category)}</span>
+          <span class="item-name">${i.product_name}</span>
+          <span class="item-price">${formatPrice(i.unit_price)}</span>
+        </div>`).join('');
+
+      const codesNote = order.delivery_status === 'delivered'
+        ? `<div class="alert">🎉 Vos codes ont été envoyés par email à l'adresse utilisée lors de l'inscription. Vérifiez vos spams si vous ne les trouvez pas.</div>`
+        : '';
+
+      document.getElementById('content').innerHTML = `
+        <div class="card">
+          <span class="status-badge ${st.cls}">${st.label}</span>
+          <div class="order-title">Commande #${order.id}</div>
+          <div class="order-date">${formatDate(order.created_at)}</div>
+          <div class="info-row"><span class="info-label">Total</span><span class="info-value">${formatPrice(order.total_amount)}</span></div>
+          <div class="info-row"><span class="info-label">Paiement</span><span class="info-value">${getPaymentLabel(order.payment_method)}</span></div>
+          ${codesNote}
+        </div>
+        <div class="card">
+          <div class="items-title">Articles commandés</div>
+          ${itemsHtml}
+        </div>`;
+    }
+
+    load();
+  </script>
+</body>
+</html>
