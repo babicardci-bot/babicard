@@ -1533,4 +1533,21 @@ router.post('/send-notification', authenticateToken, requireAdmin, async (req, r
 });
 
 
+// GET /api/admin/orders/:id/tracking-url — Générer le lien de suivi pour une commande
+router.get('/orders/:id/tracking-url', (req, res) => {
+  try {
+    const crypto = require('crypto');
+    const db = getDb();
+    const order = db.prepare('SELECT id, user_id FROM orders WHERE id = ?').get(parseInt(req.params.id));
+    if (!order) return res.status(404).json({ error: 'Commande introuvable.' });
+    const token = crypto.createHmac('sha256', process.env.JWT_SECRET || 'secret')
+      .update(`track:${order.id}:${order.user_id}`)
+      .digest('hex').substring(0, 32);
+    const url = `${process.env.SITE_URL || 'https://babicard.ci'}/suivi/${order.id}/${token}`;
+    res.json({ url, order_id: order.id, token });
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur.' });
+  }
+});
+
 module.exports = router;
