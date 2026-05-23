@@ -98,19 +98,19 @@
 
       try {
         const res = await fetch(`/api/orders/track/${orderId}/${token}`);
-        if (!res.ok) { showError(); return; }
         const data = await res.json();
+        if (!res.ok) { showError(data.error || `Erreur ${res.status}`); return; }
         render(data);
       } catch(e) {
-        showError();
+        showError('Erreur réseau: ' + e.message);
       }
     }
 
-    function showError() {
+    function showError(msg) {
       document.getElementById('content').innerHTML = `
         <div class="error-msg">
           <div class="icon">🔍</div>
-          <p>Commande introuvable ou lien invalide.</p>
+          <p>${msg || 'Commande introuvable ou lien invalide.'}</p>
         </div>`;
     }
 
