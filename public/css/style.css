@@ -364,7 +364,7 @@ img { max-width: 100%; }
   box-shadow: 0 18px 48px rgba(0,0,0,0.55);
 }
 .hc-psn     { background: linear-gradient(135deg, #003087 0%, #0070d1 60%, #00aaff 100%); }
-.hc-itunes  { background: linear-gradient(135deg, #1c1c1e 0%, #2d2d30 60%, #454545 100%); }
+.hc-itunes  { background: #ffffff; }
 .hc-xbox    { background: linear-gradient(135deg, #107c10 0%, #1a9a1a 60%, #52b043 100%); }
 .hc-netflix { background: linear-gradient(135deg, #b81c1c 0%, #e50914 60%, #ff3333 100%); }
 .hc-shine {
