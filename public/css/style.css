@@ -334,6 +334,164 @@ img { max-width: 100%; }
 }
 
 /* =============================================
+   HERO CARDS VISUAL (mockups interactifs)
+   ============================================= */
+.hero-cards-visual {
+  display: flex;
+  gap: 14px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.hero-card-mockup {
+  position: relative;
+  width: 148px;
+  height: 95px;
+  border-radius: 14px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  cursor: pointer;
+  overflow: hidden;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.45);
+  transition: transform 0.22s, box-shadow 0.22s;
+  user-select: none;
+}
+.hero-card-mockup:hover {
+  transform: translateY(-6px) scale(1.04);
+  box-shadow: 0 18px 48px rgba(0,0,0,0.55);
+}
+.hc-psn     { background: linear-gradient(135deg, #003087 0%, #0070d1 60%, #00aaff 100%); }
+.hc-itunes  { background: linear-gradient(135deg, #1c1c1e 0%, #2d2d30 60%, #454545 100%); }
+.hc-xbox    { background: linear-gradient(135deg, #107c10 0%, #1a9a1a 60%, #52b043 100%); }
+.hc-netflix { background: linear-gradient(135deg, #b81c1c 0%, #e50914 60%, #ff3333 100%); }
+.hc-shine {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.18) 0%, transparent 55%);
+  pointer-events: none;
+}
+.hc-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+.hc-brand {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: rgba(255,255,255,0.95);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+.hc-badge {
+  font-size: 0.55rem;
+  font-weight: 600;
+  background: rgba(255,255,255,0.2);
+  color: rgba(255,255,255,0.85);
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.3px;
+}
+.hc-logo {
+  font-size: 1.6rem;
+  font-weight: 900;
+  color: rgba(255,255,255,0.9);
+  line-height: 1;
+  text-align: center;
+}
+.hc-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+.hc-label {
+  font-size: 0.58rem;
+  color: rgba(255,255,255,0.65);
+  font-weight: 500;
+}
+.hc-arrow {
+  font-size: 0.75rem;
+  color: rgba(255,255,255,0.75);
+  transition: transform 0.2s;
+}
+.hero-card-mockup:hover .hc-arrow { transform: translateX(3px); }
+@media (max-width: 768px) {
+  .hero-cards-visual { gap: 10px; }
+  .hero-card-mockup  { width: 128px; height: 82px; padding: 11px; border-radius: 12px; }
+  .hc-logo           { font-size: 1.3rem; }
+}
+@media (max-width: 420px) {
+  .hero-cards-visual { gap: 8px; }
+  .hero-card-mockup  { width: 110px; height: 72px; padding: 9px; }
+  .hc-logo           { font-size: 1.1rem; }
+  .hc-brand          { font-size: 0.6rem; }
+}
+
+/* =============================================
+   POURQUOI NOUS CHOISIR
+   ============================================= */
+.why-section {
+  padding: 56px 20px;
+  background: var(--bg-primary);
+}
+.why-section .container { max-width: 1100px; margin: 0 auto; }
+.why-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  margin-top: 36px;
+}
+.why-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 18px;
+  padding: 28px 20px;
+  text-align: center;
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+}
+.why-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 12px 36px rgba(108,99,255,0.15);
+  border-color: rgba(108,99,255,0.4);
+}
+.why-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 16px;
+  background: rgba(108,99,255,0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+  margin: 0 auto 16px;
+  transition: background 0.2s;
+}
+.why-card:hover .why-icon { background: rgba(108,99,255,0.22); }
+.why-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+.why-desc {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+@media (max-width: 900px) {
+  .why-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 480px) {
+  .why-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
+  .why-card  { padding: 20px 14px; border-radius: 14px; }
+  .why-icon  { width: 48px; height: 48px; font-size: 1.3rem; border-radius: 12px; }
+  .why-title { font-size: 0.85rem; }
+  .why-desc  { font-size: 0.73rem; }
+}
+
+/* =============================================
    HERO / SLIDER (conservé pour compatibilité)
    ============================================= */
 .hero-section {

@@ -128,31 +128,55 @@
           Voir toutes les cartes →
         </a>
       </div>
-      <div class="hero-platforms">
-        <button class="hero-platform-btn" onclick="filterProducts('playstation');document.getElementById('products').scrollIntoView({behavior:'smooth'})">
-          <div class="hero-platform-icon" style="background:linear-gradient(135deg,#003087,#0055a5)">P</div>
-          <span>PlayStation</span>
-        </button>
-        <button class="hero-platform-btn" onclick="filterProducts('xbox');document.getElementById('products').scrollIntoView({behavior:'smooth'})">
-          <div class="hero-platform-icon" style="background:linear-gradient(135deg,#107C10,#1db31d)">X</div>
-          <span>Xbox</span>
-        </button>
-        <button class="hero-platform-btn" onclick="filterProducts('apple');document.getElementById('products').scrollIntoView({behavior:'smooth'})">
-          <div class="hero-platform-icon" style="background:linear-gradient(135deg,#555,#888)">🍎</div>
-          <span>iTunes</span>
-        </button>
-        <button class="hero-platform-btn" onclick="filterProducts('google');document.getElementById('products').scrollIntoView({behavior:'smooth'})">
-          <div class="hero-platform-icon" style="background:linear-gradient(135deg,#4285F4,#34A853)">▶</div>
-          <span>Google Play</span>
-        </button>
-        <button class="hero-platform-btn" onclick="filterProducts('steam');document.getElementById('products').scrollIntoView({behavior:'smooth'})">
-          <div class="hero-platform-icon" style="background:linear-gradient(135deg,#1b2838,#2a475e)">🖥</div>
-          <span>Steam</span>
-        </button>
-        <button class="hero-platform-btn" onclick="filterProducts('netflix');document.getElementById('products').scrollIntoView({behavior:'smooth'})">
-          <div class="hero-platform-icon" style="background:linear-gradient(135deg,#E50914,#b20710)">N</div>
-          <span>Netflix</span>
-        </button>
+      <div class="hero-cards-visual">
+        <div class="hero-card-mockup hc-psn" onclick="filterProducts('playstation');document.getElementById('products').scrollIntoView({behavior:'smooth'})">
+          <div class="hc-shine"></div>
+          <div class="hc-top">
+            <span class="hc-brand">PlayStation</span>
+            <span class="hc-badge">Gift Card</span>
+          </div>
+          <div class="hc-logo">P</div>
+          <div class="hc-bottom">
+            <span class="hc-label">Network Card</span>
+            <span class="hc-arrow">→</span>
+          </div>
+        </div>
+        <div class="hero-card-mockup hc-itunes" onclick="filterProducts('apple');document.getElementById('products').scrollIntoView({behavior:'smooth'})">
+          <div class="hc-shine"></div>
+          <div class="hc-top">
+            <span class="hc-brand">Apple</span>
+            <span class="hc-badge">Gift Card</span>
+          </div>
+          <div class="hc-logo">🍎</div>
+          <div class="hc-bottom">
+            <span class="hc-label">iTunes · App Store</span>
+            <span class="hc-arrow">→</span>
+          </div>
+        </div>
+        <div class="hero-card-mockup hc-xbox" onclick="filterProducts('xbox');document.getElementById('products').scrollIntoView({behavior:'smooth'})">
+          <div class="hc-shine"></div>
+          <div class="hc-top">
+            <span class="hc-brand">Xbox</span>
+            <span class="hc-badge">Gift Card</span>
+          </div>
+          <div class="hc-logo">X</div>
+          <div class="hc-bottom">
+            <span class="hc-label">Game Pass · Live</span>
+            <span class="hc-arrow">→</span>
+          </div>
+        </div>
+        <div class="hero-card-mockup hc-netflix" onclick="filterProducts('netflix');document.getElementById('products').scrollIntoView({behavior:'smooth'})">
+          <div class="hc-shine"></div>
+          <div class="hc-top">
+            <span class="hc-brand">Netflix</span>
+            <span class="hc-badge">Gift Card</span>
+          </div>
+          <div class="hc-logo">N</div>
+          <div class="hc-bottom">
+            <span class="hc-label">Streaming Card</span>
+            <span class="hc-arrow">→</span>
+          </div>
+        </div>
       </div>
     </div>
   </section>
@@ -178,6 +202,39 @@
       <div class="stat-item">
         <span class="stat-number">7j/7</span>
         <span class="stat-label">Support</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- POURQUOI NOUS CHOISIR -->
+  <section class="why-section">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">Nos avantages</span>
+        <h2 class="section-title">Pourquoi nous <span class="text-gradient">choisir ?</span></h2>
+        <p class="section-desc">La meilleure expérience pour acheter vos cartes cadeaux en Côte d'Ivoire</p>
+      </div>
+      <div class="why-grid">
+        <div class="why-card">
+          <div class="why-icon">⚡</div>
+          <div class="why-title">Livraison instantanée</div>
+          <div class="why-desc">Vos codes sont envoyés par email en moins de 2 minutes après le paiement.</div>
+        </div>
+        <div class="why-card">
+          <div class="why-icon">📱</div>
+          <div class="why-title">Paiement local</div>
+          <div class="why-desc">Mobile Money, Wave CI, Orange Money, Djamo — payez avec ce que vous avez.</div>
+        </div>
+        <div class="why-card">
+          <div class="why-icon">🛡️</div>
+          <div class="why-title">100% sécurisé</div>
+          <div class="why-desc">Codes originaux garantis, chiffrés et livrés directement dans votre boîte mail.</div>
+        </div>
+        <div class="why-card">
+          <div class="why-icon">💬</div>
+          <div class="why-title">Support 7j/7</div>
+          <div class="why-desc">Notre équipe est disponible sur WhatsApp chaque jour pour vous accompagner.</div>
+        </div>
       </div>
     </div>
   </section>
