@@ -237,6 +237,42 @@ router.get('/stats', (req, res) => {
   }
 });
 
+// GET /api/admin/users/unverified — comptes créés mais email non confirmé
+router.get('/users/unverified', (req, res) => {
+  try {
+    const db = getDb();
+    const rows = db.prepare(`
+      SELECT
+        u.id,
+        u.name,
+        u.email,
+        u.created_at,
+        t.created_at  AS last_token_sent_at,
+        t.expires_at  AS token_expires_at,
+        t.used        AS token_used,
+        CASE
+          WHEN t.expires_at < CURRENT_TIMESTAMP THEN 1 ELSE 0
+        END AS token_expired
+      FROM users u
+      LEFT JOIN email_verification_tokens t
+        ON t.user_id = u.id
+        AND t.id = (
+          SELECT id FROM email_verification_tokens
+          WHERE user_id = u.id
+          ORDER BY created_at DESC LIMIT 1
+        )
+      WHERE u.email_verified = 0
+        AND u.role = 'user'
+      ORDER BY u.created_at DESC
+    `).all();
+
+    res.json({ total: rows.length, users: rows });
+  } catch (err) {
+    console.error('GET /users/unverified:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/admin/users
 router.get('/users', (req, res) => {
   try {
