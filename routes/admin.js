@@ -262,7 +262,7 @@ router.get('/users/unverified', (req, res) => {
           ORDER BY created_at DESC LIMIT 1
         )
       WHERE u.email_verified = 0
-        AND u.role = 'user'
+        AND u.role = 'client'
       ORDER BY u.created_at DESC
     `).all();
 

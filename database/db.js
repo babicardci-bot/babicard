@@ -590,6 +590,25 @@ function migrateDatabase(db) {
     `);
   } catch(e) { console.error('Migration stock_notifications:', e.message); }
 
+  // Index supplémentaires pour performance
+  try {
+    db.prepare("CREATE INDEX IF NOT EXISTS idx_orders_delivery_status ON orders(delivery_status)").run();
+    db.prepare("CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders(created_at)").run();
+    db.prepare("CREATE INDEX IF NOT EXISTS idx_users_email_verified ON users(email_verified)").run();
+    db.prepare("CREATE INDEX IF NOT EXISTS idx_email_otp_expires ON email_otp_tokens(expires_at)").run();
+    db.prepare("CREATE INDEX IF NOT EXISTS idx_verification_tokens_expires ON email_verification_tokens(expires_at)").run();
+    db.prepare("CREATE INDEX IF NOT EXISTS idx_password_reset_expires ON password_reset_tokens(expires_at)").run();
+  } catch(e) { console.error('Migration index supplémentaires:', e.message); }
+
+  // Nettoyage automatique des tokens expirés (email vérification, OTP, reset password)
+  try {
+    const cleanVerif = db.prepare("DELETE FROM email_verification_tokens WHERE expires_at < datetime('now', '-1 day')").run();
+    const cleanOtp   = db.prepare("DELETE FROM email_otp_tokens WHERE expires_at < datetime('now', '-1 day')").run();
+    const cleanReset = db.prepare("DELETE FROM password_reset_tokens WHERE expires_at < datetime('now', '-1 day')").run();
+    const total = cleanVerif.changes + cleanOtp.changes + cleanReset.changes;
+    if (total > 0) console.log(`[DB] Nettoyage tokens expirés: ${total} supprimé(s).`);
+  } catch(e) { console.error('Migration nettoyage tokens:', e.message); }
+
   console.log('Migration vérifiée.');
 }
 
