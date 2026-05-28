@@ -511,6 +511,75 @@ router.delete('/products/:id', (req, res) => {
 
 // ===== CARDS MANAGEMENT =====
 
+// GET /api/admin/cards/duplicates — détecte les codes en double
+// POST /api/admin/cards/fix-duplicates — marque les doublons 'available' comme invalides
+router.get('/cards/duplicates', (req, res) => {
+  try {
+    const db = getDb();
+    const crypto = require('crypto');
+
+    // Récupère toutes les cartes et détecte les doublons par code déchiffré
+    const allCards = db.prepare("SELECT id, product_id, code, status, order_id, added_at FROM cards ORDER BY added_at ASC").all();
+    const seen = new Map();
+    const duplicates = [];
+
+    for (const card of allCards) {
+      const plain = decrypt(card.code);
+      const hash = crypto.createHash('sha256').update(plain || card.code).digest('hex');
+      if (seen.has(hash)) {
+        duplicates.push({
+          duplicate_id: card.id,
+          original_id: seen.get(hash).id,
+          status: card.status,
+          order_id: card.order_id,
+          added_at: card.added_at
+        });
+      } else {
+        seen.set(hash, card);
+      }
+    }
+
+    res.json({ total_duplicates: duplicates.length, duplicates });
+  } catch (err) {
+    console.error('GET /cards/duplicates:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/cards/fix-duplicates', (req, res) => {
+  try {
+    const db = getDb();
+    const crypto = require('crypto');
+
+    const allCards = db.prepare("SELECT id, product_id, code, status, order_id, added_at FROM cards ORDER BY added_at ASC").all();
+    const seen = new Map();
+    let fixed = 0;
+
+    const fixTx = db.transaction(() => {
+      for (const card of allCards) {
+        const plain = decrypt(card.code);
+        const hash = crypto.createHash('sha256').update(plain || card.code).digest('hex');
+        if (seen.has(hash)) {
+          // Doublon — si encore disponible, le désactiver
+          if (card.status === 'available') {
+            db.prepare("UPDATE cards SET status = 'invalid' WHERE id = ?").run(card.id);
+            fixed++;
+          }
+        } else {
+          seen.set(hash, card);
+        }
+      }
+    });
+
+    fixTx();
+    console.log(`[FIX-DUPLICATES] ${fixed} carte(s) dupliquée(s) marquées 'invalid'.`);
+    res.json({ message: `${fixed} doublon(s) corrigé(s).`, fixed });
+  } catch (err) {
+    console.error('POST /cards/fix-duplicates:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/admin/cards
 router.get('/cards', (req, res) => {
   try {
