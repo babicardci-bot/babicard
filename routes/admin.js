@@ -604,7 +604,7 @@ router.get('/cards', (req, res) => {
          WHERE 1=1`;
     const params = [];
 
-    const { seller_id } = req.query;
+    const { seller_id, search } = req.query;
     if (product_id) { query += ' AND c.product_id = ?'; params.push(product_id); }
     if (status) { query += ' AND c.status = ?'; params.push(status); }
     if (seller_id && hasSellerCol) {
@@ -616,6 +616,25 @@ router.get('/cards', (req, res) => {
     }
 
     query += ' ORDER BY c.added_at DESC';
+
+    // Si recherche par code : charger tout, filtrer après déchiffrement
+    if (search) {
+      const allCards = db.prepare(query).all(...params);
+      const term = search.toLowerCase();
+      const filtered = allCards.filter(card => {
+        const plain = decrypt(card.code) || '';
+        return plain.toLowerCase().includes(term);
+      }).map(card => {
+        const plain = decrypt(card.code);
+        const maskedCode = plain
+          ? (plain.length > 8 ? `${plain.slice(0, 4)}****${plain.slice(-4)}` : '****')
+          : '****';
+        const plainPin = card.pin ? decrypt(card.pin) : null;
+        const maskedPin = plainPin ? (plainPin.length > 4 ? `${plainPin.slice(0, 2)}**` : '**') : null;
+        return { ...card, code: maskedCode, pin: maskedPin };
+      });
+      return res.json({ cards: filtered, total: filtered.length, page: 1 });
+    }
 
     const offset = (parseInt(page) - 1) * parseInt(limit);
     const total = db.prepare(query.replace('SELECT c.*, p.name as product_name, p.platform', 'SELECT COUNT(*) as total')).get(...params).total;
