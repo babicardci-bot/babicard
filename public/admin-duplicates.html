@@ -112,35 +112,31 @@
       const app = document.getElementById('orders-app');
       app.innerHTML = '<div class="loader">Chargement...</div>';
       try {
-        let all = [], page = 1, found = false;
-        while (true) {
-          const res = await fetch(`/api/admin/orders?limit=100&page=${page}`, {
-            headers: { 'Authorization': 'Bearer ' + token }
-          });
-          const data = await res.json();
-          const orders = data.orders || data;
-          if (!orders || orders.length === 0) break;
-          const filtered = orders.filter(o => o.created_at && o.created_at.startsWith(date));
-          all = all.concat(filtered);
-          if (filtered.length < orders.length) break; // plus de commandes ce jour-là sur les pages suivantes
-          page++;
-          if (page > 20) break;
+        const res = await fetch(`/api/admin/orders?limit=500&page=1&date=${date}`, {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const data = await res.json();
+        const orders = data.orders || [];
+
+        if (orders.length === 0) {
+          app.innerHTML = `<p style="color:#606080;padding:16px">Aucune commande trouvée pour le ${date}.</p>`;
+          return;
         }
 
-        if (all.length === 0) { app.innerHTML = `<p style="color:#606080;padding:16px">Aucune commande trouvée pour le ${date}.</p>`; return; }
-
-        let html = `<table><thead><tr>
-          <th>#</th><th>Client</th><th>Email</th><th>Montant</th><th>Paiement</th><th>Livraison</th><th>Date</th>
+        let html = `<p style="color:#a78bfa;margin-bottom:12px;font-weight:600">${orders.length} commande(s) le ${date}</p>
+        <table><thead><tr>
+          <th>#</th><th>Client</th><th>Email</th><th>Téléphone</th><th>Montant</th><th>Paiement</th><th>Livraison</th><th>Heure</th>
         </tr></thead><tbody>`;
-        for (const o of all) {
+        for (const o of orders) {
           html += `<tr>
             <td>#${o.id}</td>
-            <td>${o.user_name || o.name || '—'}</td>
-            <td>${o.email || '—'}</td>
+            <td>${o.user_name || '—'}</td>
+            <td>${o.user_email || '—'}</td>
+            <td>${o.user_phone || '—'}</td>
             <td style="color:#a78bfa;font-weight:700">${(o.total_amount||0).toLocaleString('fr-FR')} FCFA</td>
             <td><span class="badge ${o.payment_status==='paid'?'badge-ok':'badge-warn'}">${o.payment_status}</span></td>
             <td><span class="badge ${o.delivery_status==='delivered'?'badge-ok':'badge-warn'}">${o.delivery_status}</span></td>
-            <td style="color:#606080;font-size:0.78rem">${o.created_at}</td>
+            <td style="color:#606080;font-size:0.78rem">${(o.created_at||'').slice(11,16)}</td>
           </tr>`;
         }
         html += '</tbody></table>';

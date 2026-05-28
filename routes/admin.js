@@ -884,7 +884,7 @@ router.delete('/cards/:id', (req, res) => {
 router.get('/orders', (req, res) => {
   try {
     const db = getDb();
-    const { payment_status, delivery_status, page = 1, limit = 20 } = req.query;
+    const { payment_status, delivery_status, date, page = 1, limit = 20 } = req.query;
 
     let query = `
       SELECT o.*, u.name as user_name, u.email as user_email, u.phone as user_phone,
@@ -903,6 +903,11 @@ router.get('/orders', (req, res) => {
     if (delivery_status) {
       query += ' AND o.delivery_status = ?';
       params.push(delivery_status);
+    }
+
+    if (date) {
+      query += " AND date(o.created_at) = date(?)";
+      params.push(date);
     }
 
     query += ' ORDER BY o.created_at DESC';
