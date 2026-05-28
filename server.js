@@ -29,6 +29,7 @@ if (process.env.DISABLE_ADMIN_OTP === 'true') {
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
 
@@ -47,6 +48,9 @@ app.use(helmet({
   referrerPolicy: { policy: 'strict-origin-when-cross-origin' }
 }));
 
+// Compression gzip — réduit la taille des réponses JSON et HTML
+app.use(compression());
+
 // CORS — accepter seulement les origines connues
 const allowedOrigins = [
   'https://babicard.ci',
@@ -57,7 +61,8 @@ const allowedOrigins = [
 app.use(cors({
   origin: (origin, cb) => {
     if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
-    cb(new Error('CORS non autorisé'));
+    // Rejet silencieux — pas de throw pour éviter le bruit Sentry sur les bots
+    cb(null, false);
   },
   credentials: true
 }));
@@ -196,6 +201,14 @@ app.use('/api/auth/reset-password', forgotPasswordLimiter);
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
 app.use('/api/auth/verify-otp', authLimiter);
+// Rate limit renvoi code vérification — 5 tentatives par heure
+app.use('/api/auth/resend-verification', rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  message: { error: 'Trop de demandes, réessayez dans 1 heure.' },
+  standardHeaders: true,
+  legacyHeaders: false
+}));
 app.use('/api/auth', authRouter);
 app.use('/api/products', require('./routes/products'));
 app.use('/api/orders', require('./routes/orders'));

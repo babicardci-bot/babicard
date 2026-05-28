@@ -108,9 +108,14 @@ router.get('/djamo/status/:chargeId', authenticateToken, async (req, res) => {
         ? 'failed'
         : djamoStatus;
 
-    // Mettre à jour la DB si payé
+    // Mettre à jour la DB si payé et déclencher la livraison
     if (normalizedStatus === 'paid') {
-      db.prepare("UPDATE orders SET payment_status = 'paid' WHERE id = ?").run(order.id);
+      const markPaid = db.prepare("UPDATE orders SET payment_status = 'paid', paid_at = CURRENT_TIMESTAMP WHERE id = ? AND payment_status != 'paid'");
+      const paidResult = markPaid.run(order.id);
+      // Déclencher la livraison seulement si c'est la première fois (changes > 0)
+      if (paidResult.changes > 0) {
+        processDelivery(order.id).catch(err => console.error('[STATUS POLL] Erreur livraison:', err.message));
+      }
     }
 
     res.json({ chargeId, status: normalizedStatus, order_id: order.id });

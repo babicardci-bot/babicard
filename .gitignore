@@ -8,3 +8,12 @@ uploads/
 .DS_Store
 Thumbs.db
 services/firebase-service-account.json
+
+# Fichiers médias lourds — ne pas pousser sur GitHub
+*.mp4
+*.mov
+*.avi
+*.mkv
+Images des carte/
+public/favicon-32.png
+public/logo-black.png.png
