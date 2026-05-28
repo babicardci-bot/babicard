@@ -27,6 +27,15 @@
   <h1>🔍 Détection des codes en doublon</h1>
   <div id="app"><div class="loader">Chargement...</div></div>
 
+  <hr style="border-color:rgba(255,255,255,0.08);margin:32px 0">
+  <h2 style="color:#a78bfa;font-size:1.1rem;margin-bottom:16px">📋 Commandes par date</h2>
+  <div style="display:flex;gap:12px;align-items:center;margin-bottom:16px">
+    <input type="date" id="dateInput" value="2026-05-21"
+      style="padding:9px 14px;background:#13131f;border:1px solid rgba(108,99,255,0.3);border-radius:8px;color:#e0e0ff;font-size:0.88rem">
+    <button class="btn" onclick="loadOrders(document.getElementById('dateInput').value)">Voir les commandes</button>
+  </div>
+  <div id="orders-app"></div>
+
   <script>
     const token = localStorage.getItem('token');
 
@@ -96,6 +105,48 @@
         load();
       } catch (e) {
         alert('Erreur: ' + e.message);
+      }
+    }
+
+    async function loadOrders(date) {
+      const app = document.getElementById('orders-app');
+      app.innerHTML = '<div class="loader">Chargement...</div>';
+      try {
+        let all = [], page = 1, found = false;
+        while (true) {
+          const res = await fetch(`/api/admin/orders?limit=100&page=${page}`, {
+            headers: { 'Authorization': 'Bearer ' + token }
+          });
+          const data = await res.json();
+          const orders = data.orders || data;
+          if (!orders || orders.length === 0) break;
+          const filtered = orders.filter(o => o.created_at && o.created_at.startsWith(date));
+          all = all.concat(filtered);
+          if (filtered.length < orders.length) break; // plus de commandes ce jour-là sur les pages suivantes
+          page++;
+          if (page > 20) break;
+        }
+
+        if (all.length === 0) { app.innerHTML = `<p style="color:#606080;padding:16px">Aucune commande trouvée pour le ${date}.</p>`; return; }
+
+        let html = `<table><thead><tr>
+          <th>#</th><th>Client</th><th>Email</th><th>Montant</th><th>Paiement</th><th>Livraison</th><th>Date</th>
+        </tr></thead><tbody>`;
+        for (const o of all) {
+          html += `<tr>
+            <td>#${o.id}</td>
+            <td>${o.user_name || o.name || '—'}</td>
+            <td>${o.email || '—'}</td>
+            <td style="color:#a78bfa;font-weight:700">${(o.total_amount||0).toLocaleString('fr-FR')} FCFA</td>
+            <td><span class="badge ${o.payment_status==='paid'?'badge-ok':'badge-warn'}">${o.payment_status}</span></td>
+            <td><span class="badge ${o.delivery_status==='delivered'?'badge-ok':'badge-warn'}">${o.delivery_status}</span></td>
+            <td style="color:#606080;font-size:0.78rem">${o.created_at}</td>
+          </tr>`;
+        }
+        html += '</tbody></table>';
+        app.innerHTML = html;
+      } catch(e) {
+        app.innerHTML = `<div class="error">Erreur: ${e.message}</div>`;
       }
     }
 
