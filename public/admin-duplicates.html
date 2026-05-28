@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Doublons cartes — Admin</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'Segoe UI',sans-serif; background:#0a0a1f; color:#e0e0ff; padding:24px; }
+    h1 { color:#a78bfa; margin-bottom:20px; font-size:1.4rem; }
+    .badge { display:inline-block; padding:4px 12px; border-radius:20px; font-size:0.8rem; font-weight:700; }
+    .badge-ok { background:rgba(34,197,94,0.15); color:#22c55e; }
+    .badge-warn { background:rgba(239,68,68,0.15); color:#ef4444; }
+    table { width:100%; border-collapse:collapse; margin-top:16px; }
+    th { background:#13131f; color:#a78bfa; padding:10px 12px; text-align:left; font-size:0.78rem; text-transform:uppercase; letter-spacing:1px; }
+    td { padding:10px 12px; border-bottom:1px solid rgba(255,255,255,0.06); font-size:0.85rem; }
+    tr:hover td { background:rgba(108,99,255,0.07); }
+    .loader { color:#606080; padding:40px; text-align:center; }
+    .error { color:#ef4444; padding:20px; background:rgba(239,68,68,0.1); border-radius:10px; margin-top:16px; }
+    .btn { display:inline-block; padding:10px 22px; background:#6C63FF; color:#fff; border:none; border-radius:8px; cursor:pointer; font-size:0.88rem; font-weight:600; margin-top:16px; }
+    .btn:hover { background:#5a52d5; }
+    .btn-red { background:#ef4444; }
+    .btn-red:hover { background:#dc2626; }
+    .summary { background:#13131f; border:1px solid rgba(108,99,255,0.2); border-radius:12px; padding:20px; margin-bottom:20px; }
+  </style>
+</head>
+<body>
+  <h1>🔍 Détection des codes en doublon</h1>
+  <div id="app"><div class="loader">Chargement...</div></div>
+
+  <script>
+    const token = localStorage.getItem('token');
+
+    async function load() {
+      const app = document.getElementById('app');
+      if (!token) {
+        app.innerHTML = '<div class="error">❌ Non connecté. Connecte-toi d\'abord sur <a href="/admin" style="color:#a78bfa">/admin</a> puis reviens ici.</div>';
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/admin/cards/duplicates', {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const data = await res.json();
+        if (!res.ok) { app.innerHTML = `<div class="error">Erreur: ${data.error}</div>`; return; }
+
+        const { total_duplicates, duplicates } = data;
+        let html = `<div class="summary">
+          <div style="margin-bottom:12px">
+            Total doublons trouvés : <span class="badge ${total_duplicates > 0 ? 'badge-warn' : 'badge-ok'}">${total_duplicates}</span>
+          </div>`;
+
+        if (total_duplicates > 0) {
+          html += `<button class="btn btn-red" onclick="fixDuplicates()">🛠️ Corriger tous les doublons</button>`;
+        } else {
+          html += `<p style="color:#22c55e">✅ Aucun doublon détecté — base propre.</p>`;
+        }
+        html += `</div>`;
+
+        if (duplicates.length > 0) {
+          html += `<table>
+            <thead><tr>
+              <th>ID doublon</th>
+              <th>ID original</th>
+              <th>Statut</th>
+              <th>Commande liée</th>
+              <th>Ajouté le</th>
+            </tr></thead><tbody>`;
+          for (const d of duplicates) {
+            html += `<tr>
+              <td>#${d.duplicate_id}</td>
+              <td>#${d.original_id}</td>
+              <td><span class="badge ${d.status === 'available' ? 'badge-warn' : 'badge-ok'}">${d.status}</span></td>
+              <td>${d.order_id ? '#' + d.order_id : '—'}</td>
+              <td>${d.added_at || '—'}</td>
+            </tr>`;
+          }
+          html += `</tbody></table>`;
+        }
+
+        app.innerHTML = html;
+      } catch (e) {
+        app.innerHTML = `<div class="error">Erreur réseau: ${e.message}</div>`;
+      }
+    }
+
+    async function fixDuplicates() {
+      if (!confirm('Corriger tous les doublons disponibles ? Ils seront marqués comme invalides.')) return;
+      try {
+        const res = await fetch('/api/admin/cards/fix-duplicates', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const data = await res.json();
+        alert(data.message || JSON.stringify(data));
+        load();
+      } catch (e) {
+        alert('Erreur: ' + e.message);
+      }
+    }
+
+    load();
+  </script>
+</body>
+</html>
