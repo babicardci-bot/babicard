@@ -906,8 +906,8 @@ router.get('/orders', (req, res) => {
     }
 
     if (date) {
-      query += " AND date(o.created_at) = date(?)";
-      params.push(date);
+      query += " AND o.created_at LIKE ?";
+      params.push(date + '%');
     }
 
     query += ' ORDER BY o.created_at DESC';
