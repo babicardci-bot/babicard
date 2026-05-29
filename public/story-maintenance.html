@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Story Maintenance</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      width: 1080px;
+      height: 1920px;
+      overflow: hidden;
+      font-family: 'Segoe UI', 'Arial', sans-serif;
+      background: #0a0a1f;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .card {
+      width: 1080px;
+      height: 1920px;
+      background: linear-gradient(160deg, #0d0d2b 0%, #0a0a1f 40%, #0d0d2b 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 80px 80px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Cercles décoratifs */
+    .bg-circle-1 {
+      position: absolute;
+      width: 700px;
+      height: 700px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(108,99,255,0.12) 0%, transparent 70%);
+      top: -150px;
+      right: -200px;
+    }
+    .bg-circle-2 {
+      position: absolute;
+      width: 600px;
+      height: 600px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(239,68,68,0.08) 0%, transparent 70%);
+      bottom: -100px;
+      left: -150px;
+    }
+
+    /* Logo */
+    .logo {
+      font-size: 52px;
+      font-weight: 900;
+      color: #fff;
+      letter-spacing: -1px;
+      margin-bottom: 60px;
+    }
+    .logo span { color: #6C63FF; }
+
+    /* Badge maintenance */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 14px;
+      background: rgba(239,68,68,0.15);
+      border: 2px solid rgba(239,68,68,0.4);
+      color: #ef4444;
+      font-size: 32px;
+      font-weight: 800;
+      padding: 16px 44px;
+      border-radius: 60px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 56px;
+    }
+
+    /* Titre */
+    .title {
+      font-size: 80px;
+      font-weight: 900;
+      color: #fff;
+      text-align: center;
+      line-height: 1.1;
+      margin-bottom: 24px;
+    }
+    .title .highlight {
+      color: #6C63FF;
+    }
+
+    /* Sous-titre */
+    .subtitle {
+      font-size: 38px;
+      color: #a0a0c0;
+      text-align: center;
+      line-height: 1.5;
+      margin-bottom: 80px;
+      max-width: 860px;
+    }
+
+    /* Divider */
+    .divider {
+      width: 120px;
+      height: 4px;
+      background: linear-gradient(90deg, #6C63FF, #a78bfa);
+      border-radius: 2px;
+      margin-bottom: 80px;
+    }
+
+    /* Box solution */
+    .solution-box {
+      width: 100%;
+      background: linear-gradient(135deg, rgba(108,99,255,0.18) 0%, rgba(108,99,255,0.08) 100%);
+      border: 2px solid rgba(108,99,255,0.4);
+      border-radius: 32px;
+      padding: 56px 64px;
+      margin-bottom: 80px;
+    }
+    .solution-label {
+      font-size: 26px;
+      font-weight: 700;
+      color: #a78bfa;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      margin-bottom: 24px;
+    }
+    .solution-title {
+      font-size: 58px;
+      font-weight: 900;
+      color: #fff;
+      margin-bottom: 16px;
+    }
+    .solution-desc {
+      font-size: 36px;
+      color: #c0c0e0;
+      line-height: 1.4;
+    }
+    .solution-check {
+      display: inline-block;
+      width: 44px;
+      height: 44px;
+      background: #22c55e;
+      border-radius: 50%;
+      text-align: center;
+      line-height: 44px;
+      font-size: 24px;
+      margin-right: 12px;
+      vertical-align: middle;
+    }
+
+    /* Footer */
+    .footer {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+    }
+    .footer-url {
+      font-size: 38px;
+      font-weight: 800;
+      color: #6C63FF;
+      letter-spacing: 1px;
+    }
+    .footer-note {
+      font-size: 28px;
+      color: #606080;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="bg-circle-1"></div>
+    <div class="bg-circle-2"></div>
+
+    <div class="logo">Babi<span>card</span>.ci</div>
+
+    <div class="badge">⚠️ Maintenance</div>
+
+    <h1 class="title">
+      Mobile Money<br>
+      <span class="highlight">temporairement<br>indisponible</span>
+    </h1>
+
+    <p class="subtitle">
+      Notre partenaire Mobile Money rencontre<br>
+      une interruption de service momentanée.
+    </p>
+
+    <div class="divider"></div>
+
+    <div class="solution-box">
+      <div class="solution-label">Solution disponible</div>
+      <div class="solution-title">💳 Payez avec Djamo</div>
+      <div class="solution-desc">
+        <span class="solution-check">✓</span> Disponible sans interruption<br>
+        <span class="solution-check">✓</span> Paiement instantané &amp; sécurisé<br>
+        <span class="solution-check">✓</span> Livraison immédiate de vos codes
+      </div>
+    </div>
+
+    <div class="footer">
+      <div class="footer-url">www.babicard.ci</div>
+      <div class="footer-note">Nous vous informerons dès le rétablissement du service.</div>
+    </div>
+  </div>
+</body>
+</html>

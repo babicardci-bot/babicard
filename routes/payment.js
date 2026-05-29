@@ -368,11 +368,21 @@ router.post('/mobilemoney/initiate', authenticateToken, async (req, res) => {
     console.log('[MOBILE MONEY] Paiement initié — ref:', payRef, '| checkout_url: OK');
     res.json({ payment_url: checkout_url, payment_ref: payRef, order_id });
   } catch (err) {
-    console.error('[MOBILE MONEY] Erreur initiate:', err.response?.data || err.message);
-    const db = getDb();
-    db.prepare("UPDATE orders SET payment_status = 'failed' WHERE id = ?").run(req.body.order_id);
-    db.prepare("UPDATE cards SET status = 'available', order_id = NULL WHERE order_id = ? AND status = 'reserved'").run(req.body.order_id);
-    res.status(502).json({ error: 'Erreur initialisation Mobile Money. Réessayez.' });
+    const httpStatus = err.response?.status;
+    const errData = err.response?.data || err.message;
+    console.error('[MOBILE MONEY] Erreur initiate (HTTP', httpStatus || 'network', '):', errData);
+
+    // Erreur 4xx = problème de config/données → annuler la commande et libérer les cartes
+    // Erreur 5xx / réseau / timeout = panne temporaire → garder la commande pending pour retry
+    const isClientError = httpStatus && httpStatus >= 400 && httpStatus < 500;
+    if (isClientError) {
+      const db = getDb();
+      db.prepare("UPDATE orders SET payment_status = 'failed' WHERE id = ?").run(req.body.order_id);
+      db.prepare("UPDATE cards SET status = 'available', order_id = NULL WHERE order_id = ? AND status = 'reserved'").run(req.body.order_id);
+      return res.status(502).json({ error: 'Erreur initialisation Mobile Money. Réessayez.' });
+    }
+    // Panne temporaire du prestataire — garder la commande en pending, le client peut réessayer
+    res.status(503).json({ error: 'Le service Mobile Money est temporairement indisponible. Réessayez dans quelques minutes.', retryable: true });
   }
 });
 

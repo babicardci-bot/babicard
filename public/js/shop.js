@@ -360,12 +360,15 @@ function buildOrderConfirmModal() {
       </div>
       <div style="margin-bottom:14px;">
         <p style="margin:0 0 8px;color:#a0a0c0;font-size:0.85rem;">Choisir le moyen de paiement :</p>
+        <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);border-radius:8px;padding:8px 12px;margin-bottom:8px;font-size:0.8rem;color:#ef4444;">
+          ⚠️ Mobile Money en maintenance — utilisez Djamo
+        </div>
         <div style="display:flex;gap:8px;">
-          <label id="payMethodGenius" style="flex:1;display:flex;align-items:center;gap:8px;padding:10px 12px;border:2px solid #f59e0b;border-radius:8px;cursor:pointer;background:rgba(245,158,11,0.1);">
-            <input type="radio" name="payMethod" value="mobile_money" checked style="accent-color:#f59e0b;"> <span style="color:#e0e0ff;font-size:0.9rem;font-weight:600;">Mobile Money</span>
+          <label id="payMethodGenius" style="flex:1;display:flex;align-items:center;gap:8px;padding:10px 12px;border:2px solid rgba(255,255,255,0.08);border-radius:8px;cursor:not-allowed;background:rgba(255,255,255,0.02);opacity:0.45;">
+            <input type="radio" name="payMethod" value="mobile_money" disabled style="accent-color:#f59e0b;"> <span style="color:#606080;font-size:0.9rem;font-weight:600;">Mobile Money</span>
           </label>
-          <label id="payMethodDjamo" style="flex:1;display:flex;align-items:center;gap:8px;padding:10px 12px;border:2px solid rgba(255,255,255,0.1);border-radius:8px;cursor:pointer;background:rgba(255,255,255,0.03);">
-            <input type="radio" name="payMethod" value="djamo" style="accent-color:#6C63FF;"> <span style="color:#e0e0ff;font-size:0.9rem;font-weight:600;">Djamo</span>
+          <label id="payMethodDjamo" style="flex:1;display:flex;align-items:center;gap:8px;padding:10px 12px;border:2px solid #6C63FF;border-radius:8px;cursor:pointer;background:rgba(108,99,255,0.1);">
+            <input type="radio" name="payMethod" value="djamo" checked style="accent-color:#6C63FF;"> <span style="color:#e0e0ff;font-size:0.9rem;font-weight:600;">Djamo</span>
           </label>
         </div>
       </div>
@@ -426,7 +429,14 @@ function showOrderConfirmModal(orderId, total, items) {
 async function proceedToPayment() {
   const orderId = _pendingOrderId;
 
-  const selectedMethod = document.querySelector('input[name="payMethod"]:checked')?.value || 'mobile_money';
+  const selectedMethod = document.querySelector('input[name="payMethod"]:checked')?.value || 'djamo';
+
+  // Mobile Money en maintenance — bloquer même si l'UI est contournée
+  if (selectedMethod === 'mobile_money') {
+    showToast('⚠️ Mobile Money est en maintenance. Veuillez utiliser Djamo.', 'error');
+    return;
+  }
+
   const methodLabel = selectedMethod === 'mobile_money' ? 'Mobile Money' : 'Djamo';
 
   const btn = document.getElementById('orderConfirmPayBtn');
@@ -440,8 +450,15 @@ async function proceedToPayment() {
     });
 
     if (!paymentRes || !paymentRes.ok) {
-      const err = await paymentRes?.json();
-      throw new Error(err?.error || 'Erreur initialisation paiement');
+      let errMsg = 'Erreur initialisation paiement';
+      try {
+        const contentType = paymentRes?.headers?.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          const err = await paymentRes.json();
+          errMsg = err?.error || errMsg;
+        }
+      } catch (_) {}
+      throw new Error(errMsg);
     }
 
     const paymentData = await paymentRes.json();
