@@ -358,10 +358,17 @@ router.post('/mobilemoney/initiate', authenticateToken, async (req, res) => {
       { headers: geniusHeaders(), timeout: 25000 }
     );
 
-    const checkout_url = paymentRes.data?.data?.checkout_url || paymentRes.data?.checkout_url;
-    const payRef = paymentRes.data?.data?.reference || reference;
+    console.log('[MOBILE MONEY] Réponse GeniusPay brute:', JSON.stringify(paymentRes.data));
 
-    if (!checkout_url) throw new Error('checkout_url absent de la réponse GeniusPay');
+    const checkout_url = paymentRes.data?.data?.checkout_url || paymentRes.data?.checkout_url
+      || paymentRes.data?.data?.payment_url || paymentRes.data?.payment_url
+      || paymentRes.data?.data?.url || paymentRes.data?.url;
+    const payRef = paymentRes.data?.data?.reference || paymentRes.data?.reference || reference;
+
+    if (!checkout_url) {
+      console.error('[MOBILE MONEY] checkout_url introuvable dans la réponse:', JSON.stringify(paymentRes.data));
+      throw new Error('checkout_url absent de la réponse GeniusPay');
+    }
 
     db.prepare('UPDATE orders SET payment_ref = ?, payment_method = ? WHERE id = ?').run(payRef, 'mobile_money', order_id);
 
@@ -370,7 +377,7 @@ router.post('/mobilemoney/initiate', authenticateToken, async (req, res) => {
   } catch (err) {
     const httpStatus = err.response?.status;
     const errData = err.response?.data || err.message;
-    console.error('[MOBILE MONEY] Erreur initiate (HTTP', httpStatus || 'network', '):', errData);
+    console.error('[MOBILE MONEY] Erreur initiate (HTTP', httpStatus || 'network', '):', JSON.stringify(errData));
 
     // Erreur 4xx = problème de config/données → annuler la commande et libérer les cartes
     // Erreur 5xx / réseau / timeout = panne temporaire → garder la commande pending pour retry
