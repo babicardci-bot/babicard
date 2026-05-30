@@ -584,13 +584,15 @@
       </div>
       <div class="cart-payment-selector" id="cartPaymentSelector">
         <div style="display:flex;gap:8px;margin-bottom:4px;">
-          <label id="cartMethodMobile" style="flex:1;display:flex;align-items:center;justify-content:center;gap:7px;padding:10px 8px;border:2px solid #F59E0B;border-radius:10px;cursor:pointer;background:rgba(245,158,11,0.12);font-size:0.88rem;font-weight:700;color:var(--text-primary,#fff);letter-spacing:0.2px;" onclick="updateCartPayStyle('mobile_money')">
-            <input type="radio" name="cartPayMethod" value="mobile_money" checked style="accent-color:#F59E0B;width:15px;height:15px;"> 📱 Mobile Money
+          <label id="cartMethodMobile" style="flex:1;display:flex;align-items:center;justify-content:center;gap:7px;padding:10px 8px;border:2px solid rgba(255,255,255,0.08);border-radius:10px;cursor:not-allowed;background:rgba(255,255,255,0.02);font-size:0.88rem;font-weight:700;color:#606080;letter-spacing:0.2px;position:relative;opacity:0.6;" title="Mobile Money temporairement indisponible">
+            <input type="radio" name="cartPayMethod" value="mobile_money" disabled style="accent-color:#F59E0B;width:15px;height:15px;"> 📱 Mobile Money
+            <span style="position:absolute;top:-8px;right:4px;background:#ef4444;color:#fff;font-size:0.6rem;padding:1px 5px;border-radius:4px;font-weight:700;letter-spacing:0.5px;">MAINTENANCE</span>
           </label>
-          <label id="cartMethodDjamo" style="flex:1;display:flex;align-items:center;justify-content:center;gap:7px;padding:10px 8px;border:2px solid rgba(255,255,255,0.15);border-radius:10px;cursor:pointer;background:rgba(255,255,255,0.05);font-size:0.88rem;font-weight:700;color:var(--text-primary,#fff);letter-spacing:0.2px;" onclick="updateCartPayStyle('djamo')">
-            <input type="radio" name="cartPayMethod" value="djamo" style="accent-color:#6C63FF;width:15px;height:15px;"> 💳 Djamo
+          <label id="cartMethodDjamo" style="flex:1;display:flex;align-items:center;justify-content:center;gap:7px;padding:10px 8px;border:2px solid #6C63FF;border-radius:10px;cursor:pointer;background:rgba(108,99,255,0.1);font-size:0.88rem;font-weight:700;color:var(--text-primary,#fff);letter-spacing:0.2px;" onclick="updateCartPayStyle('djamo')">
+            <input type="radio" name="cartPayMethod" value="djamo" checked style="accent-color:#6C63FF;width:15px;height:15px;"> 💳 Djamo
           </label>
         </div>
+        <p style="margin:4px 0 0;font-size:0.75rem;color:#ef4444;text-align:center;">⚠️ Mobile Money en maintenance — utilisez Djamo</p>
       </div>
       <button class="btn-checkout" id="checkoutBtn" onclick="openDeliveryModal()">
         Payer maintenant
