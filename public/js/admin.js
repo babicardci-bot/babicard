@@ -2274,7 +2274,7 @@ async function loadRefunds() {
           <td><span style="color:${statusColor[r.status]};font-weight:bold;">${statusLabel[r.status] || r.status}</span>${r.admin_note ? `<br><small style="color:#888;">${esc(r.admin_note)}</small>` : ''}</td>
           <td>${new Date(r.created_at).toLocaleDateString('fr-FR')}</td>
           <td>${r.status === 'pending' ? `
-            <button class="btn-primary" style="font-size:12px;padding:6px 10px;margin-bottom:4px;" onclick="approveRefund(${r.id})">✅ Approuver</button>
+            <button class="btn-primary" style="font-size:12px;padding:6px 10px;margin-bottom:4px;" onclick="approveRefund(${r.id}, ${r.total_amount})">✅ Approuver</button>
             <button class="btn-danger" style="font-size:12px;padding:6px 10px;" onclick="rejectRefund(${r.id})">❌ Refuser</button>
           ` : '—'}</td>
         </tr>`).join('')}
@@ -2302,11 +2302,12 @@ async function adminRefundOrder(orderId) {
   }
 }
 
-async function approveRefund(id) {
+async function approveRefund(id, amount) {
+  const formatted = new Intl.NumberFormat('fr-FR').format(amount);
+  if (!confirm(`Confirmer le remboursement de ${formatted} FCFA ?\n\nCette action est irréversible.`)) return;
   const note = prompt('Note pour le client (optionnel):') || '';
-  if (!confirm('Confirmer l\'approbation du remboursement ?')) return;
   try {
-    const res = await authFetch(`/admin/refunds/${id}/approve`, { method: 'PUT', body: JSON.stringify({ admin_note: note }) });
+    const res = await authFetch(`/admin/refunds/${id}/approve`, { method: 'PUT', body: JSON.stringify({ admin_note: note, confirm_amount: amount }) });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
     showToast('Remboursement approuvé.', 'success');

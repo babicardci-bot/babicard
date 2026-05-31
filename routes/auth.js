@@ -4,9 +4,20 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const speakeasy = require('speakeasy');
 const QRCode = require('qrcode');
+const rateLimit = require('express-rate-limit');
 const { getDb } = require('../database/db');
 const { authenticateToken, generateToken } = require('../middleware/auth');
 const { sendPasswordResetEmail, sendWelcomeEmail, sendEmailVerificationEmail, sendLoginOTPEmail } = require('../services/email');
+
+// Rate limiter strict sur la vérification OTP — 5 tentatives / 10 minutes par IP
+const otpLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 5,
+  message: { error: 'Trop de tentatives. Réessayez dans 10 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true
+});
 
 // POST /api/auth/register
 router.post('/register', async (req, res) => {
@@ -198,7 +209,7 @@ router.post('/login', async (req, res) => {
 });
 
 // POST /api/auth/verify-otp — Vérifie le code OTP envoyé par email
-router.post('/verify-otp', async (req, res) => {
+router.post('/verify-otp', otpLimiter, async (req, res) => {
   try {
     const { email, otp_code } = req.body;
     if (!email || !otp_code) return res.status(400).json({ error: 'Email et code requis.' });

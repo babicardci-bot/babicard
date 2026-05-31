@@ -1287,6 +1287,18 @@ router.put('/withdrawals/:id/process', (req, res) => {
     if (!withdrawal) return res.status(404).json({ error: 'Demande non trouvée.' });
     if (withdrawal.status === 'paid') return res.status(400).json({ error: 'Cette demande est déjà payée.' });
 
+    // Vérifier que le montant demandé ne dépasse pas les gains disponibles
+    if (status === 'paid' || status === 'approved') {
+      const available = db.prepare(
+        "SELECT COALESCE(SUM(net_amount), 0) as total FROM seller_earnings WHERE seller_id = ? AND status = 'available'"
+      ).get(withdrawal.seller_id)?.total || 0;
+      if (withdrawal.amount > available) {
+        return res.status(400).json({
+          error: `Montant demandé (${withdrawal.amount} FCFA) supérieur aux gains disponibles (${available} FCFA).`
+        });
+      }
+    }
+
     db.prepare(`
       UPDATE withdrawal_requests SET status = ?, admin_note = ?, processed_at = CURRENT_TIMESTAMP WHERE id = ?
     `).run(status, admin_note || '', req.params.id);
@@ -1570,11 +1582,20 @@ router.get('/refunds', (req, res) => {
 // PUT /api/admin/refunds/:id/approve — Approve refund
 router.put('/refunds/:id/approve', async (req, res) => {
   try {
-    const { admin_note } = req.body;
+    const { admin_note, confirm_amount } = req.body;
     const db = getDb();
     const refund = db.prepare('SELECT * FROM refund_requests WHERE id = ?').get(req.params.id);
     if (!refund) return res.status(404).json({ error: 'Demande non trouvée.' });
     if (refund.status !== 'pending') return res.status(400).json({ error: 'Demande déjà traitée.' });
+
+    // Exiger confirmation explicite du montant pour éviter les remboursements accidentels
+    const order = db.prepare('SELECT total_amount FROM orders WHERE id = ?').get(refund.order_id);
+    if (!confirm_amount || Number(confirm_amount) !== Number(order?.total_amount)) {
+      return res.status(400).json({
+        error: `Confirmation requise. Envoyez confirm_amount: ${order?.total_amount} pour valider ce remboursement.`,
+        required_amount: order?.total_amount
+      });
+    }
 
     const processRefund = db.transaction(() => {
       // Mark order cards as disputed

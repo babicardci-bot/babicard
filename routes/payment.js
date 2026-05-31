@@ -410,36 +410,25 @@ router.post('/mobilemoney/webhook', async (req, res) => {
       console.error('[MOBILE MONEY WEBHOOK] GENIUS_WEBHOOK_SECRET manquant — webhook rejeté');
       return res.status(401).json({ error: 'Webhook non configuré.' });
     }
-    if (webhookSecret) {
-      if (!signature) {
-        console.warn('[MOBILE MONEY WEBHOOK] Signature manquante — rejeté');
-        return res.status(401).json({ error: 'Signature manquante.' });
-      }
-      const sigToCheck = signature.startsWith('sha256=') ? signature.slice(7) : signature;
-      const secretNoPrefix = webhookSecret.startsWith('whsec_') ? webhookSecret.slice(6) : webhookSecret;
-      const payloadWithTs = timestamp ? `${timestamp}.${rawStr}` : rawStr;
-      const h1 = crypto.createHmac('sha256', webhookSecret).update(payloadWithTs).digest('hex');
-      const h2 = crypto.createHmac('sha256', secretNoPrefix).update(payloadWithTs).digest('hex');
-      const sigBuf = Buffer.from(sigToCheck, 'hex');
-      const safe = (h) => {
-        try {
-          const hBuf = Buffer.from(h, 'hex');
-          return hBuf.length === sigBuf.length && crypto.timingSafeEqual(hBuf, sigBuf);
-        } catch(_) { return false; }
-      };
-      let valid = safe(h1) || safe(h2);
-      if (!valid) {
-        try {
-          const h3 = crypto.createHmac('sha256', Buffer.from(secretNoPrefix, 'base64')).update(payloadWithTs).digest('hex');
-          valid = safe(h3);
-        } catch (_) {}
-      }
-      if (!valid) {
-        console.warn('[MOBILE MONEY WEBHOOK] Signature invalide — rejeté');
-        return res.status(401).json({ error: 'Signature invalide.' });
-      }
-      console.log('[MOBILE MONEY WEBHOOK] Signature valide');
+    if (!signature) {
+      console.warn('[MOBILE MONEY WEBHOOK] Signature manquante — rejeté');
+      return res.status(401).json({ error: 'Signature manquante.' });
     }
+    const sigToCheck = signature.startsWith('sha256=') ? signature.slice(7) : signature;
+    const secret = webhookSecret.startsWith('whsec_') ? webhookSecret.slice(6) : webhookSecret;
+    const payloadToSign = timestamp ? `${timestamp}.${rawStr}` : rawStr;
+    const expected = crypto.createHmac('sha256', secret).update(payloadToSign).digest('hex');
+    let sigValid = false;
+    try {
+      const expBuf = Buffer.from(expected, 'hex');
+      const sigBuf = Buffer.from(sigToCheck, 'hex');
+      sigValid = expBuf.length === sigBuf.length && crypto.timingSafeEqual(expBuf, sigBuf);
+    } catch (_) {}
+    if (!sigValid) {
+      console.warn('[MOBILE MONEY WEBHOOK] Signature invalide — rejeté');
+      return res.status(401).json({ error: 'Signature invalide.' });
+    }
+    console.log('[MOBILE MONEY WEBHOOK] Signature valide');
 
     let body;
     try { body = JSON.parse(rawStr); } catch { return res.status(400).json({ error: 'Body invalide.' }); }
