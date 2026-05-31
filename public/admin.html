@@ -393,6 +393,14 @@
         <button class="btn-primary" onclick="saveAllAppearance()">💾 Tout sauvegarder</button>
       </div>
 
+      <!-- RELANCE VERIFICATION -->
+      <div class="appearance-block" style="margin-bottom:24px;">
+        <h3 class="appearance-title">🔔 Relancer les comptes non vérifiés</h3>
+        <p style="color:#a0a0c0;font-size:0.85rem;margin-bottom:16px;">Renvoie un email de confirmation à tous les clients qui ne l'ont pas encore validé.</p>
+        <button class="btn-primary" onclick="resendVerification()">📨 Envoyer la relance</button>
+        <div id="resendVerifResult" style="margin-top:10px;"></div>
+      </div>
+
       <!-- EMAIL BROADCAST -->
       <div class="appearance-block" style="margin-bottom:24px;">
         <h3 class="appearance-title">📧 Envoyer un email à tous les clients</h3>

@@ -1643,6 +1643,21 @@ async function migrateEncryptCards() {
   }
 }
 
+// ============ RELANCE VERIFICATION ============
+async function resendVerification() {
+  const resultEl = document.getElementById('resendVerifResult');
+  if (!confirm('Renvoyer un email de confirmation à tous les comptes non vérifiés ?')) return;
+  resultEl.innerHTML = '<span style="color:#a0a0c0;font-size:0.85rem;">⏳ Envoi en cours...</span>';
+  try {
+    const res = await adminFetch('/admin/users/resend-verification', { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) { resultEl.innerHTML = `<span style="color:#ef4444;font-size:0.85rem;">❌ ${esc(data.error)}</span>`; return; }
+    resultEl.innerHTML = `<span style="color:#22c55e;font-size:0.85rem;">✅ ${esc(data.message)}${data.failed > 0 ? ` (${esc(String(data.failed))} échec(s))` : ''}</span>`;
+  } catch (e) {
+    resultEl.innerHTML = '<span style="color:#ef4444;font-size:0.85rem;">❌ Erreur réseau.</span>';
+  }
+}
+
 // ============ BROADCAST EMAIL ============
 async function sendBroadcast() {
   const subject = document.getElementById('broadcastSubject').value.trim();

@@ -5,7 +5,8 @@ const { getDb } = require('../database/db');
 const { authenticateToken, requireAdmin, logAdminAction } = require('../middleware/auth');
 const { processDelivery } = require('../services/delivery');
 const { encrypt, decrypt } = require('../services/encryption');
-const { sendWithdrawalStatusEmail, sendSellerApprovalEmail, sendBroadcastEmail, sendStockNotificationEmail } = require('../services/email');
+const { sendWithdrawalStatusEmail, sendSellerApprovalEmail, sendBroadcastEmail, sendStockNotificationEmail, sendEmailVerificationEmail } = require('../services/email');
+const crypto = require('crypto');
 
 // Cache PRAGMA table_info — évite de l'exécuter à chaque requête
 let _cardColsCache = null;
@@ -270,6 +271,55 @@ router.get('/users/unverified', (req, res) => {
   } catch (err) {
     console.error('GET /users/unverified:', err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/admin/users/resend-verification — relancer les emails de confirmation
+router.post('/users/resend-verification', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const db = getDb();
+    const siteUrl = process.env.SITE_URL || 'https://babicard.ci';
+
+    const users = db.prepare(`
+      SELECT id, name, email FROM users
+      WHERE email_verified = 0 AND role = 'client'
+      ORDER BY created_at DESC
+    `).all();
+
+    if (users.length === 0) return res.json({ message: 'Aucun compte non vérifié.', sent: 0 });
+
+    let sent = 0, failed = 0;
+    const BATCH_SIZE = 10;
+    const BATCH_DELAY_MS = 2000;
+
+    for (let i = 0; i < users.length; i += BATCH_SIZE) {
+      const batch = users.slice(i, i + BATCH_SIZE);
+      await Promise.allSettled(batch.map(async user => {
+        try {
+          // Générer un nouveau token de vérification (48h)
+          const token = crypto.randomBytes(32).toString('hex');
+          const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
+          db.prepare('DELETE FROM email_verification_tokens WHERE user_id = ?').run(user.id);
+          db.prepare('INSERT INTO email_verification_tokens (user_id, token, expires_at) VALUES (?, ?, ?)').run(user.id, token, expiresAt);
+          const verifyLink = `${siteUrl}/api/auth/verify-email?token=${token}`;
+          await sendEmailVerificationEmail(user, verifyLink);
+          sent++;
+        } catch (e) {
+          failed++;
+          console.error(`[RESEND VERIF] Échec ${user.email}:`, e.message);
+        }
+      }));
+      if (i + BATCH_SIZE < users.length) {
+        await new Promise(resolve => setTimeout(resolve, BATCH_DELAY_MS));
+      }
+    }
+
+    logAdminAction(req, 'RESEND_VERIFICATION', null, { sent, failed, total: users.length });
+    console.log(`[RESEND VERIF] ${sent}/${users.length} emails envoyés.`);
+    res.json({ message: `Email de relance envoyé à ${sent} compte(s) non vérifié(s).`, sent, failed, total: users.length });
+  } catch (err) {
+    console.error('Erreur resend-verification:', err);
+    res.status(500).json({ error: 'Erreur lors de l\'envoi.' });
   }
 });
 
