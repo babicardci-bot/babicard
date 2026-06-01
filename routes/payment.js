@@ -415,15 +415,27 @@ router.post('/mobilemoney/webhook', async (req, res) => {
       return res.status(401).json({ error: 'Signature manquante.' });
     }
     const sigToCheck = signature.startsWith('sha256=') ? signature.slice(7) : signature;
-    const secret = webhookSecret.startsWith('whsec_') ? webhookSecret.slice(6) : webhookSecret;
-    const payloadToSign = timestamp ? `${timestamp}.${rawStr}` : rawStr;
-    const expected = crypto.createHmac('sha256', secret).update(payloadToSign).digest('hex');
+    const secretFull = webhookSecret;
+    const secretStripped = webhookSecret.startsWith('whsec_') ? webhookSecret.slice(6) : webhookSecret;
+    const payloadWithTs = timestamp ? `${timestamp}.${rawStr}` : rawStr;
+
+    const timingSafeCompare = (hexA, hexB) => {
+      try {
+        const a = Buffer.from(hexA, 'hex');
+        const b = Buffer.from(hexB, 'hex');
+        return a.length === b.length && crypto.timingSafeEqual(a, b);
+      } catch (_) { return false; }
+    };
+
+    const candidates = [
+      () => crypto.createHmac('sha256', secretStripped).update(payloadWithTs).digest('hex'),
+      () => crypto.createHmac('sha256', secretFull).update(payloadWithTs).digest('hex'),
+      () => crypto.createHmac('sha256', secretStripped).update(rawStr).digest('hex'),
+    ];
     let sigValid = false;
-    try {
-      const expBuf = Buffer.from(expected, 'hex');
-      const sigBuf = Buffer.from(sigToCheck, 'hex');
-      sigValid = expBuf.length === sigBuf.length && crypto.timingSafeEqual(expBuf, sigBuf);
-    } catch (_) {}
+    for (const compute of candidates) {
+      try { if (timingSafeCompare(compute(), sigToCheck)) { sigValid = true; break; } } catch (_) {}
+    }
     if (!sigValid) {
       console.warn('[MOBILE MONEY WEBHOOK] Signature invalide — rejeté');
       return res.status(401).json({ error: 'Signature invalide.' });
