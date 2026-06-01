@@ -1159,6 +1159,28 @@ router.post('/orders/:id/refund', async (req, res) => {
   }
 });
 
+// POST /api/admin/orders/:id/force-pay-deliver — Marquer payé + livrer (paiement confirmé côté prestataire mais webhook raté)
+router.post('/orders/:id/force-pay-deliver', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const db = getDb();
+    const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(req.params.id);
+    if (!order) return res.status(404).json({ error: 'Commande non trouvée.' });
+    if (order.delivery_status === 'delivered') return res.status(400).json({ error: 'Commande déjà livrée.' });
+
+    // Marquer comme payé si pas encore le cas
+    if (order.payment_status !== 'paid') {
+      db.prepare("UPDATE orders SET payment_status = 'paid', paid_at = CURRENT_TIMESTAMP WHERE id = ?").run(order.id);
+    }
+
+    const result = await processDelivery(order.id, true);
+    logAdminAction(req, 'FORCE_PAY_DELIVER', `order#${order.id}`, { previous_status: order.payment_status });
+    res.json({ message: 'Commande marquée payée et livraison déclenchée.', result });
+  } catch (err) {
+    console.error('Erreur force-pay-deliver:', err);
+    res.status(500).json({ error: 'Erreur lors de la livraison forcée.' });
+  }
+});
+
 // POST /api/admin/orders/:id/redeliver - Manually trigger delivery
 router.post('/orders/:id/redeliver', async (req, res) => {
   try {
