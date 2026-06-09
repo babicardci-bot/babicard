@@ -89,7 +89,11 @@ router.get('/djamo/status/:chargeId', authenticateToken, async (req, res) => {
     if (!order) return res.status(404).json({ error: 'Commande non trouvée.' });
 
     // Si déjà payé en DB → retourner directement sans appeler Djamo
+    // Mais si la livraison est encore pending, la relancer (cas d'échec de delivery après paiement)
     if (order.payment_status === 'paid' || order.payment_status === 'delivered') {
+      if (order.delivery_status === 'pending') {
+        processDelivery(order.id).catch(err => console.error('[STATUS POLL] Retry livraison échoué:', err.message));
+      }
       return res.json({ chargeId, status: 'paid', order_id: order.id });
     }
 
@@ -112,8 +116,8 @@ router.get('/djamo/status/:chargeId', authenticateToken, async (req, res) => {
     if (normalizedStatus === 'paid') {
       const markPaid = db.prepare("UPDATE orders SET payment_status = 'paid', paid_at = CURRENT_TIMESTAMP WHERE id = ? AND payment_status != 'paid'");
       const paidResult = markPaid.run(order.id);
-      // Déclencher la livraison seulement si c'est la première fois (changes > 0)
       if (paidResult.changes > 0) {
+        // Première confirmation de paiement — lancer la livraison
         processDelivery(order.id).catch(err => console.error('[STATUS POLL] Erreur livraison:', err.message));
       }
     }
