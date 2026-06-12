@@ -70,6 +70,7 @@
   </script>
   <link rel="stylesheet" href="/css/style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -129,48 +130,38 @@
         </a>
       </div>
       <div class="hero-cards-visual">
-        <div class="hero-card-mockup hc-psn" onclick="filterProducts('playstation');document.getElementById('products').scrollIntoView({behavior:'smooth'})">
-          <div class="hc-shine"></div>
-          <div class="hc-logo"><img src="/images/logo-psn.png" alt="PlayStation"></div>
+        <div class="hc-float hc-float-1">
+          <div class="hero-card-mockup hc-psn" onclick="filterProducts('playstation');document.getElementById('products').scrollIntoView({behavior:'smooth'})">
+            <div class="hc-shine"></div>
+            <div class="hc-logo"><img src="/images/logo-psn.png" alt="PlayStation"></div>
+          </div>
         </div>
-        <div class="hero-card-mockup hc-itunes" onclick="filterProducts('apple');document.getElementById('products').scrollIntoView({behavior:'smooth'})">
-          <div class="hc-shine"></div>
-          <div class="hc-logo"><img src="/images/logo-apple.png" alt="Apple"></div>
+        <div class="hc-float hc-float-2">
+          <div class="hero-card-mockup hc-itunes" onclick="filterProducts('apple');document.getElementById('products').scrollIntoView({behavior:'smooth'})">
+            <div class="hc-shine"></div>
+            <div class="hc-logo"><img src="/images/logo-apple.png" alt="Apple"></div>
+          </div>
         </div>
-        <div class="hero-card-mockup hc-xbox" onclick="filterProducts('xbox');document.getElementById('products').scrollIntoView({behavior:'smooth'})">
-          <div class="hc-shine"></div>
-          <div class="hc-logo"><img src="/images/logo-xbox.png" alt="Xbox"></div>
+        <div class="hc-float hc-float-3">
+          <div class="hero-card-mockup hc-xbox" onclick="filterProducts('xbox');document.getElementById('products').scrollIntoView({behavior:'smooth'})">
+            <div class="hc-shine"></div>
+            <div class="hc-logo"><img src="/images/logo-xbox.png" alt="Xbox"></div>
+          </div>
         </div>
-        <div class="hero-card-mockup hc-netflix" onclick="filterProducts('netflix');document.getElementById('products').scrollIntoView({behavior:'smooth'})">
-          <div class="hc-shine"></div>
-          <div class="hc-logo"><img src="/images/logo-netflix.png" alt="Netflix"></div>
+        <div class="hc-float hc-float-4">
+          <div class="hero-card-mockup hc-netflix" onclick="filterProducts('netflix');document.getElementById('products').scrollIntoView({behavior:'smooth'})">
+            <div class="hc-shine"></div>
+            <div class="hc-logo"><img src="/images/logo-netflix.png" alt="Netflix"></div>
+          </div>
         </div>
       </div>
     </div>
-  </section>
-
-  <!-- STATS BAR -->
-  <section class="stats-bar">
-    <div class="container">
-      <div class="stat-item">
-        <span class="stat-number">500+</span>
-        <span class="stat-label">Clients satisfaits</span>
-      </div>
-      <div class="stat-divider"></div>
-      <div class="stat-item">
-        <span class="stat-number">8</span>
-        <span class="stat-label">Plateformes</span>
-      </div>
-      <div class="stat-divider"></div>
-      <div class="stat-item">
-        <span class="stat-number">&lt; 5 min</span>
-        <span class="stat-label">Livraison</span>
-      </div>
-      <div class="stat-divider"></div>
-      <div class="stat-item">
-        <span class="stat-number">7j/7</span>
-        <span class="stat-label">Support</span>
-      </div>
+    <div class="hero-trust-bar">
+      <span class="hero-trust-item"><span class="hero-trust-icon">🎮</span> Envoi numérique <strong>instantané</strong></span>
+      <span class="hero-trust-divider"></span>
+      <span class="hero-trust-item"><span class="hero-trust-icon">🎧</span> Les joueurs nous donnent une note de <strong>4.71 / 5</strong></span>
+      <span class="hero-trust-divider"></span>
+      <span class="hero-trust-item"><span class="hero-trust-icon">🛡️</span> <strong>Codes officiels des grandes marques</strong></span>
     </div>
   </section>
 
