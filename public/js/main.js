@@ -366,7 +366,7 @@ function renderProducts(products) {
           ${product.promo_price ? `<span class="badge-promo">🔥 PROMO</span>` : ''}
           ${getRegionBadge(product)}
           ${product.image_url
-            ? `<img src="${esc(product.image_url)}" alt="${esc(product.name)}" class="product-card-img-cover" loading="lazy" decoding="async">`
+            ? `<img src="${esc(product.image_url)}" alt="${esc(product.name)}" class="product-card-img-cover">`
             : `<span class="card-brand-icon">${icon}</span><span class="card-brand-name">${getCategoryLabel(product.category)}</span>`
           }
         </div>
@@ -870,7 +870,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }, { threshold: 0.1 });
 
-  document.querySelectorAll('.step-card, .payment-card, .testimonial-card, .category-card, .section-header, #productsGrid').forEach(el => {
+  document.querySelectorAll('.step-card, .payment-card, .testimonial-card').forEach(el => {
     observer.observe(el);
   });
 });
