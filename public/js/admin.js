@@ -671,8 +671,8 @@ function renderCardsTable(cards) {
           ${cards.map(card => `
             <tr>
               <td><strong>${esc(card.product_name)}</strong></td>
-              <td><span class="code-cell">${esc(card.code)}</span></td>
-              <td>${card.pin ? `<span class="code-cell">${esc(card.pin)}</span>` : '-'}</td>
+              <td><span class="code-cell" id="card-code-${card.id}">${esc(card.code)}</span></td>
+              <td><span class="code-cell" id="card-pin-${card.id}">${card.pin ? esc(card.pin) : '-'}</span></td>
               <td style="font-size:0.82rem;">
                 ${card.seller_name
                   ? `<span style="color:#a78bfa;font-weight:600;">${esc(card.shop_name || card.seller_name)}</span>`
@@ -680,10 +680,11 @@ function renderCardsTable(cards) {
               </td>
               <td><span class="badge badge-${card.status}">${card.status === 'available' ? '✓ Disponible' : '✕ Vendu'}</span></td>
               <td style="font-size:0.78rem">${formatDate(card.added_at)}</td>
-              <td>
+              <td style="display:flex;gap:6px;">
+                <button onclick="revealStockCard(${card.id})" style="font-size:0.72rem;background:rgba(108,99,255,0.2);border:1px solid rgba(108,99,255,0.4);color:#a78bfa;padding:3px 10px;border-radius:4px;cursor:pointer;">👁 Voir</button>
                 ${card.status === 'available' ?
                   `<button class="btn-danger" onclick="deleteCard(${card.id})">🗑</button>` :
-                  `<span style="font-size:0.75rem;color:var(--text-muted)">Vendu</span>`
+                  ''
                 }
               </td>
             </tr>
@@ -1086,6 +1087,20 @@ async function viewOrderDetail(orderId) {
     `;
   } catch (err) {
     document.getElementById('orderDetailBody').innerHTML = `<p style="color:var(--admin-danger);padding:20px">Erreur chargement</p>`;
+  }
+}
+
+async function revealStockCard(cardId) {
+  try {
+    const res = await adminFetch(`/admin/cards/${cardId}/reveal`);
+    const data = await res.json();
+    if (!res.ok) { showToast(data.error || 'Erreur', 'error'); return; }
+    const codeEl = document.getElementById(`card-code-${cardId}`);
+    const pinEl = document.getElementById(`card-pin-${cardId}`);
+    if (codeEl) codeEl.textContent = data.code || '';
+    if (pinEl) pinEl.textContent = data.pin || '-';
+  } catch(e) {
+    showToast('Erreur réseau.', 'error');
   }
 }
 
