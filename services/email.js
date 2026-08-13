@@ -1,26 +1,27 @@
 const nodemailer = require('nodemailer');
 const axios = require('axios');
 
-// Envoi via SendGrid HTTP API (contourne le blocage SMTP de Railway)
-async function sendViaSendGrid(mailOptions) {
-  const apiKey = process.env.SENDGRID_API_KEY;
+// Envoi via Brevo HTTP API (contourne le blocage SMTP de Railway)
+async function sendViaBrevo(mailOptions) {
+  const apiKey = process.env.BREVO_API_KEY;
   if (!apiKey) return null;
 
   const payload = {
-    personalizations: [{ to: [{ email: mailOptions.to }] }],
-    from: { email: process.env.EMAIL_USER || 'noreply@babicard.ci', name: 'Babicard.ci' },
+    sender: { email: process.env.EMAIL_USER || 'noreply@babicard.ci', name: 'Babicard.ci' },
+    to: [{ email: mailOptions.to }],
     subject: mailOptions.subject,
-    content: [{ type: 'text/html', value: mailOptions.html }]
+    htmlContent: mailOptions.html
   };
 
-  const response = await axios.post('https://api.sendgrid.com/v3/mail/send', payload, {
+  const response = await axios.post('https://api.brevo.com/v3/smtp/email', payload, {
     headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json'
+      'api-key': apiKey,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
     }
   });
 
-  console.log(`[EMAIL] SendGrid envoyé à ${mailOptions.to} — status: ${response.status}`);
+  console.log(`[EMAIL] Brevo envoyé à ${mailOptions.to} — status: ${response.status}`);
   return { success: true };
 }
 
@@ -50,9 +51,9 @@ function getTransporter() {
 }
 
 async function sendEmail(mailOptions) {
-  // Priorité : SendGrid si dispo, sinon SMTP
-  if (process.env.SENDGRID_API_KEY) {
-    return sendViaSendGrid(mailOptions);
+  // Priorité : Brevo si dispo, sinon SMTP
+  if (process.env.BREVO_API_KEY) {
+    return sendViaBrevo(mailOptions);
   }
   const t = getTransporter();
   if (!t) {
@@ -1028,21 +1029,21 @@ async function sendBackupEmail(backupPath, date, sizeMb) {
       .on('error', reject);
   });
 
-  // SendGrid avec pièce jointe
-  if (process.env.SENDGRID_API_KEY) {
-    await axios.post('https://api.sendgrid.com/v3/mail/send', {
-      personalizations: [{ to: [{ email: adminEmail }] }],
-      from: { email: process.env.EMAIL_USER || 'noreply@babicard.ci', name: 'Babicard.ci' },
+  // Brevo avec pièce jointe
+  if (process.env.BREVO_API_KEY) {
+    await axios.post('https://api.brevo.com/v3/smtp/email', {
+      sender: { email: process.env.EMAIL_USER || 'noreply@babicard.ci', name: 'Babicard.ci' },
+      to: [{ email: adminEmail }],
       subject: `✅ Backup Babicard.ci — ${date}`,
-      content: [{ type: 'text/html', value: `
+      htmlContent: `
         <div style="font-family:Inter,sans-serif;background:#0f0f1a;padding:32px;border-radius:12px;max-width:480px;margin:auto;">
           <h2 style="color:#22c55e;margin:0 0 16px;">✅ Backup réussi</h2>
           <p style="color:#a0a0c0;margin:0 0 8px;">Date : <strong style="color:#fff">${date}</strong></p>
           <p style="color:#a0a0c0;margin:0 0 24px;">Taille : <strong style="color:#fff">${sizeMb} Mo</strong></p>
           <p style="color:#606080;font-size:0.8rem;">La base de données babicard.db est jointe à cet email.</p>
-        </div>` }],
-      attachments: [{ content: fileContent, filename: `babicard-${date}.db`, type: 'application/octet-stream', disposition: 'attachment' }]
-    }, { headers: { 'Authorization': `Bearer ${process.env.SENDGRID_API_KEY}`, 'Content-Type': 'application/json' } });
+        </div>`,
+      attachment: [{ content: fileContent, name: `babicard-${date}.db` }]
+    }, { headers: { 'api-key': process.env.BREVO_API_KEY, 'Content-Type': 'application/json', 'Accept': 'application/json' } });
     console.log(`[BACKUP] Email envoyé à ${adminEmail}`);
     return;
   }
