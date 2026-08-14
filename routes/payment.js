@@ -157,20 +157,22 @@ router.post('/djamo/webhook', async (req, res) => {
     try { body = JSON.parse(rawStr); } catch { return res.status(400).json({ error: 'Body JSON invalide.' }); }
 
     // Vérification signature HMAC-SHA256
-    if (DJAMO_WEBHOOK_SECRET) {
-      const signature = req.headers['x-webhook-signature'] || req.headers['x-djamo-signature']
-        || req.headers['x-signature'] || req.headers['signature'];
-      if (!signature) {
-        console.warn('[DJAMO WEBHOOK] Signature absente — vérification via API Djamo obligatoire');
-        // Pas de rejet immédiat mais on vérifiera le statut via l'API avant toute livraison
-        req._djamoNoSignature = true;
-      } else {
-        const sigToCheck = signature.startsWith('sha256=') ? signature.slice(7) : signature;
-        const expected = crypto.createHmac('sha256', DJAMO_WEBHOOK_SECRET).update(rawStr).digest('hex');
-        if (!crypto.timingSafeEqual(Buffer.from(sigToCheck, 'hex'), Buffer.from(expected, 'hex'))) {
-          console.warn('[DJAMO WEBHOOK] Signature invalide — rejeté');
-          return res.status(401).json({ error: 'Signature invalide.' });
-        }
+    if (!DJAMO_WEBHOOK_SECRET) {
+      console.error('[DJAMO WEBHOOK] DJAMO_WEBHOOK_SECRET manquant — webhook rejeté');
+      return res.status(401).json({ error: 'Webhook non configuré.' });
+    }
+    const signature = req.headers['x-webhook-signature'] || req.headers['x-djamo-signature']
+      || req.headers['x-signature'] || req.headers['signature'];
+    if (!signature) {
+      console.warn('[DJAMO WEBHOOK] Signature absente — vérification via API Djamo obligatoire');
+      // Pas de rejet immédiat mais on vérifiera le statut via l'API avant toute livraison
+      req._djamoNoSignature = true;
+    } else {
+      const sigToCheck = signature.startsWith('sha256=') ? signature.slice(7) : signature;
+      const expected = crypto.createHmac('sha256', DJAMO_WEBHOOK_SECRET).update(rawStr).digest('hex');
+      if (!crypto.timingSafeEqual(Buffer.from(sigToCheck, 'hex'), Buffer.from(expected, 'hex'))) {
+        console.warn('[DJAMO WEBHOOK] Signature invalide — rejeté');
+        return res.status(401).json({ error: 'Signature invalide.' });
       }
     }
 
