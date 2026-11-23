@@ -19,6 +19,22 @@ const otpLimiter = rateLimit({
   skipSuccessfulRequests: true
 });
 
+// Noms : lettres (accents inclus), espaces, apostrophe, tiret, point — pas de < > { } " etc.
+const NAME_REGEX = /^[\p{L}\p{M}][\p{L}\p{M} '’.\-]{1,59}$/u;
+function isValidName(name) {
+  return typeof name === 'string' && NAME_REGEX.test(name.trim());
+}
+
+// Domaines email bloqués (jetables / utilisés pour des attaques) — extensible via BLOCKED_EMAIL_DOMAINS=dom1.com,dom2.com
+const BLOCKED_EMAIL_DOMAINS = new Set([
+  'fldubai.com', 'euploading.com',
+  ...(process.env.BLOCKED_EMAIL_DOMAINS || '').split(',').map(d => d.trim().toLowerCase()).filter(Boolean)
+]);
+function isBlockedEmail(email) {
+  const domain = String(email).toLowerCase().trim().split('@').pop();
+  return BLOCKED_EMAIL_DOMAINS.has(domain);
+}
+
 // POST /api/auth/register
 router.post('/register', async (req, res) => {
   try {
@@ -26,6 +42,16 @@ router.post('/register', async (req, res) => {
 
     if (!name || !email || !password) {
       return res.status(400).json({ error: 'Nom, email et mot de passe sont obligatoires.' });
+    }
+    if (typeof name !== 'string' || typeof email !== 'string' || typeof password !== 'string') {
+      return res.status(400).json({ error: 'Données invalides.' });
+    }
+    if (!isValidName(name)) {
+      return res.status(400).json({ error: 'Nom invalide. Utilisez uniquement des lettres, espaces, apostrophes ou tirets (2 à 60 caractères).' });
+    }
+    if (isBlockedEmail(email)) {
+      console.warn('[REGISTER] Domaine email bloqué:', email.split('@').pop(), '| IP:', req.ip);
+      return res.status(400).json({ error: 'Cette adresse email n\'est pas acceptée. Utilisez une adresse email personnelle.' });
     }
     if (password.length < 8) {
       return res.status(400).json({ error: 'Le mot de passe doit contenir au moins 8 caractères.' });
@@ -299,6 +325,9 @@ router.put('/me', authenticateToken, (req, res) => {
     }
     if (name.trim().length < 2) {
       return res.status(400).json({ error: 'Le nom doit contenir au moins 2 caractères.' });
+    }
+    if (!isValidName(name)) {
+      return res.status(400).json({ error: 'Nom invalide. Utilisez uniquement des lettres, espaces, apostrophes ou tirets (2 à 60 caractères).' });
     }
 
     const phoneVal = phone?.trim() || null;

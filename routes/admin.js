@@ -403,8 +403,21 @@ router.delete('/users/:id', (req, res) => {
     if (user.id === req.user.id) return res.status(400).json({ error: 'Vous ne pouvez pas supprimer votre propre compte.' });
     if (user.role === 'admin') return res.status(400).json({ error: 'Impossible de supprimer un compte administrateur.' });
 
+    // Refuser si le compte a des commandes payées/livrées (à conserver pour la comptabilité)
+    const paidOrders = db.prepare("SELECT COUNT(*) as c FROM orders WHERE user_id = ? AND payment_status IN ('paid','delivered','refunded')").get(user.id).c;
+    if (paidOrders > 0) {
+      return res.status(400).json({ error: `Ce compte a ${paidOrders} commande(s) payée(s) : suppression refusée pour conserver l'historique comptable.` });
+    }
+
     const deleteUser = db.transaction(() => {
       const id = user.id;
+      // Détacher les cartes encore liées aux commandes non payées de ce compte (sinon FK cards.order_id bloque)
+      db.prepare(`UPDATE cards SET status = CASE WHEN status = 'reserved' THEN 'available' ELSE status END, order_id = NULL
+                  WHERE order_id IN (SELECT id FROM orders WHERE user_id = ?)`).run(id);
+      db.prepare('DELETE FROM stock_notifications WHERE user_id = ?').run(id);
+      db.prepare('DELETE FROM product_reviews WHERE user_id = ?').run(id);
+      try { db.prepare('DELETE FROM seller_product_promos WHERE seller_id = ?').run(id); } catch(e) {}
+      try { db.prepare('UPDATE products SET seller_id = NULL WHERE seller_id = ?').run(id); } catch(e) {}
       // Dépendances feuilles (pas de référence vers d'autres tables)
       try { db.prepare('DELETE FROM promo_code_uses WHERE user_id = ?').run(id); } catch(e) {}
       try { db.prepare('DELETE FROM refund_requests WHERE user_id = ?').run(id); } catch(e) {}
@@ -414,14 +427,14 @@ router.delete('/users/:id', (req, res) => {
       try { db.prepare('DELETE FROM fcm_tokens WHERE user_id = ?').run(id); } catch(e) {}
       try { db.prepare('DELETE FROM password_reset_tokens WHERE user_id = ?').run(id); } catch(e) {}
       // Commandes et items
-      try {
-        const orderIds = db.prepare('SELECT id FROM orders WHERE user_id = ?').all(id).map(o => o.id);
-        for (const oid of orderIds) {
-          db.prepare('DELETE FROM refund_requests WHERE order_id = ?').run(oid);
-          db.prepare('DELETE FROM order_items WHERE order_id = ?').run(oid);
-        }
-        db.prepare('DELETE FROM orders WHERE user_id = ?').run(id);
-      } catch(e) {}
+      const orderIds = db.prepare('SELECT id FROM orders WHERE user_id = ?').all(id).map(o => o.id);
+      for (const oid of orderIds) {
+        db.prepare('DELETE FROM refund_requests WHERE order_id = ?').run(oid);
+        db.prepare('DELETE FROM promo_code_uses WHERE order_id = ?').run(oid);
+        try { db.prepare('DELETE FROM seller_earnings WHERE order_id = ?').run(oid); } catch(e) {}
+        db.prepare('DELETE FROM order_items WHERE order_id = ?').run(oid);
+      }
+      db.prepare('DELETE FROM orders WHERE user_id = ?').run(id);
       // Vendeur
       try { db.prepare('DELETE FROM withdrawal_requests WHERE seller_id = ?').run(id); } catch(e) {}
       try { db.prepare('DELETE FROM seller_earnings WHERE seller_id = ?').run(id); } catch(e) {}
@@ -436,7 +449,7 @@ router.delete('/users/:id', (req, res) => {
     res.json({ message: `Utilisateur "${user.email}" supprimé.` });
   } catch (err) {
     console.error('Erreur delete user:', err);
-    res.status(500).json({ error: 'Erreur suppression utilisateur.' });
+    res.status(500).json({ error: 'Erreur suppression utilisateur : ' + (err.code || err.message) });
   }
 });
 
