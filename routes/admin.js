@@ -1481,7 +1481,8 @@ router.get('/exports/geniuspay', (req, res) => {
       const c = String(raw).replace(/[\s\-().]/g, '');
       const n = c.startsWith('00225') ? '+' + c.slice(2) : c.startsWith('+225') ? c
         : (c.startsWith('225') && c.length === 13) ? '+' + c : '+225' + c;
-      return /^\+225\d{10}$/.test(n) ? n : String(raw);
+      // Format espacé (+225 07 01 23 45 67) : Excel le garde en texte au lieu de l'afficher en 2,25E+12
+      return /^\+225\d{10}$/.test(n) ? n.replace(/^\+225(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})$/, '+225 $1 $2 $3 $4 $5') : String(raw);
     };
     // Échappement CSV + neutralisation des formules (noms piégés type =HYPERLINK…)
     const cell = (v, isPhone = false) => {
