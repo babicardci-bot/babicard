@@ -3,6 +3,10 @@ const router = express.Router();
 const { getDb } = require('../database/db');
 const { authenticateToken } = require('../middleware/auth');
 
+// Limites anti-accaparement du stock (une commande non payée bloque les cartes 30 min)
+const MAX_QTY_PER_ITEM = 10;
+const MAX_TOTAL_CARDS = 20;
+
 // POST /api/orders - Create order (protected)
 router.post('/', authenticateToken, (req, res) => {
   try {
@@ -28,7 +32,16 @@ router.post('/', authenticateToken, (req, res) => {
       if (!product) {
         return res.status(400).json({ error: `Produit ID ${item.product_id} non trouvé.` });
       }
-      requestedItems.push({ product, quantity: parseInt(item.quantity) || 1 });
+      const quantity = parseInt(item.quantity, 10);
+      if (item.quantity !== undefined && (!Number.isInteger(quantity) || quantity < 1 || quantity > MAX_QTY_PER_ITEM)) {
+        return res.status(400).json({ error: `Quantité invalide (1 à ${MAX_QTY_PER_ITEM} par article).` });
+      }
+      requestedItems.push({ product, quantity: quantity || 1 });
+    }
+
+    const totalQty = requestedItems.reduce((n, i) => n + i.quantity, 0);
+    if (totalQty > MAX_TOTAL_CARDS) {
+      return res.status(400).json({ error: `Maximum ${MAX_TOTAL_CARDS} cartes par commande.` });
     }
 
     // Auto-cancel any existing pending orders before creating a new one
@@ -50,19 +63,19 @@ router.post('/', authenticateToken, (req, res) => {
     // Reserve cards + create order atomically to prevent race conditions
     let orderId;
     const createOrder = db.transaction(() => {
-      // Release expired reservations (> 30 minutes) to free stuck cards
+      // Release expired reservations (> 30 minutes, aligné sur l'expiration des commandes) to free stuck cards
       db.prepare(`
         UPDATE order_items SET card_id = NULL
         WHERE order_id IN (
           SELECT id FROM orders WHERE payment_status = 'pending'
-            AND datetime(created_at) < datetime('now', '-15 minutes')
+            AND datetime(created_at) < datetime('now', '-30 minutes')
         )
       `).run();
       db.prepare(`
         UPDATE cards SET status = 'available', order_id = NULL
         WHERE status = 'reserved' AND order_id IN (
           SELECT id FROM orders WHERE payment_status = 'pending'
-            AND datetime(created_at) < datetime('now', '-15 minutes')
+            AND datetime(created_at) < datetime('now', '-30 minutes')
         )
       `).run();
 

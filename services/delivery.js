@@ -162,9 +162,11 @@ async function processDelivery(orderId, forceRedeliver = false) {
             const commissionAmount = Math.round(saleAmount * commissionRate / 100);
             const netAmount = saleAmount - commissionAmount;
 
+            // 'pending' : bloqué pendant SELLER_EARNINGS_HOLD_HOURS (défaut 72h) avant d'être retirable,
+            // le temps qu'un client signale un code invalide. Libéré par releaseSellerEarnings() (server.js).
             db.prepare(`
               INSERT INTO seller_earnings (seller_id, order_id, order_item_id, sale_amount, commission_amount, net_amount, status)
-              VALUES (?, ?, ?, ?, ?, ?, 'available')
+              VALUES (?, ?, ?, ?, ?, ?, 'pending')
             `).run(availableCard.seller_id, orderId, item.id, saleAmount, commissionAmount, netAmount);
 
             console.log(`[DELIVERY] Gains vendeur #${availableCard.seller_id}: +${netAmount} FCFA (commission: ${commissionAmount})`);

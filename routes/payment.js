@@ -20,6 +20,36 @@ function djamoHeaders() {
   };
 }
 
+// ===== Transitions de statut communes =====
+// Paiement confirmé : uniquement depuis pending / failed / cancelled (paiement tardif après expiration accepté
+// car l'argent a été encaissé — une nouvelle carte est assignée à la livraison). Jamais depuis refunded.
+function markOrderPaid(db, orderId) {
+  const r = db.prepare("UPDATE orders SET payment_status = 'paid', paid_at = CURRENT_TIMESTAMP WHERE id = ? AND payment_status IN ('pending', 'failed', 'cancelled')").run(orderId);
+  return r.changes > 0;
+}
+// Échec / annulation : uniquement si la commande est encore en attente
+function markOrderFailed(db, orderId) {
+  const tx = db.transaction(() => {
+    const r = db.prepare("UPDATE orders SET payment_status = 'failed' WHERE id = ? AND payment_status = 'pending'").run(orderId);
+    if (r.changes === 0) return false;
+    db.prepare("UPDATE cards SET status = 'available', order_id = NULL WHERE order_id = ? AND status = 'reserved'").run(orderId);
+    db.prepare("UPDATE order_items SET card_id = NULL WHERE order_id = ? AND card_id IN (SELECT id FROM cards WHERE order_id IS NULL)").run(orderId);
+    return true;
+  });
+  return tx();
+}
+// Remboursement confirmé par le prestataire : uniquement depuis paid — annule aussi les gains vendeur
+function markOrderRefunded(db, orderId) {
+  const tx = db.transaction(() => {
+    const r = db.prepare("UPDATE orders SET payment_status = 'refunded', delivery_status = 'refunded' WHERE id = ? AND payment_status = 'paid'").run(orderId);
+    if (r.changes === 0) return false;
+    db.prepare("UPDATE cards SET status = 'disputed' WHERE order_id = ? AND status = 'sold'").run(orderId);
+    db.prepare("UPDATE seller_earnings SET status = 'reversed' WHERE order_id = ? AND status IN ('pending', 'available')").run(orderId);
+    return true;
+  });
+  return tx();
+}
+
 // ===== DJAMO =====
 
 // POST /api/payment/djamo/initiate
@@ -114,9 +144,7 @@ router.get('/djamo/status/:chargeId', authenticateToken, async (req, res) => {
 
     // Mettre à jour la DB si payé et déclencher la livraison
     if (normalizedStatus === 'paid') {
-      const markPaid = db.prepare("UPDATE orders SET payment_status = 'paid', paid_at = CURRENT_TIMESTAMP WHERE id = ? AND payment_status != 'paid'");
-      const paidResult = markPaid.run(order.id);
-      if (paidResult.changes > 0) {
+      if (markOrderPaid(db, order.id)) {
         // Première confirmation de paiement — lancer la livraison
         processDelivery(order.id).catch(err => console.error('[STATUS POLL] Erreur livraison:', err.message));
       }
@@ -246,18 +274,15 @@ router.post('/djamo/webhook', async (req, res) => {
     if (status === 'paid') {
       if (order.payment_status === 'paid') return res.json({ received: true, skipped: 'already_paid' });
 
-      const markPaidDjamo = db.prepare("UPDATE orders SET payment_status = 'paid', paid_at = CURRENT_TIMESTAMP WHERE id = ? AND payment_status != 'paid'");
-      const paidResult = markPaidDjamo.run(order.id);
-      if (paidResult.changes === 0) return res.json({ received: true, skipped: 'already_paid' });
+      if (order.payment_status !== 'pending') console.warn('[DJAMO WEBHOOK] Paiement tardif sur commande', order.id, '(statut', order.payment_status + ')');
+      if (!markOrderPaid(db, order.id)) return res.json({ received: true, skipped: 'not_payable' });
       await processDelivery(order.id);
 
     } else if (status === 'dropped' || status === 'cancelled') {
-      if (order.payment_status !== 'pending') return res.json({ received: true, skipped: 'not_pending' });
-      db.prepare("UPDATE orders SET payment_status = 'failed' WHERE id = ?").run(order.id);
-      db.prepare("UPDATE cards SET status = 'available', order_id = NULL WHERE order_id = ? AND status = 'reserved'").run(order.id);
+      if (!markOrderFailed(db, order.id)) return res.json({ received: true, skipped: 'not_pending' });
 
     } else if (status === 'refunded') {
-      db.prepare("UPDATE orders SET payment_status = 'refunded', delivery_status = 'refunded' WHERE id = ?").run(order.id);
+      if (!markOrderRefunded(db, order.id)) return res.json({ received: true, skipped: 'not_paid' });
     }
 
     res.json({ received: true });
@@ -496,18 +521,16 @@ router.post('/mobilemoney/webhook', async (req, res) => {
 
     if (event === 'payment.success') {
       if (targetOrder.payment_status === 'paid') return res.json({ received: true, skipped: 'already_paid' });
-      const markPaid = db.prepare("UPDATE orders SET payment_status = 'paid', paid_at = CURRENT_TIMESTAMP WHERE id = ? AND payment_status != 'paid'");
-      const result = markPaid.run(targetOrder.id);
-      if (result.changes === 0) return res.json({ received: true, skipped: 'already_paid' });
+      if (targetOrder.payment_status !== 'pending') console.warn('[MOBILE MONEY WEBHOOK] Paiement tardif sur commande', targetOrder.id, '(statut', targetOrder.payment_status + ')');
+      if (!markOrderPaid(db, targetOrder.id)) return res.json({ received: true, skipped: 'not_payable' });
       await processDelivery(targetOrder.id);
       console.log('[MOBILE MONEY WEBHOOK] Commande', targetOrder.id, 'payée et livrée.');
 
     } else if (['payment.failed', 'payment.cancelled', 'payment.expired'].includes(event)) {
-      db.prepare("UPDATE orders SET payment_status = 'failed' WHERE id = ?").run(targetOrder.id);
-      db.prepare("UPDATE cards SET status = 'available', order_id = NULL WHERE order_id = ? AND status = 'reserved'").run(targetOrder.id);
+      if (!markOrderFailed(db, targetOrder.id)) return res.json({ received: true, skipped: 'not_pending' });
 
     } else if (event === 'payment.refunded') {
-      db.prepare("UPDATE orders SET payment_status = 'refunded', delivery_status = 'refunded' WHERE id = ?").run(targetOrder.id);
+      if (!markOrderRefunded(db, targetOrder.id)) return res.json({ received: true, skipped: 'not_paid' });
     }
 
     res.json({ received: true });

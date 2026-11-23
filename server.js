@@ -324,6 +324,25 @@ function cancelExpiredOrders() {
   }
 }
 
+// Libère les gains vendeur après la période de blocage (anti-fraude codes invalides)
+function releaseSellerEarnings() {
+  try {
+    const { getDb } = require('./database/db');
+    const db = getDb();
+    const holdHours = Math.max(0, parseInt(process.env.SELLER_EARNINGS_HOLD_HOURS || '72', 10) || 0);
+    const result = db.prepare(`
+      UPDATE seller_earnings SET status = 'available'
+      WHERE status = 'pending'
+        AND created_at <= datetime('now', ?)
+        AND order_id IN (SELECT id FROM orders WHERE payment_status = 'paid' AND delivery_status IN ('delivered', 'partial'))
+        AND order_id NOT IN (SELECT order_id FROM refund_requests WHERE status = 'pending')
+    `).run(`-${holdHours} hours`);
+    if (result.changes > 0) console.log(`[EARNINGS] ${result.changes} gain(s) vendeur libéré(s) après ${holdHours}h.`);
+  } catch (err) {
+    console.error('[EARNINGS] Erreur libération gains:', err.message);
+  }
+}
+
 // ===== CRON JOBS =====
 const { sendAbandonedCartEmail, sendReviewRequestEmail, sendBackupEmail, sendBackupFailedEmail } = require('./services/email');
 const fs = require('fs');
@@ -381,15 +400,16 @@ async function sendReviewEmails() {
 
 async function backupDatabase() {
   try {
-    const dbPath = process.env.DB_PATH || path.join(__dirname, 'database', 'babicard.db');
-    if (!fs.existsSync(dbPath)) return;
-    const backupDir = process.env.DB_PATH
-      ? path.join(path.dirname(process.env.DB_PATH), 'backups')
-      : path.join(__dirname, 'database', 'backups');
+    const { getDb } = require('./database/db');
+    const db = getDb();
+    // Chemin réel de la base ouverte (évite tout décalage avec un nom par défaut codé en dur)
+    const dbPath = db.name;
+    const backupDir = path.join(path.dirname(dbPath), 'backups');
     if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
     const date = new Date().toISOString().slice(0, 10);
     const backupPath = path.join(backupDir, `babicard-${date}.db`);
-    fs.copyFileSync(dbPath, backupPath);
+    // Sauvegarde à chaud SQLite : cohérente même en mode WAL (copyFileSync pouvait omettre les écritures récentes)
+    await db.backup(backupPath);
     // Garder seulement les 7 derniers backups
     const files = fs.readdirSync(backupDir).filter(f => f.endsWith('.db')).sort();
     if (files.length > 7) {
@@ -424,6 +444,10 @@ initializeDatabase()
     // Run every 10 minutes
     setInterval(cancelExpiredOrders, 10 * 60 * 1000);
     cancelExpiredOrders();
+
+    // Libération des gains vendeur — toutes les 30 minutes
+    setInterval(releaseSellerEarnings, 30 * 60 * 1000);
+    releaseSellerEarnings();
 
     // Abandoned cart reminder — every 30 minutes
     setInterval(sendAbandonedCartReminders, 30 * 60 * 1000);

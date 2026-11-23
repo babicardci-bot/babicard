@@ -1443,26 +1443,19 @@ router.post('/migrate-encrypt-cards', (req, res) => {
 });
 
 // GET /api/admin/backup — télécharger une copie de la base de données
-router.get('/backup', (req, res) => {
+router.get('/backup', async (req, res) => {
   try {
     const db = getDb();
-    const dbPath = process.env.DB_PATH || path.join(__dirname, '../database/babicard.db');
-
-    if (!fs.existsSync(dbPath)) {
-      return res.status(404).json({ error: 'Fichier base de données introuvable.' });
-    }
-
-    // WAL checkpoint pour s'assurer que toutes les données sont dans le fichier principal
-    db.pragma('wal_checkpoint(FULL)');
-
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
     const filename = `babicard-backup-${timestamp}.db`;
+    // Sauvegarde à chaud cohérente (WAL inclus) dans un fichier temporaire, supprimé après envoi
+    const tmpPath = path.join(require('os').tmpdir(), `${filename}-${process.pid}`);
+    await db.backup(tmpPath);
 
     logAdminAction(req, 'DATABASE_BACKUP', filename);
 
     res.setHeader('Content-Type', 'application/octet-stream');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.sendFile(dbPath);
+    res.download(tmpPath, filename, () => { fs.unlink(tmpPath, () => {}); });
   } catch (err) {
     console.error('Erreur backup DB:', err);
     res.status(500).json({ error: 'Erreur lors du backup.' });

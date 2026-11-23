@@ -609,6 +609,45 @@ function migrateDatabase(db) {
     if (total > 0) console.log(`[DB] Nettoyage tokens expirés: ${total} supprimé(s).`);
   } catch(e) { console.error('Migration nettoyage tokens:', e.message); }
 
+  // seller_earnings : ajouter 'reversed' au CHECK (les anciennes bases ne l'acceptent pas →
+  // les remboursements qui annulent les gains vendeur échouaient avec CHECK constraint failed)
+  try {
+    const tbl = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'seller_earnings'").get();
+    if (tbl && !tbl.sql.includes("'reversed'")) {
+      db.pragma('foreign_keys = OFF');
+      try {
+        db.transaction(() => {
+          db.prepare(`
+            CREATE TABLE seller_earnings_new (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              seller_id INTEGER NOT NULL,
+              order_id INTEGER NOT NULL,
+              order_item_id INTEGER NOT NULL,
+              sale_amount INTEGER NOT NULL,
+              commission_amount INTEGER NOT NULL,
+              net_amount INTEGER NOT NULL,
+              status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','available','withdrawn','reversed')),
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (seller_id) REFERENCES users(id),
+              FOREIGN KEY (order_id) REFERENCES orders(id)
+            )
+          `).run();
+          db.prepare(`
+            INSERT INTO seller_earnings_new (id, seller_id, order_id, order_item_id, sale_amount, commission_amount, net_amount, status, created_at)
+            SELECT id, seller_id, order_id, order_item_id, sale_amount, commission_amount, net_amount, status, created_at FROM seller_earnings
+          `).run();
+          db.prepare('DROP TABLE seller_earnings').run();
+          db.prepare('ALTER TABLE seller_earnings_new RENAME TO seller_earnings').run();
+          db.prepare('CREATE INDEX IF NOT EXISTS idx_seller_earnings_seller ON seller_earnings(seller_id)').run();
+          db.prepare('CREATE INDEX IF NOT EXISTS idx_seller_earnings_status ON seller_earnings(status)').run();
+        })();
+        console.log("Migration: seller_earnings — statut 'reversed' ajouté.");
+      } finally {
+        db.pragma('foreign_keys = ON');
+      }
+    }
+  } catch(e) { console.error('Migration seller_earnings reversed:', e.message); }
+
   console.log('Migration vérifiée.');
 }
 
