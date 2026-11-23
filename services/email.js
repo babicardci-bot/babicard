@@ -299,7 +299,7 @@ async function sendLowStockEmail(seller, productName, remainingStock) {
       <div style="font-size:48px;text-align:center;margin-bottom:12px;">⚠️</div>
       <h2 style="margin:0 0 12px;color:#92400e;text-align:center;">Stock presque épuisé !</h2>
       <p style="color:#78350f;margin:0 0 16px;line-height:1.6;">
-        Bonjour <strong>${seller.name}</strong>,<br><br>
+        Bonjour <strong>${escHtml(seller.name)}</strong>,<br><br>
         Il ne reste que <strong style="font-size:20px;color:#dc2626;">${remainingStock} code${remainingStock > 1 ? 's' : ''}</strong> disponible${remainingStock > 1 ? 's' : ''} pour votre produit :
       </p>
       <div style="background:white;border-radius:8px;padding:16px;text-align:center;border:1px solid #fde68a;">
@@ -365,12 +365,12 @@ async function sendWithdrawalStatusEmail(seller, shopName, amount, status, admin
       <h2 style="margin:0;color:${statusColor};font-size:22px;">${statusLabel}</h2>
     </div>
     <div style="background:white;border-radius:12px;padding:28px;box-shadow:0 2px 10px rgba(0,0,0,0.08);">
-      <p style="color:#555;line-height:1.6;margin:0 0 20px;">Bonjour <strong>${seller.name}</strong>,<br><br>
+      <p style="color:#555;line-height:1.6;margin:0 0 20px;">Bonjour <strong>${escHtml(seller.name)}</strong>,<br><br>
       ${isPaid
-        ? `Votre demande de retrait de <strong style="color:#22c55e">${new Intl.NumberFormat('fr-FR').format(amount)} FCFA</strong> pour la boutique <strong>${shopName}</strong> a été <strong>payée</strong>. Les fonds ont été envoyés sur votre compte.`
+        ? `Votre demande de retrait de <strong style="color:#22c55e">${new Intl.NumberFormat('fr-FR').format(amount)} FCFA</strong> pour la boutique <strong>${escHtml(shopName)}</strong> a été <strong>payée</strong>. Les fonds ont été envoyés sur votre compte.`
         : isApproved
-        ? `Votre demande de retrait de <strong style="color:#6C63FF">${new Intl.NumberFormat('fr-FR').format(amount)} FCFA</strong> pour la boutique <strong>${shopName}</strong> a été <strong>approuvée</strong>. Le paiement sera effectué très prochainement.`
-        : `Votre demande de retrait de <strong>${new Intl.NumberFormat('fr-FR').format(amount)} FCFA</strong> pour la boutique <strong>${shopName}</strong> a été <strong>rejetée</strong>.`
+        ? `Votre demande de retrait de <strong style="color:#6C63FF">${new Intl.NumberFormat('fr-FR').format(amount)} FCFA</strong> pour la boutique <strong>${escHtml(shopName)}</strong> a été <strong>approuvée</strong>. Le paiement sera effectué très prochainement.`
+        : `Votre demande de retrait de <strong>${new Intl.NumberFormat('fr-FR').format(amount)} FCFA</strong> pour la boutique <strong>${escHtml(shopName)}</strong> a été <strong>rejetée</strong>.`
       }</p>
       ${adminNote ? `
       <div style="background:#f8f9fa;border-left:4px solid ${statusColor};border-radius:4px;padding:14px;margin-top:16px;">
@@ -428,15 +428,15 @@ async function sendWithdrawalRequestEmail(seller, shopName, amount, paymentMetho
       <table style="width:100%;border-collapse:collapse;">
         <tr style="border-bottom:1px solid #f0f0f7;">
           <td style="padding:12px 0;color:#666;font-size:14px;">Vendeur</td>
-          <td style="padding:12px 0;color:#1a1a2e;font-weight:600;text-align:right;">${seller.name}</td>
+          <td style="padding:12px 0;color:#1a1a2e;font-weight:600;text-align:right;">${escHtml(seller.name)}</td>
         </tr>
         <tr style="border-bottom:1px solid #f0f0f7;">
           <td style="padding:12px 0;color:#666;font-size:14px;">Boutique</td>
-          <td style="padding:12px 0;color:#1a1a2e;font-weight:600;text-align:right;">${shopName}</td>
+          <td style="padding:12px 0;color:#1a1a2e;font-weight:600;text-align:right;">${escHtml(shopName)}</td>
         </tr>
         <tr style="border-bottom:1px solid #f0f0f7;">
           <td style="padding:12px 0;color:#666;font-size:14px;">Email</td>
-          <td style="padding:12px 0;color:#6C63FF;text-align:right;">${seller.email}</td>
+          <td style="padding:12px 0;color:#6C63FF;text-align:right;">${escHtml(seller.email)}</td>
         </tr>
         <tr style="border-bottom:1px solid #f0f0f7;">
           <td style="padding:12px 0;color:#666;font-size:14px;">Montant demandé</td>
@@ -1083,7 +1083,7 @@ async function sendAdminSaleNotification(user, order, items) {
   const adminEmail = process.env.ADMIN_EMAIL || process.env.EMAIL_USER;
   if (!adminEmail) return;
   const total = (order.total_amount || 0).toLocaleString('fr-FR');
-  const itemsList = items.map(i => `<li style="margin-bottom:4px;">${i.quantity}x <strong>${i.product_name}</strong> — ${(i.unit_price * i.quantity).toLocaleString('fr-FR')} FCFA</li>`).join('');
+  const itemsList = items.map(i => `<li style="margin-bottom:4px;">${i.quantity}x <strong>${escHtml(i.product_name)}</strong> — ${(i.unit_price * i.quantity).toLocaleString('fr-FR')} FCFA</li>`).join('');
   await sendEmail({
     to: adminEmail,
     subject: `💰 Nouvelle vente — ${total} FCFA — Commande #${order.id}`,
@@ -1096,7 +1096,7 @@ async function sendAdminSaleNotification(user, order, items) {
         </div>
         <div style="margin-bottom:16px;">
           <div style="font-size:0.78rem;color:#a0a0c0;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;">Client</div>
-          <div style="color:#e0e0f0;">${user.name} &lt;${user.email}&gt;</div>
+          <div style="color:#e0e0f0;">${escHtml(user.name)} &lt;${escHtml(user.email)}&gt;</div>
         </div>
         <div style="margin-bottom:8px;">
           <div style="font-size:0.78rem;color:#a0a0c0;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;">Articles</div>

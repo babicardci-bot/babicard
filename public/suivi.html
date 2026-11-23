@@ -62,6 +62,10 @@
   </div>
 
   <script>
+    function esc(str) {
+      if (str == null) return '';
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+    }
     function formatPrice(n) {
       return new Intl.NumberFormat('fr-FR').format(n) + ' FCFA';
     }
@@ -120,7 +124,7 @@
       const itemsHtml = items.map(i => `
         <div class="item">
           <span class="item-icon">${getCategoryIcon(i.category)}</span>
-          <span class="item-name">${i.product_name}</span>
+          <span class="item-name">${esc(i.product_name)}</span>
           <span class="item-price">${formatPrice(i.unit_price)}</span>
         </div>`).join('');
 

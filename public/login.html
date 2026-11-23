@@ -197,7 +197,7 @@
 
         if (!response.ok) {
           if (data.email_not_verified) {
-            alertBox.innerHTML = `${data.error} <br><a href="#" onclick="resendVerification('${email}')" style="color:inherit;font-weight:bold;text-decoration:underline;">Renvoyer l'email de vérification</a>`;
+            alertBox.innerHTML = `${String(data.error).replace(/</g,'&lt;')} <br><a href="#" data-email="${String(email).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')}" onclick="resendVerification(this.dataset.email); return false;" style="color:inherit;font-weight:bold;text-decoration:underline;">Renvoyer l'email de vérification</a>`;
           } else {
             alertBox.textContent = data.error || 'Erreur de connexion';
           }

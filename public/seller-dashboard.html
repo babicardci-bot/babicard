@@ -463,6 +463,10 @@
 
   <script src="/js/auth.js"></script>
   <script>
+    function esc(str) {
+      if (str == null) return '';
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+    }
     // =============================================
     // SELLER DASHBOARD JAVASCRIPT
     // =============================================
@@ -542,7 +546,7 @@
         if (sellerProfile.status === 'pending') {
           document.getElementById('pendingIcon').textContent = '⏳';
           document.getElementById('pendingTitle').textContent = 'Candidature en attente';
-          document.getElementById('pendingDesc').textContent = `Votre boutique "${sellerProfile.shop_name}" est en cours de validation. L'administrateur vous contactera sous 24h. Cliquez Actualiser une fois approuvé.`;
+          document.getElementById('pendingDesc').textContent = `Votre boutique "${esc(sellerProfile.shop_name)}" est en cours de validation. L'administrateur vous contactera sous 24h. Cliquez Actualiser une fois approuvé.`;
           document.getElementById('pendingApplyBtn').textContent = '🔄 Actualiser';
           document.getElementById('pendingApplyBtn').href = '#';
           document.getElementById('pendingApplyBtn').onclick = (e) => { e.preventDefault(); location.reload(); };
@@ -552,7 +556,7 @@
         if (sellerProfile.status === 'rejected') {
           document.getElementById('pendingIcon').textContent = '❌';
           document.getElementById('pendingTitle').textContent = 'Candidature rejetée';
-          document.getElementById('pendingDesc').textContent = `Votre candidature pour "${sellerProfile.shop_name}" a été rejetée.${sellerProfile.admin_note ? ' Raison: ' + sellerProfile.admin_note : ''} Contactez l'administrateur pour plus d'informations.`;
+          document.getElementById('pendingDesc').textContent = `Votre candidature pour "${esc(sellerProfile.shop_name)}" a été rejetée.${sellerProfile.admin_note ? ' Raison: ' + esc(sellerProfile.admin_note) : ''} Contactez l'administrateur pour plus d'informations.`;
           document.getElementById('pendingApplyBtn').textContent = '← Retour à la boutique';
           document.getElementById('pendingApplyBtn').href = '/';
           return;
@@ -561,7 +565,7 @@
         if (sellerProfile.status === 'suspended') {
           document.getElementById('pendingIcon').textContent = '🚫';
           document.getElementById('pendingTitle').textContent = 'Compte suspendu';
-          document.getElementById('pendingDesc').textContent = `Votre compte vendeur "${sellerProfile.shop_name}" a été suspendu. Contactez l'administrateur.`;
+          document.getElementById('pendingDesc').textContent = `Votre compte vendeur "${esc(sellerProfile.shop_name)}" a été suspendu. Contactez l'administrateur.`;
           document.getElementById('pendingApplyBtn').textContent = '← Retour à la boutique';
           document.getElementById('pendingApplyBtn').href = '/';
           return;
@@ -644,8 +648,8 @@
           <div class="seller-shop-header">
             <div class="shop-logo">🏪</div>
             <div class="shop-info">
-              <h2>${sellerProfile.shop_name}</h2>
-              <p>${sellerProfile.description || 'Aucune description'}</p>
+              <h2>${esc(sellerProfile.shop_name)}</h2>
+              <p>${esc(sellerProfile.description || 'Aucune description')}</p>
             </div>
             <div class="shop-status">
               <span class="seller-badge badge-approved">✓ Approuvé</span>
@@ -669,7 +673,7 @@
                 <tbody>
                   ${recent.map(e => `
                     <tr>
-                      <td>${e.product_name}</td>
+                      <td>${esc(e.product_name)}</td>
                       <td>${fmtPrice(e.sale_amount)}</td>
                       <td style="color:#ef4444;">-${fmtPrice(e.commission_amount)}</td>
                       <td style="color:#22c55e;font-weight:600;">${fmtPrice(e.net_amount)}</td>
@@ -726,8 +730,8 @@
                   }
                   return `
                   <tr>
-                    <td><strong>${p.name}</strong></td>
-                    <td>${p.platform}</td>
+                    <td><strong>${esc(p.name)}</strong></td>
+                    <td>${esc(p.platform)}</td>
                     <td>${fmtPrice(p.price)}</td>
                     <td>${p.promo_price ? `<span style="color:#f97316;font-weight:600;">${fmtPrice(p.promo_price)}</span>` : '<span style="color:#606080;">—</span>'}${promoBadge}</td>
                     <td><span style="color:${p.my_available_cards > 0 ? '#22c55e' : '#a0a0c0'};font-weight:600;">${p.my_available_cards}</span></td>
@@ -904,9 +908,9 @@
       document.getElementById('sCsvPreviewCount').textContent = `${sellerCsvParsedCards.length} code(s) prêts à importer${errors ? ` — ⚠️ ${errors} ignorée(s)` : ''}`;
       const rows = sellerCsvParsedCards.slice(0, 8).map(c =>
         `<div style="display:grid;grid-template-columns:2fr 1fr 2fr;gap:6px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.05)">
-          <span>${c.card_name || '—'}</span>
+          <span>${esc(c.card_name || '—')}</span>
           <span style="color:#22c55e">${c.card_price ? c.card_price + ' FCFA' : '—'}</span>
-          <span style="font-family:monospace;color:#a78bfa">${c.code}</span>
+          <span style="font-family:monospace;color:#a78bfa">${esc(c.code)}</span>
         </div>`).join('');
       document.getElementById('sCsvPreviewTable').innerHTML =
         `<div style="display:grid;grid-template-columns:2fr 1fr 2fr;gap:6px;padding:3px 0;margin-bottom:4px;font-weight:700;color:#888"><span>Nom</span><span>Prix</span><span>Code</span></div>` + rows +
@@ -946,7 +950,7 @@
         sellerProducts = data.products || [];
         const sel = document.getElementById('bulkProductSelect');
         sel.innerHTML = '<option value="">-- Choisir un produit --</option>' +
-          sellerProducts.map(p => `<option value="${p.id}">${p.name} (${p.denomination}) — ${p.available_cards} dispo</option>`).join('');
+          sellerProducts.map(p => `<option value="${p.id}">${esc(p.name)} (${p.denomination}) — ${p.available_cards} dispo</option>`).join('');
       } catch(e) {}
     }
 
@@ -1043,8 +1047,8 @@
                 ${sales.map(s => `
                   <tr>
                     <td>#${s.order_id}</td>
-                    <td><strong>${s.product_name}</strong><br><small style="color:#a0a0c0;">${s.denomination}</small></td>
-                    <td>${s.buyer_name}</td>
+                    <td><strong>${esc(s.product_name)}</strong><br><small style="color:#a0a0c0;">${esc(s.denomination)}</small></td>
+                    <td>${esc(s.buyer_name)}</td>
                     <td>${fmtPrice(s.unit_price)}</td>
                     <td style="color:#22c55e;font-weight:600;">${fmtPrice(s.net_amount)}</td>
                     <td>${s.payment_method === 'wave' ? '🌊 Wave' : '🟠 Orange'}</td>
@@ -1104,7 +1108,7 @@
               <tbody>
                 ${recent.map(e => `
                   <tr>
-                    <td>${e.product_name}</td>
+                    <td>${esc(e.product_name)}</td>
                     <td>${fmtPrice(e.sale_amount)}</td>
                     <td style="color:#ef4444;">-${fmtPrice(e.commission_amount)}</td>
                     <td style="color:#22c55e;font-weight:600;">+${fmtPrice(e.net_amount)}</td>
@@ -1147,12 +1151,12 @@
                     <tr>
                       <td style="font-weight:600;">${fmtPrice(w.amount)}</td>
                       <td>${w.payment_method === 'wave' ? '🌊 Wave' : '🟠 Orange Money'}</td>
-                      <td>${w.payment_number}</td>
+                      <td>${esc(w.payment_number)}</td>
                       <td><span class="seller-badge badge-${w.status}">${
                         w.status === 'pending' ? '⏳ En attente' :
                         w.status === 'approved' ? '✅ Approuvé' :
                         w.status === 'paid' ? '💰 Payé' : '❌ Rejeté'
-                      }</span>${w.admin_note ? `<br><small style="color:#a0a0c0;">${w.admin_note}</small>` : ''}</td>
+                      }</span>${w.admin_note ? `<br><small style="color:#a0a0c0;">${esc(w.admin_note)}</small>` : ''}</td>
                       <td>${fmtDateShort(w.created_at)}</td>
                     </tr>
                   `).join('')}

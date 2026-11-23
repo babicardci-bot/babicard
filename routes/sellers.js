@@ -10,6 +10,9 @@ const { encrypt } = require('../services/encryption');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 
+// Codes / PIN / séries de cartes : caractères imprimables sans < > " ' ` (1 à 200)
+const SAFE_CODE = /^[^<>"'`\x00-\x1f]{1,200}$/;
+
 // Cache PRAGMA table_info — évite de l'exécuter à chaque requête
 let _cardColsCache = null;
 function getCardCols() {
@@ -81,8 +84,11 @@ router.post('/apply', authenticateToken, (req, res) => {
     const { shop_name, description, wave_number, orange_number, contact_email, id_doc_url, address_doc_url } = req.body;
     const db = getDb();
 
-    if (!shop_name || shop_name.trim().length < 3) {
+    if (!shop_name || typeof shop_name !== 'string' || shop_name.trim().length < 3) {
       return res.status(400).json({ error: 'Le nom de la boutique doit contenir au moins 3 caractères.' });
+    }
+    if (/[<>"'`{}]/.test(shop_name) || shop_name.trim().length > 60 || (description && /[<>]/.test(String(description)))) {
+      return res.status(400).json({ error: 'Nom de boutique ou description invalide (caractères spéciaux interdits, 60 caractères max pour le nom).' });
     }
     if (!contact_email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact_email.trim())) {
       return res.status(400).json({ error: 'Une adresse email de contact valide est obligatoire.' });
@@ -325,7 +331,9 @@ router.post('/cards/bulk', authenticateToken, requireSeller, (req, res) => {
     const insertMany = db.transaction((cards) => {
       let inserted = 0, skipped = 0;
       for (const card of cards) {
-        if (!card.code || !card.code.trim()) { skipped++; continue; }
+        if (!card.code || typeof card.code !== 'string' || !card.code.trim()) { skipped++; continue; }
+        // Anti-XSS : les codes sont affichés aux acheteurs — refuser les caractères HTML/JS
+        if (!SAFE_CODE.test(card.code.trim()) || (card.pin && !SAFE_CODE.test(String(card.pin))) || (card.serial && !SAFE_CODE.test(String(card.serial)))) { skipped++; continue; }
         try {
           const codeHash = hasCodeHash ? crypto.createHash('sha256').update(card.code.toUpperCase().trim()).digest('hex') : undefined;
           if (hasSellerCol) {

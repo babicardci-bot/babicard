@@ -539,8 +539,8 @@
             <div class="order-codes-preview">
               ${order.items.filter(i => i.card_code).slice(0, 2).map(i => `
                 <div class="code-preview-item">
-                  <span>${i.product_name}</span>
-                  <code class="code-value">${i.card_code}</code>
+                  <span>${esc(i.product_name)}</span>
+                  <code class="code-value">${esc(i.card_code)}</code>
                 </div>
               `).join('')}
             </div>
@@ -593,16 +593,16 @@
             ${items.map(item => `
               <div class="item-detail-card ${isPaid && item.card_code ? 'item-delivered' : ''}">
                 <div class="item-detail-header">
-                  <strong>${item.product_name}</strong>
+                  <strong>${esc(item.product_name)}</strong>
                   <span>${formatPrice(item.unit_price)}</span>
                 </div>
-                <div style="font-size:13px;color:#888;margin:4px 0">${item.platform || ''} ${item.denomination ? '• ' + item.denomination : ''}</div>
+                <div style="font-size:13px;color:#888;margin:4px 0">${esc(item.platform || '')} ${item.denomination ? '• ' + item.denomination : ''}</div>
                 ${isPaid && item.card_code ? `
                   <div class="code-box">
                     <div class="code-label">🎁 Code de la carte</div>
-                    <div class="code-display" onclick="copyCode('${item.card_code}', this)">${item.card_code} <span class="copy-hint">Cliquer pour copier</span></div>
-                    ${item.card_pin ? `<div class="pin-display">PIN: <strong>${item.card_pin}</strong></div>` : ''}
-                    ${item.card_serial ? `<div style="font-size:12px;color:#888;margin-top:4px">Série: ${item.card_serial}</div>` : ''}
+                    <div class="code-display" data-code="${esc(item.card_code)}" onclick="copyCode(this.dataset.code, this)">${esc(item.card_code)} <span class="copy-hint">Cliquer pour copier</span></div>
+                    ${item.card_pin ? `<div class="pin-display">PIN: <strong>${esc(item.card_pin)}</strong></div>` : ''}
+                    ${item.card_serial ? `<div style="font-size:12px;color:#888;margin-top:4px">Série: ${esc(item.card_serial)}</div>` : ''}
                   </div>
                 ` : (isPaid ? `<div class="no-code-msg">⚠️ Code en cours d'assignation...</div>` : '')}
               </div>

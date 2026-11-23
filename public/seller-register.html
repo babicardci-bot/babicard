@@ -218,6 +218,10 @@
 
   <script src="/js/auth.js"></script>
   <script>
+    function esc(str) {
+      if (str == null) return '';
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+    }
     document.addEventListener('DOMContentLoaded', () => {
       initTheme();
       const user = getUser();
@@ -261,10 +265,10 @@
       const icons = { pending: '⏳', approved: '✅', rejected: '❌', suspended: '🚫' };
       const titles = { pending: 'Demande en attente', approved: 'Compte approuvé !', rejected: 'Demande rejetée', suspended: 'Compte suspendu' };
       const descs = {
-        pending: `Votre boutique "<strong>${profile.shop_name}</strong>" est en attente de validation. L'administrateur vous contactera sous 24h.`,
-        approved: `Félicitations ! Votre boutique "<strong>${profile.shop_name}</strong>" est approuvée. Redirection vers votre dashboard...`,
-        rejected: `Votre demande pour "<strong>${profile.shop_name}</strong>" a été rejetée. ${profile.admin_note ? 'Raison : ' + profile.admin_note : ''}`,
-        suspended: `Votre compte vendeur "<strong>${profile.shop_name}</strong>" a été suspendu. Contactez l'administrateur.`
+        pending: `Votre boutique "<strong>${esc(profile.shop_name)}</strong>" est en attente de validation. L'administrateur vous contactera sous 24h.`,
+        approved: `Félicitations ! Votre boutique "<strong>${esc(profile.shop_name)}</strong>" est approuvée. Redirection vers votre dashboard...`,
+        rejected: `Votre demande pour "<strong>${esc(profile.shop_name)}</strong>" a été rejetée. ${profile.admin_note ? 'Raison : ' + esc(profile.admin_note) : ''}`,
+        suspended: `Votre compte vendeur "<strong>${esc(profile.shop_name)}</strong>" a été suspendu. Contactez l'administrateur.`
       };
       document.getElementById('statusIcon').textContent = icons[profile.status];
       document.getElementById('statusTitle').textContent = titles[profile.status];

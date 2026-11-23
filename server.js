@@ -39,6 +39,33 @@ const app = express();
 app.set('trust proxy', 1);
 
 // Sécurité — headers HTTP
+// CSP — 2e ligne de défense contre le XSS : même si un script injecté s'exécute, il ne peut pas
+// envoyer de données (token…) vers un domaine externe non autorisé (connect-src), ni charger
+// de script tiers (script-src). 'unsafe-inline' reste nécessaire (scripts et onclick inline).
+const GOOGLE_ADS = ['https://www.googletagmanager.com', 'https://*.googletagmanager.com', 'https://www.google.com',
+  'https://www.googleadservices.com', 'https://googleads.g.doubleclick.net', 'https://*.doubleclick.net',
+  'https://www.google-analytics.com', 'https://*.google-analytics.com', 'https://*.analytics.google.com',
+  'https://pagead2.googlesyndication.com'];
+app.use(helmet.contentSecurityPolicy({
+  useDefaults: false,
+  directives: {
+    defaultSrc: ["'self'"],
+    scriptSrc: ["'self'", "'unsafe-inline'", 'https://www.gstatic.com', 'https://cdn.jsdelivr.net', ...GOOGLE_ADS],
+    scriptSrcAttr: ["'unsafe-inline'"],
+    styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+    fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
+    imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
+    connectSrc: ["'self'", 'https://*.googleapis.com', 'https://www.gstatic.com', 'https://cdn.jsdelivr.net', ...GOOGLE_ADS],
+    frameSrc: ['https://*.doubleclick.net', 'https://www.googletagmanager.com', 'https://www.google.com'],
+    workerSrc: ["'self'"],
+    manifestSrc: ["'self'"],
+    objectSrc: ["'none'"],
+    baseUri: ["'self'"],
+    formAction: ["'self'"],
+    frameAncestors: ["'none'"]
+  }
+}));
+
 app.use(helmet({
   contentSecurityPolicy: false,
   crossOriginEmbedderPolicy: false,
@@ -235,18 +262,12 @@ app.use('/api/promos', require('./routes/promos'));
 // Health check
 app.get('/api/health', (req, res) => {
   try {
-    const db = require('./database/db').getDb();
-    const usersCount  = db.prepare('SELECT COUNT(*) as c FROM users').get().c;
-    const ordersCount = db.prepare('SELECT COUNT(*) as c FROM orders').get().c;
-    const cardsCount  = db.prepare("SELECT COUNT(*) as c FROM cards WHERE status = 'available'").get().c;
-    res.json({
-      status: 'OK',
-      timestamp: new Date().toISOString(),
-      db: 'connected',
-      stats: { users: usersCount, orders: ordersCount, cards_available: cardsCount }
-    });
+    // Public : pas de statistiques métier (nb clients, commandes, stock) — seulement l'état
+    require('./database/db').getDb().prepare('SELECT 1').get();
+    res.json({ status: 'OK', timestamp: new Date().toISOString(), db: 'connected' });
   } catch (err) {
-    res.status(500).json({ status: 'ERROR', error: err.message, timestamp: new Date().toISOString() });
+    console.error('[HEALTH]', err.message);
+    res.status(500).json({ status: 'ERROR', timestamp: new Date().toISOString() });
   }
 });
 

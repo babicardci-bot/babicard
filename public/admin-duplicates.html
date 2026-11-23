@@ -46,6 +46,10 @@
   <div id="orders-app"></div>
 
   <script>
+    function esc(str) {
+      if (str == null) return '';
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+    }
     const token = localStorage.getItem('token');
 
     async function load() {
@@ -60,7 +64,7 @@
           headers: { 'Authorization': 'Bearer ' + token }
         });
         const data = await res.json();
-        if (!res.ok) { app.innerHTML = `<div class="error">Erreur: ${data.error}</div>`; return; }
+        if (!res.ok) { app.innerHTML = `<div class="error">Erreur: ${esc(data.error)}</div>`; return; }
 
         const { total_duplicates, duplicates } = data;
         let html = `<div class="summary">
@@ -98,7 +102,7 @@
 
         app.innerHTML = html;
       } catch (e) {
-        app.innerHTML = `<div class="error">Erreur réseau: ${e.message}</div>`;
+        app.innerHTML = `<div class="error">Erreur réseau: ${esc(e.message)}</div>`;
       }
     }
 
@@ -139,9 +143,9 @@
         for (const o of orders) {
           html += `<tr>
             <td>#${o.id}</td>
-            <td>${o.user_name || '—'}</td>
-            <td>${o.user_email || '—'}</td>
-            <td>${o.user_phone || '—'}</td>
+            <td>${esc(o.user_name || '—')}</td>
+            <td>${esc(o.user_email || '—')}</td>
+            <td>${esc(o.user_phone || '—')}</td>
             <td style="color:#a78bfa;font-weight:700">${(o.total_amount||0).toLocaleString('fr-FR')} FCFA</td>
             <td><span class="badge ${o.payment_status==='paid'?'badge-ok':'badge-warn'}">${o.payment_status}</span></td>
             <td><span class="badge ${o.delivery_status==='delivered'?'badge-ok':'badge-warn'}">${o.delivery_status}</span></td>
@@ -151,7 +155,7 @@
         html += '</tbody></table>';
         app.innerHTML = html;
       } catch(e) {
-        app.innerHTML = `<div class="error">Erreur: ${e.message}</div>`;
+        app.innerHTML = `<div class="error">Erreur: ${esc(e.message)}</div>`;
       }
     }
 
@@ -173,8 +177,8 @@
         for (const c of cards) {
           html += `<tr>
             <td>#${c.id}</td>
-            <td>${c.product_name || '—'}</td>
-            <td style="font-family:monospace;color:#a78bfa">${c.code || '—'}</td>
+            <td>${esc(c.product_name || '—')}</td>
+            <td style="font-family:monospace;color:#a78bfa">${esc(c.code || '—')}</td>
             <td><span class="badge ${c.status==='available'?'badge-ok':c.status==='sold'?'badge-warn':'badge-warn'}">${c.status}</span></td>
             <td>${c.order_id ? '<a href="/admin#orders" style="color:#a78bfa">#' + c.order_id + '</a>' : '—'}</td>
             <td style="color:#606080;font-size:0.78rem">${c.added_at || '—'}</td>
@@ -184,7 +188,7 @@
         html += '</tbody></table>';
         app.innerHTML = html;
       } catch(e) {
-        app.innerHTML = `<div class="error">Erreur: ${e.message}</div>`;
+        app.innerHTML = `<div class="error">Erreur: ${esc(e.message)}</div>`;
       }
     }
 
