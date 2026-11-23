@@ -119,10 +119,34 @@
 
     let _otpEmail = null;
     let _otpPending = false;
+    let _totpPending = false;
+    let _totpCode = null;
+
+    function showCodeStep(label) {
+      document.getElementById('email').closest('.form-group').style.display = 'none';
+      document.getElementById('password').closest('.form-group').style.display = 'none';
+      const fp = document.querySelector('[href="/forgot-password"]');
+      if (fp) fp.parentElement.style.display = 'none';
+      document.getElementById('otpGroup').style.display = 'block';
+      document.getElementById('otpLabel').textContent = label;
+      document.getElementById('otpCode').value = '';
+      document.getElementById('otpCode').focus();
+      document.getElementById('loginBtn').querySelector('.btn-text').textContent = 'Vérifier le code →';
+    }
 
     async function handleLogin(e) {
       e.preventDefault();
       if (_otpPending) { await verifyOTP(); return; }
+      if (_totpPending) {
+        const c = document.getElementById('otpCode').value.replace(/\s/g, '');
+        if (!/^\d{6}$/.test(c)) {
+          const ab = document.getElementById('alertBox');
+          ab.textContent = 'Entrez le code à 6 chiffres de votre application d\'authentification.';
+          ab.classList.remove('hidden'); ab.classList.add('alert-error');
+          return;
+        }
+        _totpCode = c;
+      }
 
       const btn = document.getElementById('loginBtn');
       const btnText = btn.querySelector('.btn-text');
@@ -141,22 +165,32 @@
         const response = await fetch('/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password })
+          body: JSON.stringify({ email, password, ...(_totpCode ? { two_fa_code: _totpCode } : {}) })
         });
 
         const data = await response.json();
+
+        // 2FA Google Authenticator requise
+        if (!response.ok && data.two_fa_required) {
+          const wasPending = _totpPending;
+          _totpPending = true;
+          _totpCode = null;
+          showCodeStep('🔐 Code de votre application d\'authentification (Google Authenticator)');
+          if (wasPending) {
+            alertBox.textContent = data.error || 'Code incorrect.';
+            alertBox.classList.remove('hidden'); alertBox.classList.add('alert-error');
+          } else {
+            alertBox.classList.add('hidden');
+          }
+          return;
+        }
 
         // OTP email requis
         if (response.ok && data.email_otp_required) {
           _otpEmail = email;
           _otpPending = true;
-          document.getElementById('email').closest('.form-group').style.display = 'none';
-          document.getElementById('password').closest('.form-group').style.display = 'none';
-          document.querySelector('[href="/forgot-password"]').parentElement.style.display = 'none';
-          document.getElementById('otpGroup').style.display = 'block';
-          document.getElementById('otpLabel').textContent = `📧 ${data.message}`;
-          document.getElementById('otpCode').focus();
-          btnText.textContent = 'Vérifier le code →';
+          _totpPending = false;
+          showCodeStep(`📧 ${data.message}`);
           alertBox.classList.add('hidden');
           return;
         }
@@ -239,7 +273,7 @@
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: _otpEmail, password })
+        body: JSON.stringify({ email: _otpEmail, password, ...(_totpCode ? { two_fa_code: _totpCode } : {}) })
       });
       const data = await res.json();
       const alertBox = document.getElementById('alertBox');

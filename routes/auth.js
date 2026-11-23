@@ -195,9 +195,6 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: `Email ou mot de passe incorrect. ${MAX_ATTEMPTS - newAttempts} tentative(s) restante(s).` });
     }
 
-    // Reset login attempts on success
-    db.prepare('UPDATE users SET login_attempts = 0, login_locked_until = NULL WHERE id = ?').run(user.id);
-
     // Block unverified accounts — only allow login if explicitly verified (= 1)
     if (user.email_verified !== 1) {
       return res.status(403).json({
@@ -205,6 +202,37 @@ router.post('/login', async (req, res) => {
         email_not_verified: true
       });
     }
+
+    // 2FA TOTP (Google Authenticator) — obligatoire si activée sur le compte
+    if (user.two_fa_enabled && user.two_fa_secret) {
+      if (!two_fa_code) {
+        // 401 (et non 200) : les clients qui ne gèrent pas la 2FA affichent simplement le message
+        return res.status(401).json({
+          error: 'Code de vérification en deux étapes requis (Google Authenticator).',
+          two_fa_required: true
+        });
+      }
+      const totpValid = speakeasy.totp.verify({
+        secret: user.two_fa_secret,
+        encoding: 'base32',
+        token: String(two_fa_code).replace(/\s/g, ''),
+        window: 1
+      });
+      if (!totpValid) {
+        // Compte comme une tentative échouée (même verrouillage que le mot de passe)
+        const newAttempts = (user.login_attempts || 0) + 1;
+        if (newAttempts >= 10) {
+          const lockedUntil = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+          db.prepare('UPDATE users SET login_attempts = 0, login_locked_until = ? WHERE id = ?').run(lockedUntil, user.id);
+          return res.status(429).json({ error: 'Trop de tentatives. Compte bloqué 30 minutes.' });
+        }
+        db.prepare('UPDATE users SET login_attempts = ? WHERE id = ?').run(newAttempts, user.id);
+        return res.status(401).json({ error: 'Code 2FA incorrect.', two_fa_required: true });
+      }
+    }
+
+    // Reset login attempts on success (mot de passe + 2FA validés)
+    db.prepare('UPDATE users SET login_attempts = 0, login_locked_until = NULL WHERE id = ?').run(user.id);
 
     // Email OTP obligatoire pour admin et vendeurs (désactivable via DISABLE_ADMIN_OTP=true)
     if (['admin', 'seller'].includes(user.role) && process.env.DISABLE_ADMIN_OTP !== 'true') {
@@ -296,7 +324,7 @@ router.post('/logout', authenticateToken, (req, res) => {
 // GET /api/auth/me
 router.get('/me', authenticateToken, (req, res) => {
   const db = getDb();
-  const user = db.prepare('SELECT id, name, email, phone, role, email_verified, avatar, created_at FROM users WHERE id = ?').get(req.user.id);
+  const user = db.prepare('SELECT id, name, email, phone, role, email_verified, avatar, two_fa_enabled, created_at FROM users WHERE id = ?').get(req.user.id);
   res.json({ user });
 });
 
