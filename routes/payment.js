@@ -164,13 +164,16 @@ router.post('/djamo/webhook', async (req, res) => {
     const signature = req.headers['x-webhook-signature'] || req.headers['x-djamo-signature']
       || req.headers['x-signature'] || req.headers['signature'];
     if (!signature) {
-      console.warn('[DJAMO WEBHOOK] Signature absente — vérification via API Djamo obligatoire');
+      // Logger les noms d'en-têtes (pas les valeurs) pour identifier l'en-tête de signature Djamo
+      console.warn('[DJAMO WEBHOOK] Signature absente — vérification via API Djamo obligatoire | IP:', req.ip, '| headers:', Object.keys(req.headers).join(','));
       // Pas de rejet immédiat mais on vérifiera le statut via l'API avant toute livraison
       req._djamoNoSignature = true;
     } else {
       const sigToCheck = signature.startsWith('sha256=') ? signature.slice(7) : signature;
       const expected = crypto.createHmac('sha256', DJAMO_WEBHOOK_SECRET).update(rawStr).digest('hex');
-      if (!crypto.timingSafeEqual(Buffer.from(sigToCheck, 'hex'), Buffer.from(expected, 'hex'))) {
+      const sigBuf = Buffer.from(String(sigToCheck), 'hex');
+      const expBuf = Buffer.from(expected, 'hex');
+      if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
         console.warn('[DJAMO WEBHOOK] Signature invalide — rejeté');
         return res.status(401).json({ error: 'Signature invalide.' });
       }
@@ -191,44 +194,57 @@ router.post('/djamo/webhook', async (req, res) => {
 
     if (body.topic !== 'charge/events') return res.json({ received: true, skipped: 'unknown_topic' });
 
-    const { id: chargeId, status, externalId } = body.data || {};
-    if (!chargeId) return res.status(400).json({ error: 'chargeId manquant.' });
+    const { id: chargeId, externalId } = body.data || {};
+    let status = body.data?.status;
+    if (!chargeId || typeof chargeId !== 'string' || !/^[A-Za-z0-9-]{1,100}$/.test(chargeId)) {
+      return res.status(400).json({ error: 'chargeId invalide.' });
+    }
 
     const db = getDb();
-    // Chercher par chargeId OU par externalId (format BABI-XXXX-orderId)
+    // Chercher par chargeId (enregistré côté serveur à l'initiation)
     let order = db.prepare('SELECT * FROM orders WHERE payment_ref = ?').get(chargeId);
-    if (!order && externalId) {
-      // Extraire order_id depuis externalId format BABI-XXXX-{orderId}
-      const match = externalId.match(/BABI-[A-Z0-9]+-(\d+)$/);
+    // Fallback externalId UNIQUEMENT si le webhook est signé — sinon un attaquant pourrait
+    // rattacher le chargeId d'une autre commande payée à sa commande.
+    if (!order && externalId && !req._djamoNoSignature) {
+      const match = String(externalId).match(/BABI-[A-Z0-9]+-(\d+)$/);
       if (match) order = db.prepare('SELECT * FROM orders WHERE id = ?').get(parseInt(match[1]));
     }
     if (!order) {
       console.warn('[WEBHOOK] Commande non trouvée pour chargeId:', chargeId, '| externalId:', externalId);
       return res.status(404).json({ error: 'Commande non trouvée.' });
     }
-    // Mettre à jour payment_ref avec le vrai chargeId si nécessaire
-    if (order.payment_ref !== chargeId) {
+    // Mettre à jour payment_ref uniquement pour un webhook signé
+    if (order.payment_ref !== chargeId && !req._djamoNoSignature) {
       db.prepare('UPDATE orders SET payment_ref = ? WHERE id = ?').run(chargeId, order.id);
+    }
+
+    // Webhook non signé : ne jamais faire confiance au statut du body — le statut réel vient de l'API Djamo
+    if (req._djamoNoSignature) {
+      try {
+        const verifyRes = await axios.get(`${DJAMO_API_URL}/v1/charges/${encodeURIComponent(chargeId)}`, { headers: djamoHeaders() });
+        const charge = verifyRes.data?.data || verifyRes.data || {};
+        const realStatus = charge.status;
+        if (charge.id && charge.id !== chargeId) {
+          console.warn('[DJAMO WEBHOOK] chargeId API différent du webhook — rejeté');
+          return res.status(400).json({ error: 'Paiement non confirmé.' });
+        }
+        if (charge.amount != null && Number(charge.amount) !== Number(order.total_amount)) {
+          console.warn('[DJAMO WEBHOOK] Montant API', charge.amount, '≠ commande', order.total_amount, '— rejeté');
+          return res.status(400).json({ error: 'Montant incohérent.' });
+        }
+        status = ['charged', 'completed', 'success', 'paid'].includes(realStatus) ? 'paid'
+          : ['dropped', 'cancelled', 'failed', 'expired'].includes(realStatus) ? 'cancelled'
+          : realStatus === 'refunded' ? 'refunded'
+          : realStatus;
+        console.log('[DJAMO WEBHOOK] Statut vérifié via API:', realStatus, '| commande', order.id);
+      } catch (verifyErr) {
+        console.error('[DJAMO WEBHOOK] Impossible de vérifier le paiement via API:', verifyErr.message);
+        return res.status(502).json({ error: 'Vérification paiement impossible.' });
+      }
     }
 
     if (status === 'paid') {
       if (order.payment_status === 'paid') return res.json({ received: true, skipped: 'already_paid' });
-
-      // Si pas de signature, vérifier le statut réel via l'API Djamo avant de livrer
-      if (req._djamoNoSignature) {
-        try {
-          const verifyRes = await axios.get(`${DJAMO_API_URL}/v1/charges/${chargeId}`, { headers: djamoHeaders() });
-          const realStatus = verifyRes.data?.data?.status || verifyRes.data?.status;
-          if (!['charged', 'completed', 'success', 'paid'].includes(realStatus)) {
-            console.warn('[DJAMO WEBHOOK] Paiement non confirmé par API — statut réel:', realStatus, '— livraison annulée');
-            return res.status(400).json({ error: 'Paiement non confirmé.' });
-          }
-          console.log('[DJAMO WEBHOOK] Paiement vérifié via API — statut:', realStatus);
-        } catch (verifyErr) {
-          console.error('[DJAMO WEBHOOK] Impossible de vérifier le paiement via API:', verifyErr.message);
-          return res.status(502).json({ error: 'Vérification paiement impossible.' });
-        }
-      }
 
       const markPaidDjamo = db.prepare("UPDATE orders SET payment_status = 'paid', paid_at = CURRENT_TIMESTAMP WHERE id = ? AND payment_status != 'paid'");
       const paidResult = markPaidDjamo.run(order.id);
