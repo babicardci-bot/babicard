@@ -1462,6 +1462,52 @@ router.get('/backup', async (req, res) => {
   }
 });
 
+// GET /api/admin/exports/geniuspay — CSV des transactions Mobile Money (GeniusPay) avec infos client
+// Demandé par GeniusPay pour la conformité : référence + nom, email, téléphone du client.
+router.get('/exports/geniuspay', (req, res) => {
+  try {
+    const db = getDb();
+    const rows = db.prepare(`
+      SELECT o.id, o.payment_ref, o.created_at, o.paid_at, o.total_amount, o.payment_status,
+             o.delivery_email, o.delivery_phone, u.name, u.email, u.phone
+      FROM orders o
+      LEFT JOIN users u ON u.id = o.user_id
+      WHERE o.payment_method = 'mobile_money' AND o.payment_ref IS NOT NULL AND o.payment_ref != ''
+      ORDER BY o.created_at ASC
+    `).all();
+
+    const normPhone = (raw) => {
+      if (!raw) return '';
+      const c = String(raw).replace(/[\s\-().]/g, '');
+      const n = c.startsWith('00225') ? '+' + c.slice(2) : c.startsWith('+225') ? c
+        : (c.startsWith('225') && c.length === 13) ? '+' + c : '+225' + c;
+      return /^\+225\d{10}$/.test(n) ? n : String(raw);
+    };
+    // Échappement CSV + neutralisation des formules (noms piégés type =HYPERLINK…)
+    const cell = (v, isPhone = false) => {
+      let s = v == null ? '' : String(v);
+      if (!isPhone && /^[=+\-@\t\r]/.test(s)) s = "'" + s;
+      return '"' + s.replace(/"/g, '""') + '"';
+    };
+    const header = ['Référence GeniusPay', 'Commande Babicard', 'Date création', 'Date paiement', 'Montant (XOF)', 'Statut', 'Nom client', 'Email client', 'Téléphone client'];
+    const lines = rows.map(r => [
+      cell(r.payment_ref), cell('#' + r.id), cell(r.created_at), cell(r.paid_at || ''), cell(r.total_amount),
+      cell(r.payment_status), cell(r.name || '(compte supprimé)'), cell(r.email || r.delivery_email || ''),
+      cell(normPhone(r.phone || r.delivery_phone), true)
+    ].join(';'));
+
+    logAdminAction(req, 'EXPORT_GENIUSPAY', `${rows.length} transaction(s)`);
+    const filename = `babicard-transactions-geniuspay-${new Date().toISOString().slice(0, 10)}.csv`;
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    // BOM UTF-8 pour ouverture correcte des accents dans Excel ; séparateur ; (Excel FR)
+    res.send('﻿' + [header.map(h => cell(h)).join(';'), ...lines].join('\r\n'));
+  } catch (err) {
+    console.error('Erreur export GeniusPay:', err);
+    res.status(500).json({ error: 'Erreur export.' });
+  }
+});
+
 // ===== PROMO REQUESTS =====
 
 // GET /api/admin/promo-requests — List seller promo requests

@@ -361,6 +361,17 @@ const GENIUS_API_URL = 'https://pay.genius.ci/api/v1/merchant';
 const GENIUS_API_KEY = process.env.GENIUS_API_KEY;
 const GENIUS_API_SECRET = process.env.GENIUS_API_SECRET;
 
+// Normalise un numéro ivoirien au format E.164 (+225XXXXXXXXXX) — null si invalide
+function normalizeCiPhone(raw) {
+  if (!raw) return null;
+  const c = String(raw).replace(/[\s\-().]/g, '');
+  const n = c.startsWith('00225') ? '+' + c.slice(2)
+    : c.startsWith('+225') ? c
+    : c.startsWith('225') && c.length === 13 ? '+' + c
+    : '+225' + c;
+  return /^\+225\d{10}$/.test(n) ? n : null;
+}
+
 function geniusHeaders() {
   return {
     'X-API-Key': GENIUS_API_KEY,
@@ -391,19 +402,47 @@ router.post('/mobilemoney/initiate', authenticateToken, async (req, res) => {
     const siteUrl = process.env.SITE_URL || 'http://localhost:3000';
     const reference = `BABI-G-${uuidv4().split('-')[0].toUpperCase()}-${order_id}`;
 
-    const paymentRes = await axios.post(
-      `${GENIUS_API_URL}/payments`,
-      {
-        amount: order.total_amount,
-        currency: 'XOF',
-        description: `Commande Babicard #${order_id}`,
-        reference,
-        callback_url: `${siteUrl}/api/payment/mobilemoney/webhook`,
-        success_url: `${siteUrl}/dashboard?order=${order_id}&status=success`,
-        error_url: `${siteUrl}/dashboard?order=${order_id}&status=failed`
-      },
-      { headers: geniusHeaders(), timeout: 25000 }
-    );
+    // Informations client exigées par GeniusPay (conformité partenaires) : nom, email, téléphone
+    const customer = db.prepare('SELECT name, email, phone FROM users WHERE id = ?').get(req.user.id) || {};
+    const customerPhone = normalizeCiPhone(customer.phone) || normalizeCiPhone(order.delivery_phone);
+    const customerFields = {
+      customer_name: customer.name || undefined,
+      customer_email: customer.email || order.delivery_email || undefined,
+      customer_phone: customerPhone || undefined,
+      // Doublé en metadata (champ libre accepté par l'API GeniusPay)
+      metadata: {
+        order_id: String(order_id),
+        customer_name: customer.name || null,
+        customer_email: customer.email || order.delivery_email || null,
+        customer_phone: customerPhone || null
+      }
+    };
+    if (!customerPhone) console.warn('[MOBILE MONEY] Commande', order_id, ': aucun téléphone client connu — transmis sans téléphone');
+
+    const basePayload = {
+      amount: order.total_amount,
+      currency: 'XOF',
+      description: `Commande Babicard #${order_id}`,
+      reference,
+      callback_url: `${siteUrl}/api/payment/mobilemoney/webhook`,
+      success_url: `${siteUrl}/dashboard?order=${order_id}&status=success`,
+      error_url: `${siteUrl}/dashboard?order=${order_id}&status=failed`
+    };
+
+    let paymentRes;
+    try {
+      paymentRes = await axios.post(`${GENIUS_API_URL}/payments`, { ...basePayload, ...customerFields },
+        { headers: geniusHeaders(), timeout: 25000 });
+    } catch (firstErr) {
+      // Si l'API v1 rejette les champs client (validation), réessayer sans eux pour ne pas bloquer le paiement
+      const st = firstErr.response?.status;
+      if (st === 400 || st === 422) {
+        console.error('[MOBILE MONEY] Champs client refusés par GeniusPay (HTTP', st, '):', JSON.stringify(firstErr.response?.data), '— nouvel essai sans');
+        paymentRes = await axios.post(`${GENIUS_API_URL}/payments`, basePayload, { headers: geniusHeaders(), timeout: 25000 });
+      } else {
+        throw firstErr;
+      }
+    }
 
     console.log('[MOBILE MONEY] Réponse GeniusPay brute:', JSON.stringify(paymentRes.data));
 

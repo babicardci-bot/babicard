@@ -1264,6 +1264,24 @@ async function changeUserRole(userId, newRole) {
   }
 }
 
+// Export CSV des transactions Mobile Money pour GeniusPay (conformité)
+async function exportGeniusPay() {
+  try {
+    const res = await adminFetch('/admin/exports/geniuspay');
+    if (!res.ok) { const d = await res.json().catch(() => ({})); showToast(d.error || 'Erreur export', 'error'); return; }
+    const blob = await res.blob();
+    const match = /filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') || '');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = match ? match[1] : 'transactions-geniuspay.csv';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    showToast('Export téléchargé', 'success');
+  } catch (err) {
+    showToast('Erreur réseau', 'error');
+  }
+}
+
 async function deleteUser(userId) {
   if (!confirm(`Supprimer définitivement cet utilisateur ?\n\nSes commandes et données seront conservées mais son compte sera supprimé. Cette action est irréversible.`)) return;
   try {
